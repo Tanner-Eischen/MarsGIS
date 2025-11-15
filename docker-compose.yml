@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Production/testing container
+  marshab:
+    build: .
+    image: marshab:latest
+    container_name: marshab-app
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./marshab_config.yaml:/app/marshab_config.yaml:ro
+    environment:
+      - MARSHAB_CONFIG_PATH=/app/marshab_config.yaml
+      - MARSHAB_LOG_LEVEL=INFO
+    command: --help
+
+  # Development container with interactive shell
+  dev:
+    build: .
+    image: marshab:latest
+    container_name: marshab-dev
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - MARSHAB_LOG_LEVEL=DEBUG
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    entrypoint: conda run --no-capture-output -n marshab /bin/bash
+

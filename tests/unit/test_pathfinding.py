@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from marshab.exceptions import NavigationError
-from marshab.processing.pathfinding import AStarPathfinder
+from marshab.processing.pathfinding import AStarPathfinder, smooth_path
 
 
 @pytest.fixture
@@ -252,4 +252,52 @@ def test_astar_optimal_path():
     # Check if any point in path uses the highway
     uses_highway = any(pos[1] == 5 for pos in path)
     assert uses_highway
+
+
+def test_smooth_path():
+    """Test path smoothing."""
+    # Create a simple cost map
+    cost_map = np.ones((20, 20))
+    
+    # Create a path with unnecessary waypoints
+    path = [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (10, 10), (15, 15), (19, 19)]
+    
+    smoothed = smooth_path(path, cost_map, tolerance=2.0)
+    
+    # Smoothed path should be shorter or equal
+    assert len(smoothed) <= len(path)
+    # Should still start and end at same points
+    assert smoothed[0] == path[0]
+    assert smoothed[-1] == path[-1]
+
+
+def test_smooth_path_with_obstacle():
+    """Test path smoothing respects obstacles."""
+    # Create cost map with obstacle
+    cost_map = np.ones((20, 20))
+    cost_map[5:15, 5:15] = np.inf  # Obstacle in middle
+    
+    # Path that goes around obstacle
+    path = [(0, 0), (5, 0), (10, 0), (15, 0), (19, 0), (19, 10), (19, 19)]
+    
+    smoothed = smooth_path(path, cost_map, tolerance=2.0)
+    
+    # Should not smooth through obstacle
+    # Check that no waypoint is in the obstacle
+    for waypoint in smoothed:
+        row, col = waypoint
+        assert not (5 <= row < 15 and 5 <= col < 15)
+
+
+def test_smooth_path_short_path():
+    """Test path smoothing with very short path."""
+    cost_map = np.ones((10, 10))
+    path = [(0, 0), (9, 9)]
+    
+    smoothed = smooth_path(path, cost_map, tolerance=2.0)
+    
+    # Short paths should not be modified
+    assert len(smoothed) == len(path)
+    assert smoothed == path
+
 

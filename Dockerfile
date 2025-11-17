@@ -25,7 +25,7 @@ COPY . .
 # Install marshab package in development mode
 RUN pip install -e .
 
-# Set entry point
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "marshab"]
-CMD ["python", "-m", "marshab"]
+# Set entry point - use python -m marshab for better compatibility
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "marshab", "python", "-m", "marshab"]
+CMD ["--help"]
 

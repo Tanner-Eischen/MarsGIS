@@ -25,10 +25,23 @@ class MCDMEvaluator:
         Returns:
             Normalized array in [0, 1] range
         """
-        data_min = np.nanmin(data)
-        data_max = np.nanmax(data)
+        # Handle empty arrays
+        if data.size == 0:
+            logger.warning("Empty array provided to normalize_criterion, returning empty array")
+            return data
         
-        if data_max == data_min:
+        # Handle arrays with all NaN
+        valid_mask = np.isfinite(data)
+        if not np.any(valid_mask):
+            logger.warning("All values are NaN in normalize_criterion, returning zeros")
+            return np.zeros_like(data)
+        
+        # Calculate min/max only on valid values
+        valid_data = data[valid_mask]
+        data_min = np.nanmin(valid_data) if valid_data.size > 0 else 0.0
+        data_max = np.nanmax(valid_data) if valid_data.size > 0 else 1.0
+        
+        if data_max == data_min or not np.isfinite(data_max) or not np.isfinite(data_min):
             return np.ones_like(data) * 0.5
         
         if beneficial:
@@ -37,6 +50,9 @@ class MCDMEvaluator:
         else:
             # Lower is better (cost criterion)
             normalized = (data_max - data) / (data_max - data_min)
+        
+        # Ensure result is finite
+        normalized = np.where(np.isfinite(normalized), normalized, 0.5)
 
         return normalized
 
@@ -80,11 +96,15 @@ class MCDMEvaluator:
                 mean_value=float(np.nanmean(norm_data)),
             )
 
-        logger.info(
-            "Weighted sum computed",
-            mean_suitability=float(np.nanmean(suitability)),
-            max_suitability=float(np.nanmax(suitability)),
-        )
+        # Handle empty suitability array
+        if suitability.size > 0:
+            logger.info(
+                "Weighted sum computed",
+                mean_suitability=float(np.nanmean(suitability)),
+                max_suitability=float(np.nanmax(suitability)),
+            )
+        else:
+            logger.warning("Empty suitability array computed")
         
         return suitability
     

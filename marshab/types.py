@@ -1,6 +1,6 @@
 """Type definitions and data models for MarsHab."""
 
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
@@ -134,9 +134,14 @@ class SiteCandidate(BaseModel):
     site_id: int = Field(..., ge=0, description="Unique site identifier")
     geometry_type: str = Field(..., description="WKT geometry type")
     area_km2: float = Field(..., gt=0, description="Site area (km²)")
+    lat: float = Field(..., description="Site centroid latitude (degrees)")
+    lon: float = Field(..., description="Site centroid longitude (degrees)")
     mean_slope_deg: float = Field(..., ge=0, description="Mean slope (degrees)")
     mean_roughness: float = Field(..., ge=0, description="Mean roughness")
     mean_elevation_m: float = Field(..., description="Mean elevation (meters)")
     suitability_score: float = Field(..., ge=0, le=1, description="Overall suitability (0-1)")
     rank: int = Field(..., ge=1, description="Rank among candidates (1=best)")
+    polygon_coords: Optional[list[list[float]]] = Field(
+        None, description="Polygon coordinates as [[lon, lat], ...] for GeoJSON"
+    )
 

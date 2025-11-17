@@ -16,17 +16,23 @@ pyproj = "^3.6"
 spiceypy = "^6.0"
 numpy = "^1.26"
 scipy = "^1.11"
+scikit-image = "^0.22"
 pandas = "^2.1"
 xarray = "^2023.12"
 plotly = "^5.18"
 matplotlib = "^3.8"
-typer = {extras = ["all"], version = "^0.9"}
+typer = {extras = ["all"], version = "^0.20"}
 rich = "^13.7"
 pydantic = "^2.5"
 pydantic-settings = "^2.1"
 pyyaml = "^6.0"
 python-dotenv = "^1.0"
 structlog = "^24.1"
+fastapi = "^0.104"
+uvicorn = {extras = ["standard"], version = "^0.24"}
+websockets = "^12.0"
+python-multipart = "^0.0.6"
+pillow = "^10.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4"
@@ -42,6 +48,8 @@ ipykernel = "^6.29"
 
 [tool.poetry.scripts]
 marshab = "marshab.cli:app"
+mars = "marshab.cli:mars_app"
+marshab-web = "marshab.web.server:main"
 
 [tool.ruff]
 line-length = 100

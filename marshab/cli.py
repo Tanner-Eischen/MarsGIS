@@ -9,16 +9,20 @@ from rich.console import Console
 from rich.table import Table
 
 from marshab import __version__
+from marshab.config import PathfindingStrategy, get_config
 from marshab.core.data_manager import DataManager
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.core.navigation_engine import NavigationEngine
 from marshab.types import BoundingBox
 from marshab.utils.logging import configure_logging, get_logger
 
+# Disable Rich help to avoid compatibility issues
 app = typer.Typer(
     name="marshab",
     help="Mars Habitat Site Selection and Rover Navigation System",
-    add_completion=False
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode=None  # Disable rich formatting to avoid click compatibility issues
 )
 
 console = Console()
@@ -66,17 +70,8 @@ def main(
         os.environ["MARSHAB_CONFIG_PATH"] = str(config_file)
 
 
-@app.command()
-def download(
-    dataset: str = typer.Argument(..., help="Dataset to download (mola/hirise/ctx)"),
-    roi: str = typer.Option(
-        ...,
-        "--roi",
-        help="Region of interest as 'lat_min,lat_max,lon_min,lon_max'"
-    ),
-    force: bool = typer.Option(False, "--force", help="Force re-download")
-):
-    """Download Mars DEM data for specified region."""
+def _download_dem(dataset: str, roi: str, force: bool):
+    """Internal function to download DEM data."""
     console.print(f"[bold blue]Downloading {dataset} DEM[/bold blue]")
     
     # Parse ROI
@@ -96,24 +91,29 @@ def download(
     try:
         dm = DataManager()
         path = dm.download_dem(dataset, bbox, force=force)
-        console.print(f"[green]✓ Downloaded to: {path}[/green]")
+        # Use ASCII-safe characters for Windows compatibility
+        console.print(f"[green]Success! Downloaded to: {path}[/green]")
     except Exception as e:
-        console.print(f"[red]✗ Download failed: {e}[/red]")
+        console.print(f"[red]Error: Download failed: {e}[/red]")
         raise typer.Exit(1)
 
 
 @app.command()
-def analyze(
+def download(
+    dataset: str = typer.Argument(..., help="Dataset to download (mola/hirise/ctx)"),
     roi: str = typer.Option(
         ...,
         "--roi",
         help="Region of interest as 'lat_min,lat_max,lon_min,lon_max'"
     ),
-    dataset: str = typer.Option("mola", "--dataset", help="Dataset to use"),
-    output: Path = typer.Option(Path("data/output"), "--output", "-o", help="Output directory"),
-    threshold: float = typer.Option(0.7, "--threshold", help="Suitability threshold")
+    force: bool = typer.Option(False, "--force", help="Force re-download")
 ):
-    """Analyze terrain and identify construction sites."""
+    """Download Mars DEM data for specified region."""
+    _download_dem(dataset, roi, force)
+
+
+def _analyze_terrain(roi: str, dataset: str, output: Path, threshold: float):
+    """Internal function to analyze terrain."""
     console.print("[bold blue]Starting terrain analysis[/bold blue]")
     
     # Parse ROI
@@ -139,7 +139,7 @@ def analyze(
         results.save(output)
         
         # Display summary
-        console.print("\n[bold green]✓ Analysis complete[/bold green]\n")
+        console.print("\n[bold green]Analysis complete![/bold green]\n")
         
         table = Table(title="Analysis Results")
         table.add_column("Metric", style="cyan")
@@ -152,23 +152,41 @@ def analyze(
         console.print(table)
         
     except Exception as e:
-        console.print(f"[red]✗ Analysis failed: {e}[/red]")
+        console.print(f"[red]Error: Analysis failed: {e}[/red]")
         logger.exception("Analysis failed")
         raise typer.Exit(1)
 
 
 @app.command()
-def navigate(
-    site_id: int = typer.Argument(..., help="Target site ID"),
-    analysis_dir: Path = typer.Option(Path("data/output"), "--analysis", help="Analysis results directory"),
-    start_lat: float = typer.Option(..., help="Start latitude"),
-    start_lon: float = typer.Option(..., help="Start longitude"),
-    output: Path = typer.Option(Path("waypoints.csv"), "--output", "-o", help="Waypoint output file")
+def analyze(
+    roi: str = typer.Option(
+        ...,
+        "--roi",
+        help="Region of interest as 'lat_min,lat_max,lon_min,lon_max'"
+    ),
+    dataset: str = typer.Option("mola", "--dataset", help="Dataset to use"),
+    output: Path = typer.Option(Path("data/output"), "--output", "-o", help="Output directory"),
+    threshold: float = typer.Option(0.7, "--threshold", help="Suitability threshold")
 ):
-    """Generate rover navigation waypoints to target site."""
+    """Analyze terrain and identify construction sites."""
+    _analyze_terrain(roi, dataset, output, threshold)
+
+
+def _navigate_to_site(site_id: int, analysis_dir: Path, start_lat: float, start_lon: float, output: Path, strategy: Optional[str] = None):
+    """Internal function to generate navigation waypoints."""
     console.print("[bold blue]Generating navigation waypoints[/bold blue]")
     
     try:
+        # Update strategy if provided
+        if strategy is not None:
+            config = get_config()
+            try:
+                strategy_enum = PathfindingStrategy(strategy.lower())
+                config.navigation.strategy = strategy_enum
+                console.print(f"[cyan]Using pathfinding strategy: {strategy}[/cyan]")
+            except ValueError:
+                console.print(f"[yellow]Warning: Invalid strategy '{strategy}', using default[/yellow]")
+        
         engine = NavigationEngine()
         waypoints = engine.plan_to_site(
             site_id=site_id,
@@ -180,12 +198,25 @@ def navigate(
         # Save waypoints
         waypoints.to_csv(output, index=False)
         
-        console.print(f"\n[green]✓ Generated {len(waypoints)} waypoints[/green]")
-        console.print(f"[green]✓ Saved to: {output}[/green]")
+        console.print(f"\n[green]Success! Generated {len(waypoints)} waypoints[/green]")
+        console.print(f"[green]Saved to: {output}[/green]")
         
     except Exception as e:
-        console.print(f"[red]✗ Navigation failed: {e}[/red]")
+        console.print(f"[red]Error: Navigation failed: {e}[/red]")
         raise typer.Exit(1)
+
+
+@app.command()
+def navigate(
+    site_id: int = typer.Argument(..., help="Target site ID"),
+    analysis_dir: Path = typer.Option(Path("data/output"), "--analysis", help="Analysis results directory"),
+    start_lat: float = typer.Option(..., help="Start latitude"),
+    start_lon: float = typer.Option(..., help="Start longitude"),
+    output: Path = typer.Option(Path("waypoints.csv"), "--output", "-o", help="Waypoint output file"),
+    strategy: str = typer.Option("balanced", "--strategy", help="Pathfinding strategy: safest, balanced, or direct")
+):
+    """Generate rover navigation waypoints to target site."""
+    _navigate_to_site(site_id, analysis_dir, start_lat, start_lon, output, strategy)
 
 
 @app.command()
@@ -215,13 +246,13 @@ def pipeline(
         with console.status("[bold green]Downloading DEM..."):
             dm = DataManager()
             dem_path = dm.download_dem(dataset, bbox)
-        console.print("[green]✓ DEM downloaded[/green]")
+        console.print("[green]Success! DEM downloaded[/green]")
         
         # 2. Run analysis
         with console.status("[bold green]Analyzing terrain..."):
             pipeline_obj = AnalysisPipeline()
             results = pipeline_obj.run(bbox, dataset=dataset)
-        console.print("[green]✓ Terrain analyzed[/green]")
+        console.print("[green]Success! Terrain analyzed[/green]")
         
         # 3. Generate navigation
         with console.status("[bold green]Planning navigation..."):
@@ -233,22 +264,109 @@ def pipeline(
                 start_lat=(bbox.lat_min + bbox.lat_max) / 2,
                 start_lon=(bbox.lon_min + bbox.lon_max) / 2
             )
-        console.print("[green]✓ Navigation planned[/green]")
+        console.print("[green]Success! Navigation planned[/green]")
         
         # 4. Save all outputs
         output.mkdir(parents=True, exist_ok=True)
         results.save(output)
         waypoints.to_csv(output / "waypoints.csv", index=False)
         
-        console.print(f"\n[bold green]✓ Pipeline complete![/bold green]")
+        console.print(f"\n[bold green]Pipeline complete![/bold green]")
         console.print(f"[green]Results saved to: {output}[/green]")
         
     except Exception as e:
-        console.print(f"\n[red]✗ Pipeline failed: {e}[/red]")
+        console.print(f"\n[red]Error: Pipeline failed: {e}[/red]")
         logger.exception("Pipeline failed")
         raise typer.Exit(1)
 
 
+# Create mars command group with shorter aliases
+mars_app = typer.Typer(
+    name="mars",
+    help="Mars Habitat Site Selection - Short command aliases",
+    add_completion=False,
+    no_args_is_help=True,
+    rich_markup_mode=None
+)
+
+
+@mars_app.callback()
+def mars_main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version and exit"
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-V",
+        help="Enable verbose logging"
+    ),
+    config_file: Optional[Path] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to configuration file"
+    )
+):
+    """Mars - Short aliases for MarsHab commands."""
+    # Configure logging
+    log_level = "DEBUG" if verbose else "INFO"
+    configure_logging(level=log_level, format_type="console")
+    
+    # Set config path if provided
+    if config_file:
+        import os
+        os.environ["MARSHAB_CONFIG_PATH"] = str(config_file)
+
+
+@mars_app.command()
+def download(
+    dataset: str = typer.Argument(..., help="Dataset to download (mola/hirise/ctx)"),
+    roi: str = typer.Option(
+        ...,
+        "--roi",
+        help="Region of interest as 'lat_min,lat_max,lon_min,lon_max'"
+    ),
+    force: bool = typer.Option(False, "--force", help="Force re-download")
+):
+    """Download Mars DEM data for specified region."""
+    _download_dem(dataset, roi, force)
+
+
+@mars_app.command(name="terrain")
+def terrain(
+    roi: str = typer.Option(
+        ...,
+        "--roi",
+        help="Region of interest as 'lat_min,lat_max,lon_min,lon_max'"
+    ),
+    dataset: str = typer.Option("mola", "--dataset", help="Dataset to use"),
+    output: Path = typer.Option(Path("data/output"), "--output", "-o", help="Output directory"),
+    threshold: float = typer.Option(0.7, "--threshold", help="Suitability threshold")
+):
+    """Analyze terrain and identify construction sites."""
+    _analyze_terrain(roi, dataset, output, threshold)
+
+
+@mars_app.command(name="navigation")
+def navigation(
+    site_id: int = typer.Argument(..., help="Target site ID"),
+    analysis_dir: Path = typer.Option(Path("data/output"), "--analysis", help="Analysis results directory"),
+    start_lat: float = typer.Option(..., help="Start latitude"),
+    start_lon: float = typer.Option(..., help="Start longitude"),
+    output: Path = typer.Option(Path("waypoints.csv"), "--output", "-o", help="Waypoint output file"),
+    strategy: str = typer.Option("balanced", "--strategy", help="Pathfinding strategy: safest, balanced, or direct")
+):
+    """Generate rover navigation waypoints to target site."""
+    _navigate_to_site(site_id, analysis_dir, start_lat, start_lon, output, strategy)
+
+
 if __name__ == "__main__":
     app()
+
 

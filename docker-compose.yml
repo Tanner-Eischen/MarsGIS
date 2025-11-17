@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Production/testing container
   marshab:
@@ -13,7 +11,7 @@ services:
     environment:
       - MARSHAB_CONFIG_PATH=/app/marshab_config.yaml
       - MARSHAB_LOG_LEVEL=INFO
-    command: --help
+    command: ["--help"]
 
   # Development container with interactive shell
   dev:

@@ -142,3 +142,7 @@ class TestAnalysisConfig:
         config = AnalysisConfig(roi=test_roi)
         assert config.criteria_weights.total() == 1.0
 
+
+
+
+

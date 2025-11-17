@@ -149,3 +149,7 @@ class TestMCDMEvaluator:
         # Should be monotonically decreasing (lower slope is better)
         assert suitability[0] > suitability[4]
 
+
+
+
+

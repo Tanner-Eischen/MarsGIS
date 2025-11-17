@@ -6,8 +6,8 @@ import rasterio
 from rasterio.transform import from_bounds
 from pathlib import Path
 
-from marshab.config import Config, PathsConfig
-from marshab.types import BoundingBox, SiteOrigin
+from marshab.config import Config, PathsConfig, AnalysisConfig
+from marshab.types import BoundingBox, SiteOrigin, CriteriaWeights
 
 
 @pytest.fixture
@@ -18,6 +18,13 @@ def test_config(tmp_path: Path) -> Config:
             data_dir=tmp_path / "data",
             cache_dir=tmp_path / "cache",
             output_dir=tmp_path / "output",
+        ),
+        analysis=AnalysisConfig(
+            criteria_weights=CriteriaWeights(),
+            max_slope_deg=5.0,
+            max_roughness=0.5,
+            min_site_area_km2=0.5,
+            suitability_threshold=0.7
         )
     )
 

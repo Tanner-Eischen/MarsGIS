@@ -4,6 +4,8 @@ A production-grade geospatial analysis system for identifying optimal Mars habit
 
 **Status:** Phase 6 Complete - Production Ready
 
+⚠️ **Implementation Note**: The analysis pipeline and navigation engine are currently stub implementations that return empty results. The infrastructure (CLI, data management, Docker) is fully functional, but terrain analysis and path planning logic need to be implemented. See [Development](#development) section for details.
+
 ## Features
 
 - **Multi-Resolution DEM Processing**: Support for MOLA, HiRISE, and CTX Mars elevation datasets
@@ -404,6 +406,29 @@ Key types from `marshab.types`:
 - `CriteriaWeights`: MCDM criteria weights
 
 ## Development
+
+### Current Implementation Status
+
+The following components are **stub implementations** that return empty results:
+
+- **`AnalysisPipeline.run()`** (lines 87-113 in `marshab/core/analysis_pipeline.py`): Returns empty sites list
+- **`NavigationEngine.plan_to_site()`** (lines 50-74 in `marshab/core/navigation_engine.py`): Returns empty waypoints DataFrame
+
+**What works:**
+- ✅ CLI interface and command parsing
+- ✅ Data download and caching (MOLA DEM successfully cached)
+- ✅ Configuration management
+- ✅ Logging and error handling
+- ✅ Docker containerization
+- ✅ File I/O and output generation
+
+**What needs implementation:**
+- ⚠️ Terrain analysis (slope, roughness, TRI calculations)
+- ⚠️ MCDM site selection algorithm
+- ⚠️ Pathfinding (A* algorithm integration)
+- ⚠️ Coordinate transformations (IAU_MARS to SITE frame)
+
+The pipeline runs successfully end-to-end but returns empty results until these components are fully implemented.
 
 ### Project Structure
 

@@ -1,12 +1,23 @@
 """Configuration management with YAML support."""
 
 import os
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 import yaml
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from marshab.types import CriteriaWeights
+
+
+class PathfindingStrategy(str, Enum):
+    """Pathfinding strategy presets."""
+
+    SAFEST = "safest"
+    BALANCED = "balanced"
+    DIRECT = "direct"
 
 
 class MarsParameters(BaseModel):
@@ -51,18 +62,81 @@ class PathsConfig(BaseModel):
             path.mkdir(parents=True, exist_ok=True)
 
 
+class AnalysisConfig(BaseModel):
+    """Configuration for terrain analysis pipeline."""
+
+    criteria_weights: CriteriaWeights = Field(default_factory=CriteriaWeights)
+    max_slope_deg: float = Field(5.0, gt=0, description="Maximum traversable slope (degrees)")
+    max_roughness: float = Field(0.5, gt=0, description="Maximum traversable roughness")
+    min_site_area_km2: float = Field(0.5, gt=0, description="Minimum site area (km²)")
+    suitability_threshold: float = Field(0.7, ge=0, le=1, description="Suitability score threshold")
+
+
+class NavigationConfig(BaseModel):
+    """Configuration for rover navigation and pathfinding."""
+
+    strategy: PathfindingStrategy = Field(
+        PathfindingStrategy.BALANCED,
+        description="Pathfinding strategy: safest (prioritize safety), balanced (default), direct (prioritize distance)"
+    )
+    slope_weight: float = Field(10.0, gt=0, description="Slope cost multiplier for pathfinding")
+    roughness_weight: float = Field(5.0, gt=0, description="Roughness cost multiplier for pathfinding")
+    distance_weight: float = Field(1.0, gt=0, description="Distance cost multiplier for pathfinding")
+    enable_smoothing: bool = Field(True, description="Enable path smoothing to reduce waypoints")
+    smoothing_tolerance: float = Field(2.0, gt=0, description="Path smoothing tolerance (cells)")
+    cliff_threshold_m: float = Field(10.0, gt=0, description="Elevation change threshold for cliff detection (meters)")
+
+    def get_weights_for_strategy(self) -> dict[str, float]:
+        """Get weight configuration based on selected strategy.
+        
+        Returns:
+            Dictionary with slope_weight, roughness_weight, distance_weight
+        """
+        presets = {
+            PathfindingStrategy.SAFEST: {
+                "slope_weight": 50.0,
+                "roughness_weight": 30.0,
+                "distance_weight": 1.0,
+            },
+            PathfindingStrategy.BALANCED: {
+                "slope_weight": 10.0,
+                "roughness_weight": 5.0,
+                "distance_weight": 1.0,
+            },
+            PathfindingStrategy.DIRECT: {
+                "slope_weight": 2.0,
+                "roughness_weight": 1.0,
+                "distance_weight": 2.0,
+            },
+        }
+        
+        if self.strategy in presets:
+            return presets[self.strategy]
+        else:
+            # Use configured values if strategy is custom
+            return {
+                "slope_weight": self.slope_weight,
+                "roughness_weight": self.roughness_weight,
+                "distance_weight": self.distance_weight,
+            }
+
+
 class Config(BaseSettings):
     """Main application configuration."""
 
     mars: MarsParameters = Field(default_factory=MarsParameters)
     data_sources: dict[str, DataSource] = Field(default_factory=dict)
+    analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
+    navigation: NavigationConfig = Field(default_factory=NavigationConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
 
-    class Settings:
-        env_prefix = "MARSHAB_"
-        env_nested_delimiter = "__"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_prefix="MARSHAB_",
+        env_nested_delimiter="__",
+        case_sensitive=False,
+        extra="allow"  # Allow extra fields from YAML
+    )
 
     @classmethod
     def from_yaml(cls, path: Path) -> "Config":

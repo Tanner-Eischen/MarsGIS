@@ -94,6 +94,38 @@ class DataManager:
         source = self.config.data_sources[dataset]
         url = source.url
 
+        # Check if URL is a directory (ends with /)
+        if url.endswith('/'):
+            # Directory-based datasets require manual download
+            error_msg = (
+                f"Dataset '{dataset}' requires manual download. "
+                f"HiRISE and CTX datasets are directory-based and require selecting specific observation IDs.\n\n"
+                f"Please download manually from:\n"
+            )
+            if dataset == "hirise":
+                error_msg += (
+                    f"  - HiRISE PDS: https://www.uahirise.org/hiwish/\n"
+                    f"  - AWS S3: https://s3.amazonaws.com/mars-hirise-pds/\n"
+                )
+            elif dataset == "ctx":
+                error_msg += (
+                    f"  - WUSTL ODE: https://ode.rsl.wustl.edu/mars/\n"
+                )
+            error_msg += (
+                f"\nAfter downloading, place the DEM file in the cache directory:\n"
+                f"  {cache_path}\n"
+                f"Or rename your file to match the expected cache filename pattern."
+            )
+            raise DataError(
+                error_msg,
+                details={
+                    "dataset": dataset,
+                    "url": url,
+                    "cache_path": str(cache_path),
+                    "requires_manual_download": True,
+                },
+            )
+
         logger.info(
             "Downloading DEM",
             dataset=dataset,
@@ -133,10 +165,24 @@ class DataManager:
         except URLError as e:
             if temp_path.exists():
                 temp_path.unlink()
+            
+            # Provide helpful error message with alternative sources
+            error_msg = (
+                f"Failed to download DEM: {dataset}\n"
+                f"URL: {url}\n"
+                f"Error: {str(e)}\n\n"
+                f"Alternative options:\n"
+                f"1. Check if the URL is still valid\n"
+                f"2. Manually download from USGS Astrogeology: "
+                f"https://astrogeology.usgs.gov/search/map/Mars\n"
+                f"3. Use NASA PDS: https://pds-geosciences.wustl.edu/\n"
+                f"4. Place the DEM file in: {cache_path}"
+            )
+            
             raise DataError(
                 f"Failed to download DEM: {dataset}",
-                details={"url": url, "error": str(e)},
-            )
+                details={"url": url, "error": str(e), "cache_path": str(cache_path)},
+            ) from e
     
     def load_dem(self, path: Path) -> xr.DataArray:
         """Load DEM from file path.
@@ -181,11 +227,15 @@ class DataManager:
                     details={"path": str(dem_path)},
                 )
 
-        # Load DEM
-        dem = self.loader.load(dem_path)
+        # Load DEM with ROI windowing for memory efficiency
+        # Pass ROI to load() to use windowed reading (much more memory efficient)
+        # If we're using windowed reading, the DEM is already clipped, so skip second clipping
+        dem = self.loader.load(dem_path, roi=roi if clip else None)
 
-        # Clip to ROI if requested
-        if clip:
+        # Additional clipping only if we didn't use windowed reading
+        # (windowed reading already clips to ROI, so second clip would remove everything)
+        if clip and roi is None:
+            # This shouldn't happen, but handle it anyway
             dem = self.loader.clip_to_roi(dem, roi)
 
         return dem

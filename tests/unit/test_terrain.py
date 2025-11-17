@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface
+from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface, detect_cliffs
 
 
 def test_calculate_slope():
@@ -125,4 +125,83 @@ def test_generate_cost_surface_edge_cases():
     
     # All should be impassable
     assert np.all(np.isinf(cost))
+
+
+def test_detect_cliffs():
+    """Test cliff detection."""
+    # Create elevation with a sudden drop (cliff)
+    elevation = np.ones((20, 20)) * 1000.0
+    # Create a cliff: sudden drop of 15m
+    elevation[10:, :] = 985.0
+    
+    cell_size_m = 100.0
+    threshold_m = 10.0
+    
+    cliff_mask = detect_cliffs(elevation, cell_size_m, threshold_m)
+    
+    # Should detect cliffs near the transition
+    assert np.any(cliff_mask)
+    # Cliffs should be near row 10 (transition point)
+    assert np.any(cliff_mask[9:12, :])
+
+
+def test_detect_cliffs_no_cliffs():
+    """Test cliff detection with smooth terrain."""
+    # Smooth elevation gradient
+    elevation = np.linspace(1000, 1010, 20).reshape(20, 1)
+    elevation = np.tile(elevation, (1, 20))
+    
+    cell_size_m = 100.0
+    threshold_m = 10.0
+    
+    cliff_mask = detect_cliffs(elevation, cell_size_m, threshold_m)
+    
+    # Should not detect cliffs in smooth terrain
+    assert not np.any(cliff_mask)
+
+
+def test_generate_cost_surface_with_weights():
+    """Test cost surface generation with custom weights."""
+    slope = np.ones((10, 10)) * 10.0  # 10 degrees
+    roughness = np.ones((10, 10)) * 0.5
+    
+    # Low weights
+    cost_low = generate_cost_surface(
+        slope, roughness, max_slope_deg=25.0,
+        slope_weight=1.0, roughness_weight=1.0
+    )
+    
+    # High weights
+    cost_high = generate_cost_surface(
+        slope, roughness, max_slope_deg=25.0,
+        slope_weight=50.0, roughness_weight=30.0
+    )
+    
+    # High weights should produce higher costs
+    assert np.mean(cost_high) > np.mean(cost_low)
+
+
+def test_generate_cost_surface_with_cliffs():
+    """Test cost surface generation with cliff detection."""
+    slope = np.ones((20, 20)) * 5.0
+    roughness = np.ones((20, 20)) * 0.1
+    
+    # Create elevation with a cliff
+    elevation = np.ones((20, 20)) * 1000.0
+    elevation[10:, :] = 980.0  # 20m drop
+    
+    cell_size_m = 100.0
+    cliff_threshold_m = 10.0
+    
+    cost = generate_cost_surface(
+        slope, roughness, max_slope_deg=25.0,
+        elevation=elevation,
+        cell_size_m=cell_size_m,
+        cliff_threshold_m=cliff_threshold_m
+    )
+    
+    # Cliffs should be marked as impassable
+    assert np.any(np.isinf(cost))
+    # Areas without cliffs should be passable
+    assert np.any(np.isfinite(cost))
 

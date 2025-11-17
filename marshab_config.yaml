@@ -6,13 +6,16 @@ mars:
 
 data_sources:
   mola:
-    url: "https://astrogeology.usgs.gov/cache/mars/viking/dem/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
+    # Note: MOLA data URLs may change. If download fails, manually download from:
+    # https://astrogeology.usgs.gov/search/map/Mars/GlobalSurveyor/MOLA/Mars_MGS_MOLA_DEM_mosaic_global_463m
+    # or use NASA PDS: https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_3001/data/
+    url: "https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
     resolution_m: 463
   mola_global:
-    url: "https://astrogeology.usgs.gov/cache/mars/viking/dem/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
+    url: "https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
     resolution_m: 463
   mola_200m:
-    url: "https://astrogeology.usgs.gov/cache/mars/viking/dem/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif"
+    url: "https://planetarymaps.usgs.gov/mosaic/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif"
     resolution_m: 200
   hirise:
     url: "https://s3.amazonaws.com/mars-hirise-pds/HiRISE_DEMs/"
@@ -20,6 +23,27 @@ data_sources:
   ctx:
     url: "https://ode.rsl.wustl.edu/mars/data/ctx/"
     resolution_m: 18.0
+
+analysis:
+  criteria_weights:
+    slope: 0.30
+    roughness: 0.25
+    elevation: 0.20
+    solar_exposure: 0.15
+    resources: 0.10
+  max_slope_deg: 5.0
+  max_roughness: 0.5
+  min_site_area_km2: 0.5
+  suitability_threshold: 0.7
+
+navigation:
+  strategy: "balanced"  # Options: safest, balanced, direct
+  slope_weight: 10.0
+  roughness_weight: 5.0
+  distance_weight: 1.0
+  enable_smoothing: true
+  smoothing_tolerance: 2.0  # cells
+  cliff_threshold_m: 10.0  # meters
 
 logging:
   level: "INFO"

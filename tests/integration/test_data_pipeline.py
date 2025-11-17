@@ -30,3 +30,7 @@ class TestDataPipeline:
         assert "resolution_m" in dem.attrs
         assert dem.attrs["crs"] == "EPSG:49900"
 
+
+
+
+

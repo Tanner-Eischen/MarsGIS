@@ -18,7 +18,7 @@ dependencies:
   - pip
   - pip:
     - spiceypy>=6.0
-    - typer[all]>=0.9
+    - typer[all]>=0.20
     - rich>=13.7
     - pydantic>=2.5
     - pydantic-settings>=2.1

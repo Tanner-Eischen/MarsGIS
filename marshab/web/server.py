@@ -1,0 +1,21 @@
+"""Server entry point for MarsHab web API."""
+
+import uvicorn
+
+from marshab.web.api import app
+
+
+def main():
+    """Main entry point for web server."""
+    uvicorn.run(
+        "marshab.web.api:app",  # Use import string for reload support
+        host="0.0.0.0",
+        port=5000,
+        reload=True,  # Enable auto-reload in development
+        log_level="info",
+    )
+
+
+if __name__ == "__main__":
+    main()
+

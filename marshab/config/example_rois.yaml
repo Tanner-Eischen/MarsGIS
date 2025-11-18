@@ -1,0 +1,47 @@
+# Example ROIs for educational and demonstration purposes
+
+examples:
+  gale_crater:
+    id: gale_crater
+    name: "Gale Crater"
+    description: "Landing site of the Curiosity rover. Features Mount Sharp (Aeolis Mons) with layered sedimentary rocks ideal for studying Mars' geological history."
+    bbox:
+      lat_min: -5.4
+      lat_max: -4.2
+      lon_min: 137.0
+      lon_max: 138.2
+    dataset: mola
+    
+  jezero_crater:
+    id: jezero_crater
+    name: "Jezero Crater"
+    description: "Landing site of the Perseverance rover. Ancient river delta and lakebed with high potential for preserved biosignatures."
+    bbox:
+      lat_min: 18.0
+      lat_max: 18.6
+      lon_min: 77.0
+      lon_max: 77.8
+    dataset: mola
+    
+  olympus_mons:
+    id: olympus_mons
+    name: "Olympus Mons"
+    description: "Largest volcano in the solar system, rising 21.9 km above the surrounding plains. Excellent for studying volcanic processes and potential resource extraction."
+    bbox:
+      lat_min: 17.0
+      lat_max: 20.0
+      lon_min: 220.0
+      lon_max: 227.0
+    dataset: mola
+    
+  valles_marineris:
+    id: valles_marineris
+    name: "Valles Marineris"
+    description: "The largest canyon system in the solar system, over 4,000 km long. Rich in geological diversity and potential for subsurface water."
+    bbox:
+      lat_min: -15.0
+      lat_max: -8.0
+      lon_min: 280.0
+      lon_max: 300.0
+    dataset: mola
+

@@ -14,6 +14,10 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/analyze', label: 'Terrain Analysis' },
     { path: '/navigate', label: 'Navigation' },
     { path: '/visualize', label: 'Visualization' },
+    { path: '/decision-lab', label: 'Decision Lab' },
+    { path: '/mission-scenarios', label: 'Mission Scenarios' },
+    { path: '/projects', label: 'Projects' },
+    { path: '/validation', label: 'Validation' },
   ]
 
   return (

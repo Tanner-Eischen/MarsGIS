@@ -1,0 +1,133 @@
+# Mars Landing Site & Route Decision Lab - Preset Configurations
+
+site_presets:
+  safe_landing:
+    id: safe_landing
+    name: "Safe Landing"
+    description: "Prioritizes landing safety with gentle slopes and smooth terrain. Ideal for risk-averse missions."
+    scope: site
+    weights:
+      slope: 0.40          # High emphasis on gentle slopes
+      roughness: 0.30      # Smooth surface critical
+      elevation: 0.15      # Lower elevations preferred (atmosphere)
+      solar_exposure: 0.10 # Some solar consideration
+      science_value: 0.05  # Lower priority
+    thresholds:
+      max_slope_deg: 5.0
+      max_roughness: 0.3
+  
+  balanced:
+    id: balanced
+    name: "Balanced Mission"
+    description: "Balanced approach considering safety, energy, and science objectives equally."
+    scope: site
+    weights:
+      slope: 0.25
+      roughness: 0.20
+      elevation: 0.20
+      solar_exposure: 0.20
+      science_value: 0.15
+    thresholds:
+      max_slope_deg: 8.0
+      max_roughness: 0.5
+  
+  science_focused:
+    id: science_focused
+    name: "Science-Focused"
+    description: "Maximizes scientific value with proximity to features of interest. Accepts higher terrain complexity."
+    scope: site
+    weights:
+      slope: 0.15
+      roughness: 0.15
+      elevation: 0.10
+      solar_exposure: 0.15
+      science_value: 0.45  # Heavy emphasis on science
+    thresholds:
+      max_slope_deg: 12.0
+      max_roughness: 0.7
+
+route_presets:
+  shortest_path:
+    id: shortest_path
+    name: "Shortest Path"
+    description: "Minimizes travel distance. Safety constraints enforced but distance prioritized."
+    scope: route
+    weights:
+      distance: 0.50        # Primary objective
+      slope_penalty: 0.20   # Basic safety
+      roughness_penalty: 0.15
+      elevation_penalty: 0.15
+    thresholds:
+      max_slope_deg: 25.0
+      max_roughness: 1.0
+  
+  safest_path:
+    id: safest_path
+    name: "Safest Path"
+    description: "Minimizes terrain hazards even if path is longer. Ideal for valuable rovers."
+    scope: route
+    weights:
+      distance: 0.15
+      slope_penalty: 0.40   # High safety emphasis
+      roughness_penalty: 0.30
+      elevation_penalty: 0.15
+    thresholds:
+      max_slope_deg: 15.0
+      max_roughness: 0.5
+  
+  energy_optimal:
+    id: energy_optimal
+    name: "Energy-Optimal"
+    description: "Balances distance and terrain to minimize energy consumption for solar-powered rovers."
+    scope: route
+    weights:
+      distance: 0.30
+      slope_penalty: 0.25
+      roughness_penalty: 0.20
+      elevation_penalty: 0.25  # Avoid climbing
+    thresholds:
+      max_slope_deg: 20.0
+      max_roughness: 0.6
+
+# Criterion definitions
+criteria:
+  slope:
+    display_name: "Slope Safety"
+    description: "Terrain slope angle. Lower slopes are safer for landing and traversing."
+    unit: "degrees"
+    beneficial: false
+    min_value: 0
+    max_value: 90
+    
+  roughness:
+    display_name: "Surface Roughness"
+    description: "Local terrain variation. Smoother surfaces reduce landing risk and improve traversability."
+    unit: "meters"
+    beneficial: false
+    min_value: 0
+    max_value: null
+    
+  elevation:
+    display_name: "Elevation"
+    description: "Height above Mars datum. Lower elevations have better atmospheric density for landing."
+    unit: "meters"
+    beneficial: false
+    min_value: null
+    max_value: null
+    
+  solar_exposure:
+    display_name: "Solar Exposure"
+    description: "Estimated solar energy availability based on slope and aspect. Higher is better for power generation."
+    unit: "normalized"
+    beneficial: true
+    min_value: 0
+    max_value: 1
+    
+  science_value:
+    display_name: "Science Value"
+    description: "Proximity to features of scientific interest (craters, minerals, ice deposits)."
+    unit: "normalized"
+    beneficial: true
+    min_value: 0
+    max_value: 1
+

@@ -144,12 +144,62 @@ class AStarPathfinder:
         came_from = {}
         g_score = {start: 0}
         f_score = {start: self.heuristic(start, goal)}
+        closed_set = set()  # Track visited nodes to prevent revisiting
         
         nodes_explored = 0
+        # Limit max nodes to prevent excessive exploration
+        # For very large maps, use a more conservative limit
+        total_cells = self.height * self.width
+        if total_cells > 2000000:  # Very large DEM (> 1400x1400)
+            max_nodes = 500000  # More conservative limit
+        elif total_cells > 1000000:  # Large DEM (> 1000x1000)
+            max_nodes = 750000
+        else:
+            max_nodes = min(total_cells, 1000000)
+        
+        log_interval = max(1000, max_nodes // 100)  # Log every 1% or every 1000 nodes
+        
+        logger.info(
+            "A* pathfinding starting",
+            cost_map_shape=self.cost_map.shape,
+            max_nodes=max_nodes,
+            start=start,
+            goal=goal
+        )
         
         while open_set:
             current = heappop(open_set)[1]
+            
+            # Skip if already explored
+            if current in closed_set:
+                continue
+            
+            # Mark as explored
+            closed_set.add(current)
             nodes_explored += 1
+            
+            # Log progress for long-running searches
+            if nodes_explored % log_interval == 0:
+                logger.info(
+                    "A* pathfinding progress",
+                    nodes_explored=nodes_explored,
+                    max_nodes=max_nodes,
+                    progress_pct=f"{100 * nodes_explored / max_nodes:.1f}%",
+                    open_set_size=len(open_set)
+                )
+            
+            # Safety check to prevent infinite loops
+            if nodes_explored > max_nodes:
+                logger.error(
+                    "A* pathfinding exceeded maximum node limit",
+                    nodes_explored=nodes_explored,
+                    max_nodes=max_nodes
+                )
+                raise NavigationError(
+                    f"Pathfinding exceeded maximum search limit ({max_nodes} nodes). "
+                    "The path may be too complex or the DEM too large. "
+                    "Try a smaller ROI or different start/goal positions."
+                )
             
             if current == goal:
                 # Reconstruct path
@@ -184,15 +234,20 @@ class AStarPathfinder:
                     logger.error(f"Invalid neighbor_pos after extraction: {neighbor_pos}, type: {type(neighbor_pos)}")
                     continue
                 
+                # Skip if already explored
+                if neighbor_pos in closed_set:
+                    continue
+                
                 tentative_g = g_score[current] + move_cost
                 
+                # Only update if we found a better path or haven't seen this node before
                 if neighbor_pos not in g_score or tentative_g < g_score[neighbor_pos]:
                     came_from[neighbor_pos] = current
                     g_score[neighbor_pos] = tentative_g
                     f_score[neighbor_pos] = tentative_g + self.heuristic(neighbor_pos, goal)
                     heappush(open_set, (f_score[neighbor_pos], neighbor_pos))
         
-        logger.warning("No path found", nodes_explored=nodes_explored)
+        logger.warning("No path found", nodes_explored=nodes_explored, closed_set_size=len(closed_set))
         return None
     
     def find_path_with_waypoints(

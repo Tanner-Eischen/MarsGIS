@@ -1,6 +1,7 @@
 """Coordinate transformations for Mars reference frames."""
 
-from typing import Tuple
+from typing import Tuple, List, Optional
+from numpy.typing import NDArray
 
 import numpy as np
 try:
@@ -40,6 +41,56 @@ class CoordinateTransformer:
         
         if not self.use_spice:
             logger.warning("Using simplified coordinate transforms (SPICE not available)")
+        
+        # Calculate ellipsoid parameters
+        self.flattening = (equatorial_radius - polar_radius) / equatorial_radius
+        self.eccentricity_sq = 2 * self.flattening - self.flattening ** 2
+        
+        logger.debug(
+            "CoordinateTransformer initialized",
+            eq_radius=equatorial_radius,
+            pol_radius=polar_radius,
+            flattening=self.flattening
+        )
+    
+    def validate_coordinates(
+        self,
+        lat_deg: float,
+        lon_deg: float,
+        elevation_m: float
+    ) -> None:
+        """Validate coordinate values.
+        
+        Args:
+            lat_deg: Latitude in degrees
+            lon_deg: Longitude in degrees
+            elevation_m: Elevation in meters
+            
+        Raises:
+            CoordinateError: If coordinates are invalid
+        """
+        if not -90 <= lat_deg <= 90:
+            raise CoordinateError(
+                f"Latitude out of range: {lat_deg}",
+                details={"valid_range": [-90, 90]}
+            )
+        
+        if not 0 <= lon_deg <= 360:
+            raise CoordinateError(
+                f"Longitude out of range: {lon_deg}",
+                details={"valid_range": [0, 360]}
+            )
+        
+        # Check elevation is reasonable
+        max_elevation = 30000.0  # Olympus Mons ~21km
+        min_elevation = -10000.0  # Hellas Basin ~7km
+        
+        if not min_elevation <= elevation_m <= max_elevation:
+            logger.warning(
+                "Elevation outside typical range",
+                elevation_m=elevation_m,
+                typical_range=[min_elevation, max_elevation]
+            )
     
     def planetocentric_to_cartesian(
         self,
@@ -47,39 +98,42 @@ class CoordinateTransformer:
         lon_deg: float,
         elevation_m: float
     ) -> Tuple[float, float, float]:
-        """Convert planetocentric lat/lon to Cartesian coordinates.
+        """Convert planetocentric coordinates to Cartesian.
+        
+        Uses IAU_MARS reference ellipsoid with specified radii.
         
         Args:
             lat_deg: Planetocentric latitude (degrees)
-            lon_deg: East positive longitude (degrees)
-            elevation_m: Elevation above datum (meters)
-        
+            lon_deg: East-positive longitude (degrees, 0-360)
+            elevation_m: Elevation above reference ellipsoid (meters)
+            
         Returns:
             (x, y, z) in Mars body-fixed frame (meters)
         """
+        self.validate_coordinates(lat_deg, lon_deg, elevation_m)
+        
         lat_rad = np.radians(lat_deg)
         lon_rad = np.radians(lon_deg)
         
-        # Calculate radius at this latitude (ellipsoid)
-        # r = sqrt((a^2 * cos(lat))^2 + (b^2 * sin(lat))^2) / sqrt((a*cos(lat))^2 + (b*sin(lat))^2)
         cos_lat = np.cos(lat_rad)
         sin_lat = np.sin(lat_rad)
+        cos_lon = np.cos(lon_rad)
+        sin_lon = np.sin(lon_rad)
         
-        numerator = np.sqrt(
-            (self.eq_radius**2 * cos_lat)**2 + (self.pol_radius**2 * sin_lat)**2
-        )
-        denominator = np.sqrt(
-            (self.eq_radius * cos_lat)**2 + (self.pol_radius * sin_lat)**2
+        # Calculate radius at this latitude (ellipsoid)
+        N = self.eq_radius / np.sqrt(
+            1 - self.eccentricity_sq * sin_lat**2
         )
         
-        radius = numerator / denominator + elevation_m
+        # Add elevation
+        radius = N + elevation_m
         
         # Convert to Cartesian
-        x = radius * cos_lat * np.cos(lon_rad)
-        y = radius * cos_lat * np.sin(lon_rad)
-        z = radius * sin_lat
+        x = radius * cos_lat * cos_lon
+        y = radius * cos_lat * sin_lon
+        z = (N * (1 - self.eccentricity_sq) + elevation_m) * sin_lat
         
-        return x, y, z
+        return float(x), float(y), float(z)
     
     def iau_mars_to_site_frame(
         self,
@@ -152,7 +206,9 @@ class CoordinateTransformer:
                 target_lat=lat_deg,
                 target_lon=lon_deg,
                 site_x=x_site,
-                site_y=y_site
+                site_y=y_site,
+                site_z=z_site,
+                distance_m=float(np.linalg.norm(offset_ned))
             )
             
             return x_site, y_site, z_site
@@ -163,12 +219,41 @@ class CoordinateTransformer:
                 details={
                     "lat": lat_deg,
                     "lon": lon_deg,
-                    "elevation_m": elevation_m,
-                    "site_origin_lat": site_origin.lat,
-                    "site_origin_lon": site_origin.lon,
+                    "elevation": elevation_m,
+                    "origin": site_origin.model_dump(),
                     "error": str(e)
                 }
             )
+    
+    def batch_transform_to_site(
+        self,
+        lats: NDArray[np.float64],
+        lons: NDArray[np.float64],
+        elevations: NDArray[np.float64],
+        site_origin: SiteOrigin
+    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+        """Transform multiple points to SITE frame efficiently.
+        
+        Args:
+            lats: Array of latitudes
+            lons: Array of longitudes
+            elevations: Array of elevations
+            site_origin: SITE frame origin
+            
+        Returns:
+            (x_array, y_array, z_array) in SITE frame
+        """
+        n = len(lats)
+        x_site = np.zeros(n, dtype=np.float64)
+        y_site = np.zeros(n, dtype=np.float64)
+        z_site = np.zeros(n, dtype=np.float64)
+        
+        for i in range(n):
+            x_site[i], y_site[i], z_site[i] = self.iau_mars_to_site_frame(
+                lats[i], lons[i], elevations[i], site_origin
+            )
+        
+        return x_site, y_site, z_site
     
     def site_frame_to_iau_mars(
         self,

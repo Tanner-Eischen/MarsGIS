@@ -1,11 +1,10 @@
-"""Navigation engine for rover path planning."""
-
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional, Dict, Any
 
 import numpy as np
 import pandas as pd
-import rasterio
+import xarray as xr
+from scipy.spatial.distance import cdist
 
 from marshab.config import get_config
 from marshab.core.data_manager import DataManager
@@ -13,13 +12,13 @@ from marshab.exceptions import NavigationError
 from marshab.processing.coordinates import CoordinateTransformer
 from marshab.processing.pathfinding import AStarPathfinder, smooth_path
 from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface
-from marshab.types import SiteOrigin, Waypoint
+from marshab.types import SiteOrigin, Waypoint, SiteCandidate
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-class NavigationEngine:
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXAclass NavigationEngine:
     """Generates rover navigation commands and waypoints."""
 
     def __init__(self):
@@ -31,6 +30,188 @@ class NavigationEngine:
             polar_radius=self.config.mars.polar_radius_m
         )
         logger.info("Initialized NavigationEngine")
+    
+    def _load_analysis_results(self, analysis_dir: Path) -> Dict[str, Any]:
+        """Load terrain analysis results from directory.
+        
+        Args:
+            analysis_dir: Directory containing analysis outputs
+            
+        Returns:
+            Dictionary with dem, metrics, sites, suitability, criteria
+            
+        Raises:
+            NavigationError: If analysis results not found
+        """
+        import pickle
+        
+        results_file = analysis_dir / "analysis_results.pkl"
+        if not results_file.exists():
+            raise NavigationError(
+                f"Analysis results not found: {results_file}",
+                details={"analysis_dir": str(analysis_dir)}
+            )
+        
+        try:
+            with open(results_file, 'rb') as f:
+                results = pickle.load(f)
+            
+            logger.info("Loaded analysis results from pickle file")
+            return results
+        except Exception as e:
+            raise NavigationError(
+                f"Failed to load analysis results: {e}",
+                details={"results_file": str(results_file)}
+            )
+    
+    def _get_site_coordinates(
+        self, 
+        site_id: int,
+        sites: list[SiteCandidate]
+    ) -> Tuple[float, float, float]:
+        """Get coordinates of site by ID.
+        
+        Args:
+            site_id: Site identifier
+            sites: List of Site objects
+            
+        Returns:
+            (latitude, longitude, elevation) tuple
+            
+        Raises:
+            NavigationError: If site not found
+        """
+        for site in sites:
+            if site.site_id == site_id:
+                return (site.lat, site.lon, site.mean_elevation_m)
+        
+        raise NavigationError(
+            f"Site {site_id} not found",
+            details={"available_sites": [s.site_id for s in sites]}
+        )
+    
+    def _latlon_to_pixel(
+        self,
+        lat: float,
+        lon: float,
+        dem: xr.DataArray
+    ) -> Tuple[int, int]:
+        """Convert lat/lon to pixel coordinates.
+        
+        Args:
+            lat: Latitude in degrees
+            lon: Longitude in degrees
+            dem: DEM DataArray with coordinate info
+            
+        Returns:
+            (row, col) pixel coordinates
+        """
+        # Try rio accessor first
+        if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
+            try:
+                bounds = dem.rio.bounds()
+                bounds_left = bounds.left
+                bounds_right = bounds.right
+                bounds_bottom = bounds.bottom
+                bounds_top = bounds.top
+                
+                # Convert to pixel coordinates
+                col = int((lon - bounds_left) / (bounds_right - bounds_left) * dem.shape[1])
+                row = int((bounds_top - lat) / (bounds_top - bounds_bottom) * dem.shape[0])
+                
+                # Clamp to valid bounds
+                row = max(0, min(dem.shape[0] - 1, row))
+                col = max(0, min(dem.shape[1] - 1, col))
+                
+                return int(row), int(col)
+            except (AttributeError, RuntimeError):
+                pass
+        
+        # Fallback: use coordinate arrays
+        try:
+            lat_values = dem.coords.get('lat', None)
+            lon_values = dem.coords.get('lon', None)
+            
+            if lat_values is None or lon_values is None:
+                raise NavigationError("DEM missing coordinate information")
+            
+            lat_vals = lat_values.values
+            lon_vals = lon_values.values
+            
+            # Handle 2D coordinate arrays
+            if lat_vals.ndim == 2:
+                # Find minimum distance
+                dist = (lat_vals - lat)**2 + (lon_vals - lon)**2
+                row, col = np.unravel_index(np.argmin(dist), lat_vals.shape)
+            else:
+                # 1D coordinate arrays
+                row = int(np.argmin(np.abs(lat_vals - lat)))
+                col = int(np.argmin(np.abs(lon_vals - lon)))
+            
+            return int(row), int(col)
+        except Exception as e:
+            raise NavigationError(
+                f"Failed to convert lat/lon to pixel: {e}",
+                details={"lat": lat, "lon": lon}
+            )
+    
+    def _pixel_to_latlon(
+        self,
+        row: int,
+        col: int,
+        dem: xr.DataArray
+    ) -> Tuple[float, float]:
+        """Convert pixel coordinates to lat/lon.
+        
+        Args:
+            row: Pixel row
+            col: Pixel column
+            dem: DEM DataArray
+            
+        Returns:
+            (latitude, longitude) tuple
+        """
+        # Try rio accessor first
+        if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
+            try:
+                bounds = dem.rio.bounds()
+                bounds_left = bounds.left
+                bounds_right = bounds.right
+                bounds_bottom = bounds.bottom
+                bounds_top = bounds.top
+                
+                # Convert pixel to lat/lon
+                lon = bounds_left + (col / dem.shape[1]) * (bounds_right - bounds_left)
+                lat = bounds_top - (row / dem.shape[0]) * (bounds_top - bounds_bottom)
+                
+                return float(lat), float(lon)
+            except (AttributeError, RuntimeError):
+                pass
+        
+        # Fallback: use coordinate arrays
+        try:
+            lat_values = dem.coords.get('lat', None)
+            lon_values = dem.coords.get('lon', None)
+            
+            if lat_values is None or lon_values is None:
+                raise NavigationError("DEM missing coordinate information")
+            
+            lat_vals = lat_values.values
+            lon_vals = lon_values.values
+            
+            if lat_vals.ndim == 2:
+                lat = float(lat_vals[row, col])
+                lon = float(lon_vals[row, col])
+            else:
+                lat = float(lat_vals[row])
+                lon = float(lon_vals[col])
+            
+            return lat, lon
+        except Exception as e:
+            raise NavigationError(
+                f"Failed to convert pixel to lat/lon: {e}",
+                details={"row": row, "col": col}
+            )
 
     def plan_to_site(
         self,
@@ -38,31 +219,43 @@ class NavigationEngine:
         analysis_dir: Path,
         start_lat: float,
         start_lon: float,
+        max_waypoint_spacing_m: float = 100.0,
+        max_slope_deg: float = 25.0
     ) -> pd.DataFrame:
-        """Plan navigation path to target site.
+        """Plan navigation route to target site.
 
         Args:
             site_id: Target site ID
-            analysis_dir: Directory containing analysis results
-            start_lat: Starting latitude (degrees)
-            start_lon: Starting longitude (degrees)
+            analysis_dir: Directory with analysis results
+            start_lat: Starting latitude
+            start_lon: Starting longitude
+            max_waypoint_spacing_m: Maximum spacing between waypoints
+            max_slope_deg: Maximum traversable slope
 
         Returns:
-            DataFrame with waypoints (columns: waypoint_id, x_meters, y_meters, tolerance_meters)
-
-        Raises:
-            NavigationError: If path planning fails
+            DataFrame with waypoint columns: waypoint_id, x_site, y_site, z_site, tolerance_m
         """
         logger.info(
-            "Planning navigation to site",
+            "Planning route to site",
             site_id=site_id,
-            analysis_dir=str(analysis_dir),
             start_lat=start_lat,
-            start_lon=start_lon,
+            start_lon=start_lon
         )
 
         try:
-            # 1. Load site location from analysis results
+            # Try to load from pickle file first
+            try:
+                results = self._load_analysis_results(analysis_dir)
+                dem = results['dem']
+                metrics = results['metrics']
+                sites = results['sites']
+                logger.info("Using saved analysis results")
+            except NavigationError:
+                # Fallback to direct DEM loading (backward compatibility)
+                logger.warning("Pickle file not found, falling back to direct DEM loading")
+                from marshab.types import BoundingBox
+                
+                # Load site location from CSV
             sites_csv = analysis_dir / "sites.csv"
             if not sites_csv.exists():
                 raise NavigationError(
@@ -81,23 +274,9 @@ class NavigationEngine:
             
             site_lat = float(site_row["lat"].iloc[0])
             site_lon = float(site_row["lon"].iloc[0])
-            site_elevation = float(site_row["mean_elevation_m"].iloc[0])
             
-            logger.info(
-                "Loaded site location",
-                site_id=site_id,
-                lat=site_lat,
-                lon=site_lon,
-                elevation=site_elevation
-            )
-            
-            # Get start elevation from DEM or use site elevation as approximation
-            # For now, use a simple approach: load DEM to get start elevation
-            # We need to determine which DEM was used - try to infer from cache
-            # For simplicity, assume mola dataset and approximate ROI from site location
-            from marshab.types import BoundingBox
-            # Create a small ROI around start and site for DEM loading
-            roi_size = 0.1  # degrees
+            # Create ROI and load DEM
+            roi_size = 0.1
             roi = BoundingBox(
                 lat_min=min(start_lat, site_lat) - roi_size,
                 lat_max=max(start_lat, site_lat) + roi_size,
@@ -105,270 +284,398 @@ class NavigationEngine:
                 lon_max=max(start_lon, site_lon) + roi_size
             )
             
-            # Load DEM for the region (allow download if not cached)
             dem = self.data_manager.get_dem_for_roi(roi, dataset="mola", download=True, clip=True)
             
-            # Get cell size
+            # Calculate metrics
             if "mola" in self.config.data_sources:
                 cell_size_m = self.config.data_sources["mola"].resolution_m
             else:
-                cell_size_m = 463.0  # Default MOLA resolution
+                cell_size_m = 463.0
+                
+            terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
+            metrics = terrain_analyzer.analyze(dem)
             
-            # Get start elevation from DEM (interpolate if needed)
-            # For simplicity, use mean elevation in small region around start
-            if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                bounds = dem.rio.bounds()
-                # Find pixel coordinates for start location
-                start_x_px = int((start_lon - bounds.left) / (bounds.right - bounds.left) * dem.shape[1])
-                start_y_px = int((bounds.top - start_lat) / (bounds.top - bounds.bottom) * dem.shape[0])
-                start_x_px = max(0, min(dem.shape[1] - 1, start_x_px))
-                start_y_px = max(0, min(dem.shape[0] - 1, start_y_px))
-                start_elevation = float(dem.values[start_y_px, start_x_px])
+            # Convert sites from DataFrame to SiteCandidate objects
+            sites = []
+            for _, row in sites_df.iterrows():
+                from marshab.types import SiteCandidate
+                site = SiteCandidate(
+                    site_id=int(row["site_id"]),
+                    geometry_type=row.get("geometry_type", "POINT"),
+                    area_km2=float(row["area_km2"]),
+                    lat=float(row["lat"]),
+                    lon=float(row["lon"]),
+                    mean_slope_deg=float(row["mean_slope_deg"]),
+                    mean_roughness=float(row["mean_roughness"]),
+                    mean_elevation_m=float(row["mean_elevation_m"]),
+                    suitability_score=float(row["suitability_score"]),
+                    rank=int(row["rank"])
+                )
+                sites.append(site)
+            
+            # Get goal site coordinates
+            goal_lat, goal_lon, goal_elevation = self._get_site_coordinates(site_id, sites)
+            
+            logger.info(
+                "Route parameters",
+                goal_lat=goal_lat,
+                goal_lon=goal_lon
+            )
+            
+            # Get cell size from DEM
+            if "mola" in self.config.data_sources:
+                cell_size_m = self.config.data_sources["mola"].resolution_m
             else:
-                start_elevation = site_elevation  # Fallback
+                cell_size_m = float(dem.attrs.get('resolution_m', 463.0))
             
-            # 2. Transform coordinates to SITE frame
+            # Convert start/goal to pixel coordinates
+            start_pixel = self._latlon_to_pixel(start_lat, start_lon, dem)
+            goal_pixel = self._latlon_to_pixel(goal_lat, goal_lon, dem)
+            
+            logger.info(
+                "Pixel coordinates",
+                start_pixel=start_pixel,
+                goal_pixel=goal_pixel,
+                dem_shape=dem.shape
+            )
+            
+            # Validate pixel coordinates are in bounds
+            if not (0 <= start_pixel[0] < dem.shape[0] and 0 <= start_pixel[1] < dem.shape[1]):
+                raise NavigationError(
+                    f"Start position ({start_lat}, {start_lon}) is outside DEM bounds",
+                    details={"start_pixel": start_pixel, "dem_shape": dem.shape}
+                )
+            if not (0 <= goal_pixel[0] < dem.shape[0] and 0 <= goal_pixel[1] < dem.shape[1]):
+                raise NavigationError(
+                    f"Goal position ({goal_lat}, {goal_lon}) is outside DEM bounds",
+                    details={"goal_pixel": goal_pixel, "dem_shape": dem.shape}
+                )
+            
+            # Get start elevation from DEM
+            start_elevation = float(metrics.elevation[start_pixel[0], start_pixel[1]])
+            
+            # Check if start position has valid terrain data
+            start_slope = metrics.slope[start_pixel[0], start_pixel[1]]
+            start_roughness = metrics.roughness[start_pixel[0], start_pixel[1]]
+            
+            if np.isnan(start_slope) or np.isnan(start_roughness):
+                logger.warning(
+                    "Start position has NaN terrain values, attempting to use nearest valid cell",
+                    start_pixel=start_pixel
+                )
+                # Try to find nearest valid cell
+                valid_mask = np.isfinite(metrics.slope) & np.isfinite(metrics.roughness)
+                if not np.any(valid_mask):
+                    raise NavigationError(
+                        "No valid terrain data in DEM for pathfinding",
+                        details={"dem_shape": dem.shape}
+                    )
+                # Find nearest valid cell
+                from scipy.spatial.distance import cdist
+                valid_coords = np.argwhere(valid_mask)
+                if len(valid_coords) > 0:
+                    distances = cdist([start_pixel], valid_coords)
+                    nearest_idx = np.argmin(distances)
+                    start_pixel = tuple(valid_coords[nearest_idx])
+                    start_elevation = float(metrics.elevation[start_pixel[0], start_pixel[1]])
+                    logger.info("Adjusted start position to nearest valid cell", new_start_pixel=start_pixel)
+            
+            # Generate cost surface with navigation config
+            nav_config = self.config.navigation
+            cost_map = generate_cost_surface(
+                metrics.slope,
+                metrics.roughness,
+                max_slope_deg=max_slope_deg,
+                max_roughness=nav_config.max_roughness_m,  # Use configurable max roughness
+                elevation=metrics.elevation,
+                elevation_penalty_factor=0.1,
+                slope_weight=nav_config.slope_weight,
+                roughness_weight=nav_config.roughness_weight,
+                cell_size_m=cell_size_m,
+                cliff_threshold_m=nav_config.cliff_threshold_m
+            )
+            
+            # Validate start/goal are passable before pathfinding
+            start_cost = cost_map[start_pixel[0], start_pixel[1]]
+            goal_cost = cost_map[goal_pixel[0], goal_pixel[1]]
+            
+            # Reuse already computed values
+            start_slope_val = start_slope
+            start_roughness_val = start_roughness
+            start_elevation_val = start_elevation
+            
+            logger.info(
+                "Cost validation",
+                start_cost=float(start_cost) if np.isfinite(start_cost) else "inf",
+                goal_cost=float(goal_cost) if np.isfinite(goal_cost) else "inf",
+                start_slope=float(start_slope_val) if np.isfinite(start_slope_val) else "nan",
+                start_roughness=float(start_roughness_val) if np.isfinite(start_roughness_val) else "nan",
+                max_slope_deg=max_slope_deg,
+                max_roughness_m=nav_config.max_roughness_m
+            )
+            
+            if np.isinf(start_cost):
+                # Check if start is at DEM edge - edge pixels often have artifacts
+                original_start_pixel = start_pixel
+                is_edge_pixel = (
+                    start_pixel[0] == 0 or start_pixel[0] == cost_map.shape[0] - 1 or
+                    start_pixel[1] == 0 or start_pixel[1] == cost_map.shape[1] - 1
+                )
+                
+                # If at edge and only marked impassable due to cliff, try to find nearby passable pixel
+                if is_edge_pixel and cell_size_m is not None and nav_config.cliff_threshold_m is not None:
+                    from marshab.processing.terrain import detect_cliffs
+                    cliff_mask = detect_cliffs(metrics.elevation, cell_size_m, nav_config.cliff_threshold_m)
+                    is_cliff = cliff_mask[start_pixel[0], start_pixel[1]]
+                    
+                    if is_cliff:
+                        # Try to find a nearby passable pixel within 3 cells
+                        search_radius = 3
+                        found_passable = False
+                        best_pixel = start_pixel
+                        
+                        for di in range(-search_radius, search_radius + 1):
+                            for dj in range(-search_radius, search_radius + 1):
+                                ni, nj = start_pixel[0] + di, start_pixel[1] + dj
+                                if (0 <= ni < cost_map.shape[0] and 0 <= nj < cost_map.shape[1] and
+                                    np.isfinite(cost_map[ni, nj]) and not cliff_mask[ni, nj]):
+                                    # Found a passable pixel nearby
+                                    best_pixel = (ni, nj)
+                                    found_passable = True
+                                    logger.info(
+                                        "Found nearby passable pixel for edge start position",
+                                        original_pixel=original_start_pixel,
+                                        new_pixel=best_pixel,
+                                        distance_cells=int(np.sqrt(di**2 + dj**2))
+                                    )
+                                    break
+                            if found_passable:
+                                break
+                        
+                        if found_passable:
+                            # Update start pixel to the passable one
+                            start_pixel = best_pixel
+                            start_cost = cost_map[start_pixel[0], start_pixel[1]]
+                            start_slope_val = slope[start_pixel[0], start_pixel[1]]
+                            start_roughness_val = roughness[start_pixel[0], start_pixel[1]]
+                            start_elevation_val = metrics.elevation[start_pixel[0], start_pixel[1]]
+                            logger.info(
+                                "Adjusted start position from edge cliff to nearby passable pixel",
+                                original_pixel=original_start_pixel,
+                                new_pixel=start_pixel,
+                                new_cost=float(start_cost) if np.isfinite(start_cost) else "inf"
+                            )
+                            # Continue with the adjusted start position
+                        else:
+                            # No passable pixel found nearby, fall through to error
+                            pass
+                
+                # If still impassable after edge adjustment, provide detailed error
+                if np.isinf(start_cost):
+                    # Provide more detailed error - check all possible reasons
+                    reasons = []
+                    
+                    # Check for NaN values
+                    if np.isnan(start_slope_val):
+                        reasons.append("NaN slope")
+                    if np.isnan(start_roughness_val):
+                        reasons.append("NaN roughness")
+                    if np.isnan(start_elevation_val):
+                        reasons.append("NaN elevation")
+                    
+                    # Check slope threshold
+                    if not np.isnan(start_slope_val) and start_slope_val > max_slope_deg:
+                        reasons.append(f"slope too steep ({start_slope_val:.1f}° > {max_slope_deg}°)")
+                    
+                    # Check roughness threshold
+                    if not np.isnan(start_roughness_val) and start_roughness_val > nav_config.max_roughness_m:
+                        reasons.append(f"roughness too high ({start_roughness_val:.2f}m > {nav_config.max_roughness_m}m)")
+                    
+                    # Check if it's a cliff (elevation change)
+                    if cell_size_m is not None and nav_config.cliff_threshold_m is not None:
+                        from marshab.processing.terrain import detect_cliffs
+                        cliff_mask = detect_cliffs(metrics.elevation, cell_size_m, nav_config.cliff_threshold_m)
+                        if cliff_mask[start_pixel[0], start_pixel[1]]:
+                            # Get neighbor elevations to show why it's a cliff
+                            neighbors = []
+                            for di in [-1, 0, 1]:
+                                for dj in [-1, 0, 1]:
+                                    if di == 0 and dj == 0:
+                                        continue
+                                    ni, nj = start_pixel[0] + di, start_pixel[1] + dj
+                                    if 0 <= ni < metrics.elevation.shape[0] and 0 <= nj < metrics.elevation.shape[1]:
+                                        elev_diff = abs(metrics.elevation[ni, nj] - start_elevation_val)
+                                        if elev_diff > nav_config.cliff_threshold_m:
+                                            neighbors.append(f"neighbor({ni},{nj}): {elev_diff:.1f}m")
+                            edge_note = " (at DEM edge)" if is_edge_pixel else ""
+                            reasons.append(f"cliff detected (elevation change > {nav_config.cliff_threshold_m}m){edge_note}" + (f" [{', '.join(neighbors[:3])}]" if neighbors else ""))
+                    
+                    # If no specific reason found, check the actual cost components
+                    if not reasons:
+                        reasons.append(f"cost surface marked as impassable (cost={start_cost}, slope={start_slope_val:.2f}°, roughness={start_roughness_val:.2f}m, elevation={start_elevation_val:.1f}m)")
+                    
+                    raise NavigationError(
+                        f"Start position is impassable: {', '.join(reasons) if reasons else 'unknown reason'}",
+                        details={
+                            "start_lat": start_lat,
+                            "start_lon": start_lon,
+                            "start_pixel": start_pixel,
+                            "is_edge_pixel": is_edge_pixel,
+                            "slope": float(start_slope_val) if not np.isnan(start_slope_val) else None,
+                            "roughness": float(start_roughness_val) if not np.isnan(start_roughness_val) else None,
+                            "max_slope_deg": max_slope_deg,
+                            "max_roughness_m": nav_config.max_roughness_m,
+                            "cost": float(start_cost) if np.isfinite(start_cost) else "inf"
+                        }
+                    )
+            
+            if np.isinf(goal_cost):
+                raise NavigationError(
+                    "Goal position (site) is impassable - site may be on steep slope or rough terrain",
+                    details={
+                        "goal_lat": goal_lat,
+                        "goal_lon": goal_lon,
+                        "goal_pixel": goal_pixel
+                    }
+                )
+            
+            # Run A* pathfinding
+            resolution_m = float(dem.attrs.get('resolution_m', cell_size_m))
+            
+            # For very large DEMs, consider downsampling the cost map for pathfinding
+            # This significantly speeds up pathfinding while maintaining route quality
+            downsample_factor = 1
+            original_cost_map = cost_map
+            original_start_pixel = start_pixel
+            original_goal_pixel = goal_pixel
+            
+            # If cost map is very large (> 1000x1000), downsample for pathfinding
+            if cost_map.shape[0] * cost_map.shape[1] > 1000000:
+                downsample_factor = 2  # Downsample by 2x
+                logger.info(
+                    "Downsampling cost map for pathfinding",
+                    original_shape=cost_map.shape,
+                    downsample_factor=downsample_factor
+                )
+                
+                # Downsample cost map using max pooling (take worst case in each block)
+                # Reshape to allow downsampling
+                h, w = cost_map.shape
+                new_h, new_w = h // downsample_factor, w // downsample_factor
+                
+                # For cost maps, we want to preserve impassable areas (inf)
+                # Use max pooling to ensure we don't lose impassable regions
+                cost_map_downsampled = np.full((new_h, new_w), np.inf)
+                
+                for i in range(new_h):
+                    for j in range(new_w):
+                        i_start = i * downsample_factor
+                        i_end = min(i_start + downsample_factor, h)
+                        j_start = j * downsample_factor
+                        j_end = min(j_start + downsample_factor, w)
+                        
+                        block = cost_map[i_start:i_end, j_start:j_end]
+                        # If any cell in block is impassable, mark as impassable
+                        if np.any(np.isinf(block)):
+                            cost_map_downsampled[i, j] = np.inf
+                        else:
+                            # Use mean cost for passable blocks
+                            cost_map_downsampled[i, j] = np.nanmean(block)
+                
+                cost_map = cost_map_downsampled
+                start_pixel = (start_pixel[0] // downsample_factor, start_pixel[1] // downsample_factor)
+                goal_pixel = (goal_pixel[0] // downsample_factor, goal_pixel[1] // downsample_factor)
+                
+                # Clamp to valid bounds
+                start_pixel = (min(start_pixel[0], cost_map.shape[0] - 1), min(start_pixel[1], cost_map.shape[1] - 1))
+                goal_pixel = (min(goal_pixel[0], cost_map.shape[0] - 1), min(goal_pixel[1], cost_map.shape[1] - 1))
+                
+                logger.info(
+                    "Downsampled cost map",
+                    new_shape=cost_map.shape,
+                    new_start_pixel=start_pixel,
+                    new_goal_pixel=goal_pixel
+                )
+            
+            pathfinder = AStarPathfinder(cost_map, cell_size_m=resolution_m * downsample_factor)
+            
+            # Calculate waypoint spacing in pixels (adjusted for downsampling)
+            max_spacing_pixels = int(max_waypoint_spacing_m / (resolution_m * downsample_factor))
+            
+            try:
+                waypoint_pixels = pathfinder.find_path_with_waypoints(
+                    start_pixel,
+                    goal_pixel,
+                    max_waypoint_spacing=max_spacing_pixels
+                )
+                
+                # If we downsampled, upsample the waypoints back to original resolution
+                if downsample_factor > 1:
+                    waypoint_pixels_upsampled = []
+                    for row, col in waypoint_pixels:
+                        # Convert back to original pixel coordinates
+                        orig_row = row * downsample_factor + downsample_factor // 2
+                        orig_col = col * downsample_factor + downsample_factor // 2
+                        # Clamp to original bounds
+                        orig_row = min(orig_row, original_cost_map.shape[0] - 1)
+                        orig_col = min(orig_col, original_cost_map.shape[1] - 1)
+                        waypoint_pixels_upsampled.append((orig_row, orig_col))
+                    
+                    waypoint_pixels = waypoint_pixels_upsampled
+                    logger.info(
+                        "Upsampled waypoints to original resolution",
+                        num_waypoints=len(waypoint_pixels),
+                        downsample_factor=downsample_factor
+                    )
+                    
+            except NavigationError as e:
+                logger.error("Pathfinding failed", error=str(e))
+                raise
+            
+            logger.info(f"Found path with {len(waypoint_pixels)} waypoints")
+            
+            # Convert waypoints to lat/lon
+            waypoints_latlon = []
+            for row, col in waypoint_pixels:
+                lat, lon = self._pixel_to_latlon(row, col, dem)
+                elev = float(metrics.elevation[row, col])
+                waypoints_latlon.append((lat, lon, elev))
+            
+            # Define SITE frame origin at start position
             site_origin = SiteOrigin(
                 lat=start_lat,
                 lon=start_lon,
                 elevation_m=start_elevation
             )
             
-            # Transform site location to SITE frame
-            site_x, site_y, site_z = self.coord_transformer.iau_mars_to_site_frame(
-                site_lat, site_lon, site_elevation, site_origin
-            )
-            
-            logger.info(
-                "Transformed to SITE frame",
-                site_x_m=site_x,
-                site_y_m=site_y,
-                site_z_m=site_z
-            )
-            
-            # 3. Generate cost surface from terrain
-            logger.info("Calculating terrain metrics for cost surface")
-            terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
-            metrics = terrain_analyzer.analyze(dem)
-            
-            # Get navigation config and strategy weights
-            nav_config = self.config.navigation if hasattr(self.config, 'navigation') else None
-            if nav_config is None:
-                # Fallback to defaults
-                slope_weight = 10.0
-                roughness_weight = 5.0
-                enable_cliff_detection = False
-                cliff_threshold_m = None
-                enable_smoothing = False
-                smoothing_tolerance = 2.0
-                strategy_name = "balanced"
-            else:
-                weights = nav_config.get_weights_for_strategy()
-                slope_weight = weights["slope_weight"]
-                roughness_weight = weights["roughness_weight"]
-                enable_cliff_detection = True
-                cliff_threshold_m = nav_config.cliff_threshold_m
-                enable_smoothing = nav_config.enable_smoothing
-                smoothing_tolerance = nav_config.smoothing_tolerance
-                strategy_name = nav_config.strategy.value if hasattr(nav_config.strategy, 'value') else str(nav_config.strategy)
-            
-            logger.info(
-                "Using pathfinding strategy",
-                strategy=strategy_name,
-                slope_weight=slope_weight,
-                roughness_weight=roughness_weight,
-                cliff_detection=enable_cliff_detection,
-                path_smoothing=enable_smoothing
-            )
-            
-            # Get elevation array for cliff detection
-            elevation_array = dem.values.astype(np.float32) if enable_cliff_detection else None
-            
-            # Generate cost surface with configurable weights and cliff detection
-            cost_surface = generate_cost_surface(
-                metrics.slope,
-                metrics.roughness,
-                max_slope_deg=self.config.analysis.max_slope_deg if hasattr(self.config, 'analysis') else 25.0,
-                slope_weight=slope_weight,
-                roughness_weight=roughness_weight,
-                elevation=elevation_array,
-                cell_size_m=cell_size_m if enable_cliff_detection else None,
-                cliff_threshold_m=cliff_threshold_m
-            )
-            
-            logger.info(
-                "Generated cost surface",
-                shape=cost_surface.shape,
-                passable_fraction=float(np.sum(np.isfinite(cost_surface)) / cost_surface.size)
-            )
-            
-            # 4. Run A* pathfinding
-            # Use the actual terrain cost surface for pathfinding
-            # The cost surface is in DEM pixel coordinates, so we need to work in that space
-            # and transform the resulting path to SITE frame
-            
-            # Find pixel coordinates for start and goal in DEM
-            # Try rio accessor first, fall back to coordinate arrays
-            if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                try:
-                    bounds = dem.rio.bounds()
-                    bounds_left = bounds.left
-                    bounds_right = bounds.right
-                    bounds_bottom = bounds.bottom
-                    bounds_top = bounds.top
-                except (AttributeError, RuntimeError):
-                    bounds = None
-            else:
-                bounds = None
-            
-            # Fallback: use ROI bounds directly
-            # Since the DEM was windowed to the ROI, the bounds should match
-            # (coordinate arrays might be in CRS units like meters, not degrees)
-            if bounds is None:
-                bounds_left = roi.lon_min
-                bounds_right = roi.lon_max
-                bounds_bottom = roi.lat_min
-                bounds_top = roi.lat_max
-            
-            logger.debug(
-                "DEM bounds for pixel coordinate calculation",
-                bounds_left=bounds_left,
-                bounds_right=bounds_right,
-                bounds_bottom=bounds_bottom,
-                bounds_top=bounds_top,
-                dem_shape=dem.shape,
-                start_lat=start_lat,
-                start_lon=start_lon,
-                site_lat=site_lat,
-                site_lon=site_lon
-            )
-            
-            # Start position in pixel coordinates
-            start_x_px = int((start_lon - bounds_left) / (bounds_right - bounds_left) * dem.shape[1])
-            start_y_px = int((bounds_top - start_lat) / (bounds_top - bounds_bottom) * dem.shape[0])
-            # Goal position in pixel coordinates
-            goal_x_px = int((site_lon - bounds_left) / (bounds_right - bounds_left) * dem.shape[1])
-            goal_y_px = int((bounds_top - site_lat) / (bounds_top - bounds_bottom) * dem.shape[0])
-            
-            logger.debug(
-                "Pixel coordinates before clamping",
-                start_x_px=start_x_px,
-                start_y_px=start_y_px,
-                goal_x_px=goal_x_px,
-                goal_y_px=goal_y_px
-            )
-            
-            # Clamp to valid bounds
-            start_x_px = max(0, min(dem.shape[1] - 1, start_x_px))
-            start_y_px = max(0, min(dem.shape[0] - 1, start_y_px))
-            goal_x_px = max(0, min(dem.shape[1] - 1, goal_x_px))
-            goal_y_px = max(0, min(dem.shape[0] - 1, goal_y_px))
-            
-            logger.debug(
-                "Pixel coordinates after clamping",
-                start_x_px=start_x_px,
-                start_y_px=start_y_px,
-                goal_x_px=goal_x_px,
-                goal_y_px=goal_y_px,
-                pixel_distance_x=abs(goal_x_px - start_x_px),
-                pixel_distance_y=abs(goal_y_px - start_y_px)
-            )
-            
-            start_idx = (start_y_px, start_x_px)
-            goal_idx = (goal_y_px, goal_x_px)
-            
-            logger.info(
-                "Running A* pathfinding",
-                start=start_idx,
-                goal=goal_idx,
-                cost_surface_shape=cost_surface.shape
-            )
-            
-            # Use actual terrain cost surface for pathfinding
-            pathfinder = AStarPathfinder(cost_surface, cell_size_m=cell_size_m)
-            
-            # First find the full path
-            full_path = pathfinder.find_path(start_idx, goal_idx)
-            
-            if full_path is None:
-                logger.warning("No path found, returning direct path")
-                # Return direct path if A* fails
-                full_path = [start_idx, goal_idx]
-            
-            # Apply path smoothing if enabled
-            if enable_smoothing and len(full_path) > 2:
-                logger.info("Applying path smoothing", original_length=len(full_path))
-                full_path = smooth_path(full_path, cost_surface, tolerance=smoothing_tolerance)
-            
-            # Downsample to waypoints (after smoothing)
-            waypoint_indices = [full_path[0]]  # Always include start
-            max_waypoint_spacing = 50
-            for i in range(max_waypoint_spacing, len(full_path), max_waypoint_spacing):
-                waypoint_indices.append(full_path[i])
-            
-            # Always include goal
-            if waypoint_indices[-1] != full_path[-1]:
-                waypoint_indices.append(full_path[-1])
-            
-            # Ensure waypoint_indices is a list of tuples
-            if not isinstance(waypoint_indices, list):
-                logger.warning(f"waypoint_indices is not a list: {type(waypoint_indices)}, converting")
-                waypoint_indices = [waypoint_indices] if isinstance(waypoint_indices, (tuple, list)) else [start_idx, goal_idx]
-            
-            logger.debug(
-                "Processing waypoints",
-                num_waypoints=len(waypoint_indices),
-                first_waypoint=waypoint_indices[0] if waypoint_indices else None,
-                waypoint_types=[type(w).__name__ for w in waypoint_indices[:3]]
-            )
-            
-            # 5. Generate waypoints from path
-            # Convert pixel coordinates to lat/lon, then to SITE frame
-            waypoints_data = {
-                "waypoint_id": [],
-                "lat": [],
-                "lon": [],
-                "x_meters": [],
-                "y_meters": [],
-                "tolerance_meters": [],
-            }
-            
-            for i, waypoint in enumerate(waypoint_indices):
-                # Ensure waypoint is a tuple (row, col)
-                if isinstance(waypoint, (tuple, list)) and len(waypoint) >= 2:
-                    row, col = int(waypoint[0]), int(waypoint[1])
-                else:
-                    logger.warning(f"Invalid waypoint format: {waypoint}, skipping")
-                    continue
-                
-                # Convert pixel coordinates to lat/lon
-                # Use ROI bounds since DEM was windowed to ROI
-                lon = bounds_left + (col / dem.shape[1]) * (bounds_right - bounds_left)
-                lat = bounds_top - (row / dem.shape[0]) * (bounds_top - bounds_bottom)
-                
-                # Get elevation at this point
-                row_clamped = max(0, min(dem.shape[0] - 1, row))
-                col_clamped = max(0, min(dem.shape[1] - 1, col))
-                elev = float(dem.values[row_clamped, col_clamped])
-                
-                # Transform to SITE frame
-                x_m, y_m, z_m = self.coord_transformer.iau_mars_to_site_frame(
+            # Transform waypoints to SITE frame
+            waypoints_site = []
+            for i, (lat, lon, elev) in enumerate(waypoints_latlon):
+                x, y, z = self.coord_transformer.iau_mars_to_site_frame(
                     lat, lon, elev, site_origin
                 )
                 
-                waypoints_data["waypoint_id"].append(i + 1)
-                waypoints_data["lat"].append(float(lat))
-                waypoints_data["lon"].append(float(lon))
-                waypoints_data["x_meters"].append(float(x_m))
-                waypoints_data["y_meters"].append(float(y_m))
-                waypoints_data["tolerance_meters"].append(cell_size_m * 2.0)  # 2 cell tolerance
+                waypoints_site.append({
+                    'waypoint_id': i + 1,
+                    'x_site': x,  # North (meters)
+                    'y_site': y,  # East (meters)
+                    'z_site': z,  # Down (meters)
+                    'latitude': lat,
+                    'longitude': lon,
+                    'elevation_m': elev,
+                    'tolerance_m': max_waypoint_spacing_m / 2.0
+                })
             
-            waypoints_df = pd.DataFrame(waypoints_data)
+            # Create DataFrame
+            waypoints_df = pd.DataFrame(waypoints_site)
             
             logger.info(
-                "Navigation planning complete",
+                "Navigation plan complete",
                 num_waypoints=len(waypoints_df),
-                total_distance_m=float(np.sqrt(site_x**2 + site_y**2))
+                total_distance_m=float(
+                    np.sqrt(waypoints_df['x_site'].iloc[-1]**2 + 
+                           waypoints_df['y_site'].iloc[-1]**2)
+                ) if len(waypoints_df) > 0 else 0.0
             )
             
             return waypoints_df

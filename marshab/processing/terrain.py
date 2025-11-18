@@ -69,12 +69,13 @@ class TerrainAnalyzer:
         """Calculate aspect (slope direction) in degrees from North.
         
         Aspect = 0° = North, 90° = East, 180° = South, 270° = West
+        Flat areas are marked as -1
         
         Args:
             dem: Input elevation array
         
         Returns:
-            Aspect array in degrees (0-360)
+            Aspect array in degrees (0-360, -1 for flat areas)
         """
         # Check minimum size for gradient calculation (need at least 2x2)
         if dem.shape[0] < 2 or dem.shape[1] < 2:
@@ -102,9 +103,16 @@ class TerrainAnalyzer:
         # Convert to 0-360 range
         aspect = (aspect + 360) % 360
         
+        # Mark flat areas as undefined (-1)
+        # Calculate slope to identify flat areas
+        slope_deg = self.calculate_slope(dem)
+        flat_threshold = 0.1  # degrees
+        aspect = np.where(slope_deg < flat_threshold, -1, aspect)
+        
         logger.debug(
             "Calculated aspect",
-            valid_pixels=int(np.sum(~np.isnan(aspect))),
+            valid_pixels=int(np.sum(aspect >= 0)),
+            flat_pixels=int(np.sum(aspect < 0)),
         )
         
         return aspect
@@ -169,18 +177,86 @@ class TerrainAnalyzer:
         
         return tri
     
+    def calculate_hillshade(
+        self,
+        dem: np.ndarray,
+        azimuth: float = 315.0,
+        altitude: float = 45.0
+    ) -> np.ndarray:
+        """Calculate hillshade for visualization.
+        
+        Args:
+            dem: Elevation array
+            azimuth: Sun azimuth in degrees (0=North, 90=East)
+            altitude: Sun altitude angle in degrees
+        
+        Returns:
+            Hillshade values 0-255 (uint8)
+        """
+        # Check minimum size for gradient calculation (need at least 2x2)
+        if dem.shape[0] < 2 or dem.shape[1] < 2:
+            logger.warning(
+                "DEM too small for hillshade calculation, returning zeros",
+                shape=dem.shape
+            )
+            return np.zeros_like(dem, dtype=np.uint8)
+        
+        # Convert angles to radians
+        azimuth_rad = np.radians(azimuth)
+        altitude_rad = np.radians(altitude)
+        
+        # Calculate gradients
+        try:
+            dy, dx = np.gradient(dem, self.cell_size_m)
+        except ValueError as e:
+            logger.warning(
+                "Gradient calculation failed for hillshade, returning zeros",
+                error=str(e),
+                shape=dem.shape
+            )
+            return np.zeros_like(dem, dtype=np.uint8)
+        
+        # Calculate slope and aspect
+        slope_rad = np.arctan(np.sqrt(dx**2 + dy**2))
+        aspect_rad = np.arctan2(-dx, dy)
+        
+        # Hillshade calculation
+        # Formula: cos(altitude) * cos(slope) + sin(altitude) * sin(slope) * cos(azimuth - aspect)
+        hillshade = (
+            np.cos(altitude_rad) * np.cos(slope_rad) +
+            np.sin(altitude_rad) * np.sin(slope_rad) *
+            np.cos(azimuth_rad - aspect_rad)
+        )
+        
+        # Scale to 0-255 and clip
+        hillshade = np.clip(hillshade * 255, 0, 255)
+        
+        logger.debug(
+            "Calculated hillshade",
+            mean=float(np.nanmean(hillshade)),
+            min=float(np.nanmin(hillshade)),
+            max=float(np.nanmax(hillshade)),
+        )
+        
+        return hillshade.astype(np.uint8)
+    
     def analyze(self, dem: xr.DataArray) -> TerrainMetrics:
         """Perform complete terrain analysis on DEM.
         
         Args:
-            dem: Input DEM DataArray
+            dem: Input DEM DataArray with lat/lon coordinates
         
         Returns:
             TerrainMetrics with all calculated products
         """
         logger.info("Starting terrain analysis", shape=dem.shape)
         
+        # Extract elevation array
         elevation = dem.values.astype(np.float32)
+        
+        # Handle nodata values
+        nodata = dem.attrs.get('nodata', -9999)
+        elevation = np.where(elevation == nodata, np.nan, elevation)
         
         # Check minimum size
         if elevation.size == 0:
@@ -189,25 +265,41 @@ class TerrainAnalyzer:
                 slope=np.zeros_like(elevation),
                 aspect=np.zeros_like(elevation),
                 roughness=np.zeros_like(elevation),
-                tri=np.zeros_like(elevation)
+                tri=np.zeros_like(elevation),
+                hillshade=np.zeros_like(elevation, dtype=np.uint8),
+                elevation=elevation
             )
         
         # Calculate all metrics
+        logger.info("Calculating slope...")
         slope = self.calculate_slope(elevation)
+        
+        logger.info("Calculating aspect...")
         aspect = self.calculate_aspect(elevation)
-        roughness = self.calculate_roughness(elevation)
+        
+        logger.info("Calculating roughness...")
+        roughness = self.calculate_roughness(elevation, window_size=5)
+        
+        logger.info("Calculating TRI...")
         tri = self.calculate_tri(elevation)
         
-        # Safe logging
+        logger.info("Calculating hillshade...")
+        hillshade = self.calculate_hillshade(elevation)
+        
+        # Log statistics
         try:
             slope_mean = float(np.nanmean(slope)) if slope.size > 0 else 0.0
             slope_max = float(np.nanmax(slope)) if slope.size > 0 and np.any(np.isfinite(slope)) else 0.0
+            slope_std = float(np.nanstd(slope)) if slope.size > 0 else 0.0
             roughness_mean = float(np.nanmean(roughness)) if roughness.size > 0 else 0.0
+            tri_mean = float(np.nanmean(tri)) if tri.size > 0 else 0.0
             logger.info(
                 "Terrain analysis complete",
                 slope_mean=slope_mean,
                 slope_max=slope_max,
+                slope_std=slope_std,
                 roughness_mean=roughness_mean,
+                tri_mean=tri_mean
             )
         except Exception as e:
             logger.warning("Failed to log terrain analysis stats", error=str(e))
@@ -216,7 +308,9 @@ class TerrainAnalyzer:
             slope=slope,
             aspect=aspect,
             roughness=roughness,
-            tri=tri
+            tri=tri,
+            hillshade=hillshade,
+            elevation=elevation
         )
 
 
@@ -293,40 +387,61 @@ def generate_cost_surface(
     slope: np.ndarray,
     roughness: np.ndarray,
     max_slope_deg: float = 25.0,
+    max_roughness: float = 1.0,
+    elevation: Optional[np.ndarray] = None,
+    elevation_penalty_factor: float = 0.1,
     slope_weight: float = 10.0,
     roughness_weight: float = 5.0,
-    elevation: Optional[np.ndarray] = None,
     cell_size_m: Optional[float] = None,
     cliff_threshold_m: Optional[float] = None,
 ) -> np.ndarray:
-    """Generate traversability cost surface for pathfinding.
+    """Generate comprehensive traversability cost surface.
     
     Args:
         slope: Slope array in degrees
         roughness: Roughness array
         max_slope_deg: Maximum traversable slope (degrees)
-        slope_weight: Slope cost multiplier
-        roughness_weight: Roughness cost multiplier
-        elevation: Optional elevation array for cliff detection
+        max_roughness: Maximum traversable roughness
+        elevation: Optional elevation array for elevation penalties and cliff detection
+        elevation_penalty_factor: Penalty factor for elevation gain
+        slope_weight: Slope cost multiplier (for backward compatibility)
+        roughness_weight: Roughness cost multiplier (for backward compatibility)
         cell_size_m: Optional cell size in meters for cliff detection
         cliff_threshold_m: Optional elevation change threshold for cliff detection (meters)
     
     Returns:
-        Cost surface (higher = more difficult, inf = impassable)
+        Cost surface (1.0 = baseline, higher = more difficult, inf = impassable)
     """
+    logger.info("Generating traversability cost surface")
+    
     # Initialize base cost
     cost = np.ones_like(slope, dtype=np.float32)
     
-    # Add slope cost (exponential increase) with configurable weight
-    cost += (slope / 45.0) ** 2 * slope_weight
+    # Slope cost (exponential increase) - cost doubles every 10 degrees
+    slope_normalized = slope / max_slope_deg
+    slope_cost = np.exp(slope_normalized * 2.0) - 1.0
+    # Apply weight if provided (for backward compatibility)
+    if slope_weight != 10.0:  # Default from architecture spec
+        slope_cost = slope_cost * (slope_weight / 10.0)
+    cost += slope_cost
     
-    # Add roughness cost (normalized) with configurable weight
-    # Handle empty or all-zero roughness arrays
-    roughness_max = np.nanmax(roughness) if roughness.size > 0 and np.any(np.isfinite(roughness)) else 1.0
-    roughness_norm = roughness / (roughness_max + 1e-6)
-    cost += roughness_norm * roughness_weight
+    # Roughness cost (linear to quadratic)
+    roughness_normalized = roughness / (max_roughness + 1e-6)
+    roughness_cost = roughness_normalized ** 2 * 5.0
+    # Apply weight if provided (for backward compatibility)
+    if roughness_weight != 5.0:  # Default from architecture spec
+        roughness_cost = roughness_cost * (roughness_weight / 5.0)
+    cost += roughness_cost
     
-    # Detect and mark cliffs if elevation data is provided
+    # Elevation cost (if provided)
+    if elevation is not None:
+        # Penalize uphill travel
+        dy, dx = np.gradient(elevation)
+        elevation_gradient = np.sqrt(dx**2 + dy**2)
+        elevation_cost = elevation_gradient * elevation_penalty_factor
+        cost += elevation_cost
+    
+    # Detect and mark cliffs if elevation data and thresholds are provided
     if elevation is not None and cell_size_m is not None and cliff_threshold_m is not None:
         cliff_mask = detect_cliffs(elevation, cell_size_m, cliff_threshold_m)
         # Mark cliffs as impassable (infinite cost)
@@ -336,24 +451,20 @@ def generate_cost_surface(
             num_cliffs=int(np.sum(cliff_mask))
         )
     
-    # Mark impassable areas (steep slopes)
+    # Mark impassable areas
     cost[slope > max_slope_deg] = np.inf
+    cost[roughness > max_roughness] = np.inf
+    cost[np.isnan(slope) | np.isnan(roughness)] = np.inf
     
-    # Handle empty cost arrays
-    if cost.size > 0:
-        finite_mask = np.isfinite(cost)
-        passable_fraction = float(np.sum(finite_mask) / cost.size) if cost.size > 0 else 0.0
-        finite_costs = cost[finite_mask]
-        max_cost = float(np.nanmax(finite_costs)) if finite_costs.size > 0 else 0.0
-        logger.info(
-            "Generated cost surface",
-            passable_fraction=passable_fraction,
-            max_cost=max_cost,
-            slope_weight=slope_weight,
-            roughness_weight=roughness_weight,
-        )
-    else:
-        logger.warning("Empty cost surface generated")
+    # Statistics
+    passable_fraction = np.sum(np.isfinite(cost)) / cost.size if cost.size > 0 else 0.0
+    
+    logger.info(
+        "Cost surface generated",
+        passable_fraction=float(passable_fraction),
+        mean_cost=float(np.nanmean(cost[np.isfinite(cost)])) if np.any(np.isfinite(cost)) else 0.0,
+        max_finite_cost=float(np.nanmax(cost[np.isfinite(cost)])) if np.any(np.isfinite(cost)) else 0.0
+    )
     
     return cost
 

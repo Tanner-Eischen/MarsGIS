@@ -15,8 +15,10 @@ router = APIRouter()
 @router.get("/status")
 async def get_status():
     """Get system status and cache information."""
+    logger.info("Status endpoint called")
     try:
         config = get_config()
+        logger.info("Config loaded")
         
         # Check cache directory
         cache_dir = config.paths.cache_dir

@@ -7,7 +7,35 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 150000, // 2.5 minute timeout for pathfinding (can take 30-120 seconds for large DEMs)
 })
+
+// Add request interceptor for logging
+api.interceptors.request.use(
+  (config) => {
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.data ? { data: config.data } : '')
+    return config
+  },
+  (error) => {
+    console.error('[API] Request error:', error)
+    return Promise.reject(error)
+  }
+)
+
+// Add response interceptor for logging
+api.interceptors.response.use(
+  (response) => {
+    console.log(`[API] Response ${response.status} from ${response.config.url}`)
+    return response
+  },
+  (error) => {
+    console.error(`[API] Error ${error.response?.status || 'NETWORK'} from ${error.config?.url || 'unknown'}:`, error.message)
+    if (error.response) {
+      console.error('[API] Error details:', error.response.data)
+    }
+    return Promise.reject(error)
+  }
+)
 
 export interface StatusResponse {
   status: string
@@ -71,7 +99,9 @@ export interface NavigationRequest {
   analysis_dir?: string
   start_lat: number
   start_lon: number
-  strategy?: 'safest' | 'balanced' | 'direct'
+  max_waypoint_spacing_m?: number
+  max_slope_deg?: number
+  strategy?: 'safest' | 'balanced' | 'direct'  // Note: strategy is handled by backend config
 }
 
 export interface Waypoint {
@@ -108,11 +138,61 @@ export const analyzeTerrain = async (request: AnalysisRequest): Promise<Analysis
 }
 
 export const planNavigation = async (request: NavigationRequest): Promise<NavigationResponse> => {
-  const response = await api.post<NavigationResponse>('/navigate', {
+  const response = await api.post<NavigationResponse>('/navigation/plan-route', {
+    site_id: request.site_id,
     analysis_dir: request.analysis_dir || 'data/output',
-    strategy: request.strategy || 'balanced',
-    ...request,
+    start_lat: request.start_lat,
+    start_lon: request.start_lon,
+    max_waypoint_spacing_m: request.max_waypoint_spacing_m || 100.0,
+    max_slope_deg: request.max_slope_deg || 25.0,
   })
+  return response.data
+}
+
+// Mission Scenarios API
+export interface LandingScenarioRequest {
+  roi: { lat_min: number; lat_max: number; lon_min: number; lon_max: number }
+  dataset?: string
+  preset_id?: string
+  constraints?: { max_slope_deg?: number; min_area_km2?: number }
+  suitability_threshold?: number
+  custom_weights?: Record<string, number>
+}
+
+export interface LandingScenarioResponse {
+  scenario_id: string
+  sites: SiteCandidate[]
+  top_site: SiteCandidate | null
+  metadata: Record<string, any>
+}
+
+export interface TraverseScenarioRequest {
+  start_site_id: number
+  end_site_id: number
+  analysis_dir: string
+  preset_id?: string
+  rover_capabilities?: { max_slope_deg?: number; max_roughness?: number }
+  start_lat?: number
+  start_lon?: number
+  custom_weights?: Record<string, number>
+}
+
+export interface TraverseScenarioResponse {
+  route_id: string
+  waypoints: Waypoint[]
+  total_distance_m: number
+  estimated_time_h: number
+  risk_score: number
+  metadata: Record<string, any>
+}
+
+export const runLandingScenario = async (request: LandingScenarioRequest): Promise<LandingScenarioResponse> => {
+  const response = await api.post<LandingScenarioResponse>('/mission/landing-scenario', request)
+  return response.data
+}
+
+export const runTraverseScenario = async (request: TraverseScenarioRequest): Promise<TraverseScenarioResponse> => {
+  const response = await api.post<TraverseScenarioResponse>('/mission/rover-traverse', request)
   return response.data
 }
 

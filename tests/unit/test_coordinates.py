@@ -213,3 +213,71 @@ def test_coordinate_error_details():
     assert "Test error" in str(error)
     assert error.details["lat"] == 40.0
     assert error.details["lon"] == 180.0
+
+
+def test_validate_coordinates():
+    """Test coordinate validation."""
+    transformer = CoordinateTransformer()
+    
+    # Valid coordinates
+    transformer.validate_coordinates(0, 0, 0)
+    transformer.validate_coordinates(90, 180, 1000)
+    transformer.validate_coordinates(-90, 360, -5000)
+    
+    # Invalid latitude
+    with pytest.raises(CoordinateError):
+        transformer.validate_coordinates(91, 0, 0)
+    
+    with pytest.raises(CoordinateError):
+        transformer.validate_coordinates(-91, 0, 0)
+    
+    # Invalid longitude
+    with pytest.raises(CoordinateError):
+        transformer.validate_coordinates(0, 361, 0)
+    
+    with pytest.raises(CoordinateError):
+        transformer.validate_coordinates(0, -1, 0)
+
+
+def test_batch_transform_to_site(test_site_origin):
+    """Test batch transformation."""
+    transformer = CoordinateTransformer()
+    
+    lats = np.array([40.1, 40.2, 40.3])
+    lons = np.array([180.1, 180.2, 180.3])
+    elevs = np.array([-2500, -2500, -2500])
+    
+    x, y, z = transformer.batch_transform_to_site(
+        lats, lons, elevs, test_site_origin
+    )
+    
+    assert len(x) == 3
+    assert len(y) == 3
+    assert len(z) == 3
+    assert isinstance(x, np.ndarray)
+    assert isinstance(y, np.ndarray)
+    assert isinstance(z, np.ndarray)
+    
+    # All points should be north and east of origin (if origin is at 40.0, 180.0)
+    if test_site_origin.lat < 40.1:
+        assert np.all(x > 0)  # All points north
+    if test_site_origin.lon < 180.1:
+        assert np.all(y > 0)  # All points east
+
+
+def test_round_trip_transformation():
+    """Test transformation accuracy."""
+    transformer = CoordinateTransformer()
+    site = SiteOrigin(lat=0, lon=0, elevation_m=0)
+    
+    # Point 1km north
+    lat = 0.009  # ~1km at equator
+    lon = 0.0
+    
+    x, y, z = transformer.iau_mars_to_site_frame(
+        lat, lon, 0, site
+    )
+    
+    # Should be approximately 1000m north
+    assert 900 < x < 1100
+    assert abs(y) < 100

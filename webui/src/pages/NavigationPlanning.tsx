@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { planNavigation, NavigationRequest, Waypoint } from '../services/api'
+import { planNavigation, NavigationRequest } from '../services/api'
 
 export default function NavigationPlanning() {
   const [siteId, setSiteId] = useState(1)

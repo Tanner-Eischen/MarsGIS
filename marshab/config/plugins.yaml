@@ -1,0 +1,8 @@
+# Plugin configuration
+# List of plugins to load at startup
+
+plugins:
+  - name: example_plugin
+    path: marshab.plugins.example_plugin.ExampleCriterionPlugin
+    enabled: false  # Disabled by default, enable to test
+

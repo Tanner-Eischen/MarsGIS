@@ -13,6 +13,8 @@ from marshab.config import PathfindingStrategy, get_config
 from marshab.core.data_manager import DataManager
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.core.navigation_engine import NavigationEngine
+from marshab.mission.scenarios import run_landing_site_scenario, run_rover_traverse_scenario, LandingScenarioParams, TraverseScenarioParams
+from marshab.analysis.export import export_suitability_geotiff, generate_analysis_report
 from marshab.types import BoundingBox
 from marshab.utils.logging import configure_logging, get_logger
 
@@ -364,6 +366,109 @@ def navigation(
 ):
     """Generate rover navigation waypoints to target site."""
     _navigate_to_site(site_id, analysis_dir, start_lat, start_lon, output, strategy)
+
+
+@app.command()
+def run_landing_scenario(
+    roi: str = typer.Option(..., "--roi", help="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
+    dataset: str = typer.Option("mola", "--dataset", help="Dataset to use"),
+    preset: str = typer.Option("balanced", "--preset", help="Preset ID"),
+    output: Path = typer.Option(Path("data/output"), "--output", "-o", help="Output directory")
+):
+    """Run landing site selection scenario."""
+    try:
+        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
+        bbox = BoundingBox(lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
+    except Exception as e:
+        console.print(f"[red]Invalid ROI format: {e}[/red]")
+        raise typer.Exit(1)
+    
+    params = LandingScenarioParams(
+        roi=bbox,
+        dataset=dataset.lower(),
+        preset_id=preset,
+        suitability_threshold=0.7
+    )
+    
+    try:
+        result = run_landing_site_scenario(params)
+        console.print(f"\n[green]Scenario complete![/green]")
+        console.print(f"[green]Found {len(result.sites)} sites[/green]")
+        if result.top_site:
+            console.print(f"[green]Top site: {result.top_site.site_id} (score: {result.top_site.suitability_score:.3f})[/green]")
+    except Exception as e:
+        console.print(f"[red]Error: Scenario failed: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def run_route_scenario(
+    start_site: int = typer.Option(..., "--start-site", help="Start site ID"),
+    end_site: int = typer.Option(..., "--end-site", help="End site ID"),
+    analysis_dir: Path = typer.Option(Path("data/output"), "--analysis", help="Analysis directory"),
+    preset: str = typer.Option("balanced", "--preset", help="Route preset ID"),
+    output: Path = typer.Option(Path("route_waypoints.csv"), "--output", "-o", help="Output file")
+):
+    """Run rover traverse planning scenario."""
+    params = TraverseScenarioParams(
+        start_site_id=start_site,
+        end_site_id=end_site,
+        analysis_dir=analysis_dir,
+        preset_id=preset
+    )
+    
+    try:
+        result = run_rover_traverse_scenario(params)
+        console.print(f"\n[green]Route planned![/green]")
+        console.print(f"[green]Distance: {result.route_metrics.total_distance_m:.2f} m[/green]")
+        console.print(f"[green]Waypoints: {result.route_metrics.num_waypoints}[/green]")
+    except Exception as e:
+        console.print(f"[red]Error: Route planning failed: {e}[/red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def export_suitability(
+    roi: str = typer.Option(..., "--roi", help="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
+    dataset: str = typer.Option("mola", "--dataset", help="Dataset to use"),
+    preset: str = typer.Option("balanced", "--preset", help="Preset ID"),
+    output: Path = typer.Option(Path("suitability.tif"), "--output", "-o", help="Output GeoTIFF file")
+):
+    """Export suitability scores as GeoTIFF."""
+    try:
+        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
+        bbox = BoundingBox(lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
+    except Exception as e:
+        console.print(f"[red]Invalid ROI format: {e}[/red]")
+        raise typer.Exit(1)
+    
+    # Load preset weights
+    from marshab.config.preset_loader import PresetLoader
+    loader = PresetLoader()
+    preset_obj = loader.get_preset(preset, scope="site")
+    weights = preset_obj.get_weights_dict() if preset_obj else {}
+    
+    # Run analysis to get suitability
+    pipeline = AnalysisPipeline()
+    results = pipeline.run(bbox, dataset=dataset.lower(), threshold=0.5)
+    
+    if results.suitability is None or results.dem is None:
+        console.print("[red]Error: Suitability data not available[/red]")
+        raise typer.Exit(1)
+    
+    try:
+        export_path = export_suitability_geotiff(
+            roi=bbox,
+            dataset=dataset,
+            weights=weights,
+            output_path=output,
+            dem=results.dem,
+            suitability=results.suitability
+        )
+        console.print(f"[green]Exported suitability GeoTIFF to: {export_path}[/green]")
+    except Exception as e:
+        console.print(f"[red]Error: Export failed: {e}[/red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

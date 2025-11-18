@@ -39,6 +39,7 @@ pytest = "^7.4"
 pytest-cov = "^4.1"
 pytest-mock = "^3.12"
 pytest-asyncio = "^0.21"
+httpx = "^0.25"  # Required for FastAPI TestClient
 ruff = "^0.1"
 mypy = "^1.7"
 black = "^23.12"

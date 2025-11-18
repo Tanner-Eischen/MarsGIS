@@ -44,6 +44,7 @@ navigation:
   enable_smoothing: true
   smoothing_tolerance: 2.0  # cells
   cliff_threshold_m: 10.0  # meters
+  max_roughness_m: 20.0  # meters (roughness is std dev of elevation, so 20m is reasonable for 463m/pixel MOLA)
 
 logging:
   level: "INFO"

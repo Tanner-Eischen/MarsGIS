@@ -1,19 +1,22 @@
 """Analysis pipeline for terrain analysis and site selection."""
 
 from pathlib import Path
-from typing import Literal
+from typing import Dict, Literal, Optional
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from scipy import ndimage
 from skimage import measure
 
 from marshab.config import get_config
+from marshab.config.criteria_config import DEFAULT_CRITERIA
 from marshab.core.data_manager import DataManager
 from marshab.exceptions import AnalysisError
+from marshab.processing.criteria import CriteriaExtractor
 from marshab.processing.mcdm import MCDMEvaluator
 from marshab.processing.terrain import TerrainAnalyzer
-from marshab.types import BoundingBox, SiteCandidate
+from marshab.types import BoundingBox, SiteCandidate, TerrainMetrics
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -27,6 +30,10 @@ class AnalysisResults:
         sites: list[SiteCandidate],
         top_site_id: int,
         top_site_score: float,
+        dem: Optional[xr.DataArray] = None,
+        metrics: Optional[TerrainMetrics] = None,
+        suitability: Optional[np.ndarray] = None,
+        criteria: Optional[Dict] = None,
     ):
         """Initialize analysis results.
 
@@ -34,10 +41,18 @@ class AnalysisResults:
             sites: List of identified site candidates
             top_site_id: ID of the top-ranked site
             top_site_score: Suitability score of the top site
+            dem: DEM DataArray (optional, for navigation)
+            metrics: TerrainMetrics (optional, for navigation)
+            suitability: Suitability array (optional, for navigation)
+            criteria: Criteria dictionary (optional, for navigation)
         """
         self.sites = sites
         self.top_site_id = top_site_id
         self.top_site_score = top_site_score
+        self.dem = dem
+        self.metrics = metrics
+        self.suitability = suitability
+        self.criteria = criteria
 
     def save(self, output_dir: Path) -> None:
         """Save analysis results to output directory.
@@ -75,16 +90,20 @@ class AnalysisPipeline:
         roi: BoundingBox,
         dataset: Literal["mola", "hirise", "ctx"] = "mola",
         threshold: float = 0.7,
+        criteria_weights: Optional[Dict[str, float]] = None,
+        mcdm_method: Literal["weighted_sum", "topsis"] = "weighted_sum"
     ) -> AnalysisResults:
-        """Run complete terrain analysis pipeline.
+        """Run complete analysis pipeline.
 
         Args:
             roi: Region of interest
-            dataset: Dataset to use
-            threshold: Suitability threshold
+            dataset: DEM dataset to use
+            threshold: Minimum suitability threshold
+            criteria_weights: Optional custom weights (uses defaults if None)
+            mcdm_method: MCDM method to use
 
         Returns:
-            AnalysisResults with identified sites
+            AnalysisResults with sites and suitability raster
 
         Raises:
             AnalysisError: If analysis fails
@@ -94,6 +113,7 @@ class AnalysisPipeline:
             roi=roi.model_dump(),
             dataset=dataset,
             threshold=threshold,
+            mcdm_method=mcdm_method,
         )
 
         try:
@@ -118,66 +138,60 @@ class AnalysisPipeline:
             
             logger.info("DEM loaded", shape=dem.shape, cell_size_m=cell_size_m)
             
-            # 2. Calculate terrain metrics
-            logger.info("Calculating terrain metrics")
+            # 2. Terrain analysis
+            logger.info("Analyzing terrain")
             terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
             metrics = terrain_analyzer.analyze(dem)
             
-            elevation = dem.values.astype(np.float32)
+            # 3. Extract criteria
+            logger.info("Extracting criteria")
+            extractor = CriteriaExtractor(dem, metrics)
+            criteria = extractor.extract_all()
             
-            # 3. Apply MCDM evaluation
-            logger.info("Applying MCDM evaluation", threshold=threshold)
-            criteria_weights = config.analysis.criteria_weights.normalize()
+            # 4. Configure weights
+            criteria_config = DEFAULT_CRITERIA
             
-            # Prepare criteria dict - use available metrics
-            criteria = {
-                "slope": metrics.slope,
-                "roughness": metrics.roughness,
-                "elevation": elevation,  # Use elevation as proxy for elevation criterion
-            }
+            if criteria_weights:
+                # Update weights with custom values
+                for name, weight in criteria_weights.items():
+                    if name in criteria_config.criteria:
+                        criteria_config.criteria[name].weight = weight
             
-            # Define beneficial dict (lower is better for slope/roughness, higher for elevation)
-            beneficial = {
-                "slope": False,  # Lower slope is better
-                "roughness": False,  # Lower roughness is better
-                "elevation": True,  # Higher elevation can be better (but this is simplified)
-            }
+            criteria_config.validate_weights()
             
-            # Get weights dict (only include criteria we have)
-            weights_dict = {}
-            for key in criteria.keys():
-                if hasattr(criteria_weights, key):
-                    weights_dict[key] = getattr(criteria_weights, key)
+            weights = {name: c.weight for name, c in criteria_config.criteria.items()}
+            beneficial = {name: c.beneficial for name, c in criteria_config.criteria.items()}
             
-            # Normalize weights to sum to 1.0 for available criteria
-            total_weight = sum(weights_dict.values())
-            if total_weight > 0:
-                weights_dict = {k: v / total_weight for k, v in weights_dict.items()}
-            else:
-                # Default equal weights if none specified
-                weights_dict = {k: 1.0 / len(criteria) for k in criteria.keys()}
+            # 5. MCDM evaluation
+            logger.info("Evaluating suitability")
+            suitability = MCDMEvaluator.evaluate(
+                criteria,
+                weights,
+                beneficial,
+                method=mcdm_method
+            )
             
-            # Calculate suitability scores
-            suitability = MCDMEvaluator.weighted_sum(criteria, weights_dict, beneficial)
-            
-            # Apply threshold
+            # 6. Identify candidate sites
+            logger.info("Identifying candidate sites")
             suitable_mask = suitability >= threshold
             
             # Safe logging
             try:
                 mean_suit = float(np.nanmean(suitability)) if suitability.size > 0 else 0.0
+                max_suit = float(np.nanmax(suitability)) if suitability.size > 0 else 0.0
                 suitable_count = int(np.sum(suitable_mask)) if suitable_mask.size > 0 else 0
                 total_count = int(suitable_mask.size) if suitable_mask.size > 0 else 0
                 logger.info(
                     "MCDM evaluation complete",
                     mean_suitability=mean_suit,
+                    max_suitability=max_suit,
                     suitable_pixels=suitable_count,
                     total_pixels=total_count
                 )
             except Exception as e:
                 logger.warning("Failed to log MCDM evaluation stats", error=str(e))
             
-            # 4. Extract and rank sites
+            # 7. Extract and rank sites
             logger.info("Extracting candidate sites")
             
             # Find connected regions above threshold
@@ -220,7 +234,7 @@ class AnalysisPipeline:
                 # Extract region data
                 region_slope = metrics.slope[region_mask]
                 region_roughness = metrics.roughness[region_mask]
-                region_elevation = elevation[region_mask]
+                region_elevation = metrics.elevation[region_mask]
                 region_suitability = suitability[region_mask]
                 
                 # Calculate mean properties for this region (handle empty arrays)
@@ -333,6 +347,10 @@ class AnalysisPipeline:
                 sites=sites,
                 top_site_id=top_site_id,
                 top_site_score=top_site_score,
+                dem=dem,
+                metrics=metrics,
+                suitability=suitability,
+                criteria=criteria,
             )
 
         except Exception as e:
@@ -340,5 +358,90 @@ class AnalysisPipeline:
                 "Analysis pipeline failed",
                 details={"roi": roi.model_dump(), "error": str(e)},
             )
+    
+    def save_results(self, results: AnalysisResults, output_dir: Path) -> None:
+        """Save analysis results for later use in navigation.
+        
+        Args:
+            results: AnalysisResults object with all analysis data
+            output_dir: Output directory
+        """
+        import pickle
+        import json
+        
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save complete results as pickle
+        results_file = output_dir / "analysis_results.pkl"
+        with open(results_file, 'wb') as f:
+            pickle.dump({
+                'dem': results.dem,
+                'metrics': results.metrics,
+                'sites': results.sites,
+                'suitability': results.suitability,
+                'criteria': results.criteria
+            }, f)
+        
+        logger.info(f"Saved analysis results pickle to {results_file}")
+        
+        # Save sites as GeoJSON
+        if results.sites:
+            sites_geojson = {
+                "type": "FeatureCollection",
+                "features": []
+            }
+            
+            for site in results.sites:
+                feature = {
+                    "type": "Feature",
+                    "properties": {
+                        "site_id": site.site_id,
+                        "area_km2": site.area_km2,
+                        "mean_slope_deg": site.mean_slope_deg,
+                        "mean_roughness": site.mean_roughness,
+                        "mean_elevation_m": site.mean_elevation_m,
+                        "suitability_score": site.suitability_score,
+                        "rank": site.rank
+                    }
+                }
+                
+                if site.polygon_coords:
+                    feature["geometry"] = {
+                        "type": "Polygon",
+                        "coordinates": [site.polygon_coords]
+                    }
+                else:
+                    feature["geometry"] = {
+                        "type": "Point",
+                        "coordinates": [site.lon, site.lat]
+                    }
+                
+                sites_geojson["features"].append(feature)
+            
+            sites_file = output_dir / "sites.geojson"
+            with open(sites_file, 'w') as f:
+                json.dump(sites_geojson, f, indent=2)
+            
+            logger.info(f"Saved sites GeoJSON to {sites_file}")
+        
+        # Save CSV file with sites data
+        sites_csv_file = output_dir / "sites.csv"
+        import pandas as pd
+        sites_data = []
+        for site in results.sites:
+            sites_data.append({
+                'site_id': site.site_id,
+                'lat': site.lat,
+                'lon': site.lon,
+                'area_km2': site.area_km2,
+                'mean_slope_deg': site.mean_slope_deg,
+                'mean_roughness': site.mean_roughness,
+                'mean_elevation_m': site.mean_elevation_m,
+                'suitability_score': site.suitability_score,
+                'rank': site.rank
+            })
+        df = pd.DataFrame(sites_data)
+        df.to_csv(sites_csv_file, index=False)
+        logger.info(f"Saved sites CSV to {sites_csv_file}")
 
 

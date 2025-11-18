@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import { getStatus } from '../services/api'
 
 export default function Dashboard() {
-  const { data: status, isLoading } = useQuery({
+  const { data: status, isLoading, error, isError } = useQuery({
     queryKey: ['status'],
     queryFn: getStatus,
+    retry: 1,
+    retryDelay: 1000,
   })
 
   return (
@@ -38,7 +40,24 @@ export default function Dashboard() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-8">Loading system status...</div>
+        <div className="text-center py-8">
+          <div className="text-lg mb-2">Loading system status...</div>
+          <div className="text-sm text-gray-400">Connecting to backend at http://localhost:5000</div>
+        </div>
+      ) : isError ? (
+        <div className="bg-red-900 border border-red-700 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-red-200 mb-2">⚠️ Backend Connection Error</h3>
+          <p className="text-red-300 mb-2">
+            Could not connect to the backend server at http://localhost:5000
+          </p>
+          <p className="text-sm text-red-400 mb-4">
+            Error: {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <div className="text-sm text-gray-400">
+            <p>Make sure the backend server is running:</p>
+            <code className="block bg-gray-800 p-2 rounded mt-2">poetry run python -m marshab.web.server</code>
+          </div>
+        </div>
       ) : status ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gray-800 rounded-lg p-6">

@@ -7,7 +7,7 @@ export default function Visualization() {
   const [dataset, setDataset] = useState('mola')
   const [showSites, setShowSites] = useState(true)
   const [showWaypoints, setShowWaypoints] = useState(true)
-  const [relief, setRelief] = useState(0)
+  const [relief, setRelief] = useState(1.0) // Default to shaded relief
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
 
   return (

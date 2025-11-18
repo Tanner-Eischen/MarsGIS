@@ -31,8 +31,12 @@ def test_calculate_aspect():
     aspect = analyzer.calculate_aspect(dem)
     
     assert aspect.shape == dem.shape
-    assert np.all(aspect >= 0)
-    assert np.all(aspect <= 360)
+    # Aspect can be -1 for flat areas, or 0-360 for valid slopes
+    valid_aspect = aspect[aspect >= 0]
+    if len(valid_aspect) > 0:
+        assert np.all(valid_aspect <= 360)
+    # All values should be either -1 (flat) or 0-360 (valid aspect)
+    assert np.all((aspect == -1) | ((aspect >= 0) & (aspect <= 360)))
 
 
 def test_calculate_roughness():
@@ -79,14 +83,21 @@ def test_terrain_analyzer_full(sample_terrain_data):
     assert metrics.aspect.shape == sample_terrain_data.shape
     assert metrics.roughness.shape == sample_terrain_data.shape
     assert metrics.tri.shape == sample_terrain_data.shape
+    assert metrics.hillshade.shape == sample_terrain_data.shape
+    assert metrics.elevation.shape == sample_terrain_data.shape
     
     # Verify all metrics are valid
     assert np.all(metrics.slope >= 0)
     assert np.all(metrics.slope <= 90)
-    assert np.all(metrics.aspect >= 0)
+    # Aspect can be -1 for flat areas, or 0-360 for sloped areas
+    assert np.all((metrics.aspect >= 0) | (metrics.aspect == -1))
     assert np.all(metrics.aspect <= 360)
     assert np.all(metrics.roughness >= 0)
     assert np.all(metrics.tri >= 0)
+    # Hillshade should be uint8 (0-255)
+    assert metrics.hillshade.dtype == np.uint8
+    assert np.all(metrics.hillshade >= 0)
+    assert np.all(metrics.hillshade <= 255)
 
 
 def test_generate_cost_surface():

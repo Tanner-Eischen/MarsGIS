@@ -61,9 +61,11 @@ class TerrainMetrics(NamedTuple):
     """Terrain analysis outputs from DEM processing."""
 
     slope: np.ndarray  # Slope in degrees (0-90)
-    aspect: np.ndarray  # Aspect in degrees (0-360, 0=North)
+    aspect: np.ndarray  # Aspect in degrees (0-360, 0=North, -1 for flat areas)
     roughness: np.ndarray  # Terrain roughness (standard deviation of elevation)
     tri: np.ndarray  # Terrain Ruggedness Index
+    hillshade: np.ndarray  # Hillshade for visualization (0-255, uint8)
+    elevation: np.ndarray  # Elevation array (meters)
 
 
 class CriteriaWeights(BaseModel):

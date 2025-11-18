@@ -85,6 +85,7 @@ class NavigationConfig(BaseModel):
     enable_smoothing: bool = Field(True, description="Enable path smoothing to reduce waypoints")
     smoothing_tolerance: float = Field(2.0, gt=0, description="Path smoothing tolerance (cells)")
     cliff_threshold_m: float = Field(10.0, gt=0, description="Elevation change threshold for cliff detection (meters)")
+    max_roughness_m: float = Field(20.0, gt=0, description="Maximum traversable roughness in meters (roughness is std dev of elevation)")
 
     def get_weights_for_strategy(self) -> dict[str, float]:
         """Get weight configuration based on selected strategy.

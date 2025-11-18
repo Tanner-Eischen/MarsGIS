@@ -27,8 +27,18 @@ def cost_map_with_obstacle():
 def cost_map_fully_blocked():
     """Create a cost map with no path."""
     cost_map = np.ones((10, 10))
-    # Block everything except start and goal
-    cost_map[1:9, 1:9] = np.inf
+    # Block everything except start and goal positions
+    # Block all rows except 0 and 9, and all columns except 0 and 9
+    # This creates a border-only path, but we'll block the corners too
+    cost_map[1:9, :] = np.inf  # Block all middle rows
+    cost_map[:, 1:9] = np.inf  # Block all middle columns
+    # Now block the corners that connect start to goal
+    # Block row 0 except start, block row 9 except goal
+    cost_map[0, 1:] = np.inf  # Block row 0 after start
+    cost_map[9, :-1] = np.inf  # Block row 9 before goal
+    # Block column 0 except start, block column 9 except goal
+    cost_map[1:, 0] = np.inf  # Block column 0 after start
+    cost_map[:-1, 9] = np.inf  # Block column 9 before goal
     return cost_map
 
 
@@ -68,9 +78,10 @@ def test_astar_path_with_obstacle(cost_map_with_obstacle):
     assert path[0] == start
     assert path[-1] == goal
     
-    # Path should avoid the obstacle (rows 4-5)
+    # Path should avoid the obstacle (rows 4-6 are blocked)
+    # The obstacle is in rows 4-6 (inclusive), so path should not go through rows 4, 5, or 6
     for pos in path:
-        assert pos[0] not in [4, 5] or pos[1] not in range(10)
+        assert pos[0] not in [4, 5, 6], f"Path goes through blocked row {pos[0]} at position {pos}"
 
 
 def test_astar_no_path(cost_map_fully_blocked):
@@ -158,7 +169,8 @@ def test_astar_get_neighbors_obstacles(cost_map_with_obstacle):
     # Position next to obstacle should have fewer neighbors
     neighbors = pathfinder.get_neighbors((3, 5))
     # Should not include positions in rows 4-5 (obstacle)
-    for _, (row, col), _ in neighbors:
+    # get_neighbors returns (row, col, cost) tuples
+    for row, col, cost in neighbors:
         assert row not in [4, 5]
 
 
@@ -190,7 +202,8 @@ def test_astar_waypoints_spacing(simple_cost_map):
     cost_map = np.ones((25, 25))
     pathfinder = AStarPathfinder(cost_map, cell_size_m=1.0)
     
-    waypoints = pathfinder.find_path_with_waypoints(start, goal, max_waypoint_spacing=5)
+    max_waypoint_spacing = 5  # Spacing parameter
+    waypoints = pathfinder.find_path_with_waypoints(start, goal, max_waypoint_spacing=max_waypoint_spacing)
     
     # Check spacing between consecutive waypoints (except last)
     for i in range(len(waypoints) - 1):

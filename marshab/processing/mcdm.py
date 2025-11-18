@@ -1,6 +1,6 @@
 """Multi-Criteria Decision Making (MCDM) for site suitability."""
 
-from typing import Dict
+from typing import Dict, Literal
 
 import numpy as np
 
@@ -51,8 +51,11 @@ class MCDMEvaluator:
             # Lower is better (cost criterion)
             normalized = (data_max - data) / (data_max - data_min)
         
-        # Ensure result is finite
-        normalized = np.where(np.isfinite(normalized), normalized, 0.5)
+        # Preserve NaN values - don't replace with 0.5
+        # Only replace infinite values, keep NaN as NaN
+        normalized = np.where(np.isfinite(normalized), normalized, np.nan)
+        # Replace inf with NaN
+        normalized = np.where(np.isinf(normalized), np.nan, normalized)
 
         return normalized
 
@@ -108,8 +111,8 @@ class MCDMEvaluator:
         
         return suitability
     
+    @staticmethod
     def topsis(
-        self,
         criteria: Dict[str, np.ndarray],
         weights: Dict[str, float],
         beneficial: Dict[str, bool]
@@ -177,4 +180,31 @@ class MCDMEvaluator:
         )
         
         return topsis_score
+    
+    @staticmethod
+    def evaluate(
+        criteria: Dict[str, np.ndarray],
+        weights: Dict[str, float],
+        beneficial: Dict[str, bool],
+        method: Literal["weighted_sum", "topsis"] = "weighted_sum"
+    ) -> np.ndarray:
+        """Evaluate suitability using specified MCDM method.
+        
+        Args:
+            criteria: Criterion name -> values array
+            weights: Criterion name -> weight
+            beneficial: Criterion name -> benefit direction
+            method: MCDM method to use
+        
+        Returns:
+            Suitability score array [0, 1]
+        """
+        logger.info(f"Evaluating suitability using {method}")
+        
+        if method == "weighted_sum":
+            return MCDMEvaluator.weighted_sum(criteria, weights, beneficial)
+        elif method == "topsis":
+            return MCDMEvaluator.topsis(criteria, weights, beneficial)
+        else:
+            raise ValueError(f"Unknown MCDM method: {method}")
 

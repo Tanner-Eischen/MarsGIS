@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { analyzeTerrain, AnalysisRequest, SiteCandidate } from '../services/api'
+import { analyzeTerrain, AnalysisRequest } from '../services/api'
 
 export default function TerrainAnalysis() {
   const [roi, setRoi] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 })

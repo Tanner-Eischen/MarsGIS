@@ -98,7 +98,7 @@ class TestMCDMEvaluator:
         weights = {"slope": 0.6, "roughness": 0.4}
         beneficial = {"slope": False, "roughness": False}
 
-        topsis_score = MCDMEvaluator().topsis(criteria, weights, beneficial)
+        topsis_score = MCDMEvaluator.topsis(criteria, weights, beneficial)
 
         assert topsis_score.shape == (4,)
         assert np.all(topsis_score >= 0)
@@ -113,7 +113,7 @@ class TestMCDMEvaluator:
         weights = {"slope": 0.5, "roughness": 0.5}
         beneficial = {"slope": False, "roughness": False}
 
-        topsis_score = MCDMEvaluator().topsis(criteria, weights, beneficial)
+        topsis_score = MCDMEvaluator.topsis(criteria, weights, beneficial)
 
         # Should handle NaN gracefully
         assert topsis_score.shape == (4,)
@@ -129,7 +129,7 @@ class TestMCDMEvaluator:
         weights = {"benefit": 0.5, "cost": 0.5}
         beneficial = {"benefit": True, "cost": False}
 
-        topsis_score = MCDMEvaluator().topsis(criteria, weights, beneficial)
+        topsis_score = MCDMEvaluator.topsis(criteria, weights, beneficial)
 
         # Middle alternative should have highest score
         assert topsis_score[1] > topsis_score[0]
@@ -148,6 +148,31 @@ class TestMCDMEvaluator:
         assert np.all(suitability <= 1)
         # Should be monotonically decreasing (lower slope is better)
         assert suitability[0] > suitability[4]
+
+    def test_evaluate_method(self):
+        """Test evaluate() method dispatch."""
+        criteria = {
+            "slope": np.array([5, 10, 15], dtype=float),
+            "roughness": np.array([0.1, 0.2, 0.3], dtype=float),
+        }
+        weights = {"slope": 0.6, "roughness": 0.4}
+        beneficial = {"slope": False, "roughness": False}
+
+        # Test weighted_sum method
+        result_ws = MCDMEvaluator.evaluate(criteria, weights, beneficial, method="weighted_sum")
+        assert result_ws.shape == (3,)
+        assert np.all(result_ws >= 0)
+        assert np.all(result_ws <= 1)
+
+        # Test topsis method
+        result_topsis = MCDMEvaluator.evaluate(criteria, weights, beneficial, method="topsis")
+        assert result_topsis.shape == (3,)
+        assert np.all(result_topsis >= 0)
+        assert np.all(result_topsis <= 1)
+
+        # Test invalid method
+        with pytest.raises(ValueError, match="Unknown MCDM method"):
+            MCDMEvaluator.evaluate(criteria, weights, beneficial, method="invalid")
 
 
 

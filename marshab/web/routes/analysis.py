@@ -1,6 +1,7 @@
 """Terrain analysis endpoints."""
 
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -9,6 +10,7 @@ from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.exceptions import AnalysisError
 from marshab.types import BoundingBox
 from marshab.utils.logging import get_logger
+from marshab.web.routes.progress import ProgressTracker, generate_task_id
 
 logger = get_logger(__name__)
 
@@ -21,6 +23,7 @@ class AnalysisRequest(BaseModel):
     roi: list[float] = Field(..., description="Region of interest [lat_min, lat_max, lon_min, lon_max]")
     dataset: str = Field("mola", description="Dataset to use (mola, hirise, ctx)")
     threshold: float = Field(0.7, ge=0, le=1, description="Suitability threshold (0-1)")
+    task_id: Optional[str] = Field(None, description="Optional task ID for progress tracking (client-generated)")
 
 
 class SiteCandidateResponse(BaseModel):
@@ -46,6 +49,7 @@ class AnalysisResponse(BaseModel):
     top_site_id: int
     top_site_score: float
     output_dir: str
+    task_id: str = Field(None, description="Task ID for progress tracking")
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
@@ -72,13 +76,24 @@ async def analyze_terrain(request: AnalysisRequest):
                 detail=f"Invalid dataset. Must be one of: {', '.join(valid_datasets)}",
             )
         
+        # Use provided task_id or generate new one
+        task_id = request.task_id or generate_task_id()
+        
+        # Create progress tracker (queue will be created when WebSocket connects)
+        progress_tracker = ProgressTracker(task_id)
+        
+        # Progress callback wrapper
+        def progress_callback(stage: str, progress: float, message: str):
+            progress_tracker.update(stage, progress, message)
+        
         # Run analysis
-        logger.info("Running terrain analysis", roi=bbox.model_dump(), threshold=request.threshold)
+        logger.info("Running terrain analysis", roi=bbox.model_dump(), threshold=request.threshold, task_id=task_id)
         pipeline = AnalysisPipeline()
         results = pipeline.run(
             roi=bbox,
             dataset=request.dataset.lower(),
             threshold=request.threshold,
+            progress_callback=progress_callback,
         )
         
         # Convert sites to response format
@@ -109,6 +124,7 @@ async def analyze_terrain(request: AnalysisRequest):
             top_site_id=results.top_site_id,
             top_site_score=results.top_site_score,
             output_dir=output_dir,
+            task_id=task_id,
         )
     except AnalysisError as e:
         logger.error("Analysis failed", error=str(e))

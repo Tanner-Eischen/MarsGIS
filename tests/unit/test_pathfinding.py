@@ -25,20 +25,23 @@ def cost_map_with_obstacle():
 
 @pytest.fixture
 def cost_map_fully_blocked():
-    """Create a cost map with no path."""
+    """Create a cost map with no path from (0,0) to (9,9)."""
     cost_map = np.ones((10, 10))
     # Block everything except start and goal positions
-    # Block all rows except 0 and 9, and all columns except 0 and 9
-    # This creates a border-only path, but we'll block the corners too
-    cost_map[1:9, :] = np.inf  # Block all middle rows
-    cost_map[:, 1:9] = np.inf  # Block all middle columns
-    # Now block the corners that connect start to goal
-    # Block row 0 except start, block row 9 except goal
-    cost_map[0, 1:] = np.inf  # Block row 0 after start
-    cost_map[9, :-1] = np.inf  # Block row 9 before goal
-    # Block column 0 except start, block column 9 except goal
-    cost_map[1:, 0] = np.inf  # Block column 0 after start
-    cost_map[:-1, 9] = np.inf  # Block column 9 before goal
+    # Make start (0,0) and goal (9,9) passable, but block all paths between them
+    # Strategy: Block all cells except start and goal, ensuring no path exists
+    cost_map[:, :] = np.inf  # Block everything first
+    cost_map[0, 0] = 1.0  # Start is passable
+    cost_map[9, 9] = 1.0  # Goal is passable
+    # Block all neighbors of start and goal to ensure no path exists
+    # Block all neighbors of (0,0)
+    cost_map[1, 0] = np.inf  # Down from start
+    cost_map[0, 1] = np.inf  # Right from start
+    cost_map[1, 1] = np.inf  # Diagonal from start
+    # Block all neighbors of (9,9)
+    cost_map[8, 9] = np.inf  # Up from goal
+    cost_map[9, 8] = np.inf  # Left from goal
+    cost_map[8, 8] = np.inf  # Diagonal from goal
     return cost_map
 
 

@@ -306,6 +306,8 @@ export default function DecisionLab() {
                 dataset={dataset}
                 showSites={sites.length > 0}
                 showWaypoints={false}
+                onSiteSelect={setSelectedSite}
+                selectedSiteId={selectedSite}
               />
             )}
           </div>

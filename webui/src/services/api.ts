@@ -71,6 +71,7 @@ export interface AnalysisRequest {
   roi: [number, number, number, number]
   dataset?: string
   threshold?: number
+  task_id?: string
 }
 
 export interface SiteCandidate {
@@ -92,6 +93,7 @@ export interface AnalysisResponse {
   top_site_id: number
   top_site_score: number
   output_dir: string
+  task_id?: string
 }
 
 export interface NavigationRequest {
@@ -102,6 +104,7 @@ export interface NavigationRequest {
   max_waypoint_spacing_m?: number
   max_slope_deg?: number
   strategy?: 'safest' | 'balanced' | 'direct'  // Note: strategy is handled by backend config
+  task_id?: string
 }
 
 export interface Waypoint {
@@ -116,6 +119,7 @@ export interface NavigationResponse {
   waypoints: Waypoint[]
   path_length_m?: number
   num_waypoints: number
+  task_id?: string
 }
 
 export const getStatus = async (): Promise<StatusResponse> => {

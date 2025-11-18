@@ -1,7 +1,7 @@
 """Analysis pipeline for terrain analysis and site selection."""
 
 from pathlib import Path
-from typing import Dict, Literal, Optional
+from typing import Dict, Literal, Optional, Callable
 
 import numpy as np
 import pandas as pd
@@ -91,7 +91,8 @@ class AnalysisPipeline:
         dataset: Literal["mola", "hirise", "ctx"] = "mola",
         threshold: float = 0.7,
         criteria_weights: Optional[Dict[str, float]] = None,
-        mcdm_method: Literal["weighted_sum", "topsis"] = "weighted_sum"
+        mcdm_method: Literal["weighted_sum", "topsis"] = "weighted_sum",
+        progress_callback: Optional[Callable[[str, float, str], None]] = None
     ) -> AnalysisResults:
         """Run complete analysis pipeline.
 
@@ -120,8 +121,12 @@ class AnalysisPipeline:
             config = get_config()
             
             # 1. Load DEM for ROI
+            if progress_callback:
+                progress_callback("dem_loading", 0.0, "Loading DEM data...")
             logger.info("Loading DEM data", dataset=dataset, roi=roi.model_dump())
             dem = self.data_manager.get_dem_for_roi(roi, dataset, download=True, clip=True)
+            if progress_callback:
+                progress_callback("dem_loading", 0.2, "DEM loaded successfully")
             
             # Extract cell size from DEM (use resolution from config if available, else estimate from bounds)
             if dataset in config.data_sources:
@@ -139,14 +144,22 @@ class AnalysisPipeline:
             logger.info("DEM loaded", shape=dem.shape, cell_size_m=cell_size_m)
             
             # 2. Terrain analysis
+            if progress_callback:
+                progress_callback("terrain_metrics", 0.2, "Analyzing terrain metrics...")
             logger.info("Analyzing terrain")
             terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
             metrics = terrain_analyzer.analyze(dem)
+            if progress_callback:
+                progress_callback("terrain_metrics", 0.5, "Terrain metrics calculated")
             
             # 3. Extract criteria
+            if progress_callback:
+                progress_callback("criteria_extraction", 0.5, "Extracting criteria...")
             logger.info("Extracting criteria")
             extractor = CriteriaExtractor(dem, metrics)
             criteria = extractor.extract_all()
+            if progress_callback:
+                progress_callback("criteria_extraction", 0.7, "Criteria extracted")
             
             # 4. Configure weights
             criteria_config = DEFAULT_CRITERIA
@@ -163,6 +176,8 @@ class AnalysisPipeline:
             beneficial = {name: c.beneficial for name, c in criteria_config.criteria.items()}
             
             # 5. MCDM evaluation
+            if progress_callback:
+                progress_callback("mcdm_evaluation", 0.7, "Evaluating suitability...")
             logger.info("Evaluating suitability")
             suitability = MCDMEvaluator.evaluate(
                 criteria,
@@ -170,6 +185,8 @@ class AnalysisPipeline:
                 beneficial,
                 method=mcdm_method
             )
+            if progress_callback:
+                progress_callback("mcdm_evaluation", 0.9, "Suitability evaluation complete")
             
             # 6. Identify candidate sites
             logger.info("Identifying candidate sites")
@@ -192,6 +209,8 @@ class AnalysisPipeline:
                 logger.warning("Failed to log MCDM evaluation stats", error=str(e))
             
             # 7. Extract and rank sites
+            if progress_callback:
+                progress_callback("site_extraction", 0.9, "Extracting candidate sites...")
             logger.info("Extracting candidate sites")
             
             # Find connected regions above threshold
@@ -342,6 +361,9 @@ class AnalysisPipeline:
                 top_site_id=top_site_id,
                 top_site_score=top_site_score,
             )
+            
+            if progress_callback:
+                progress_callback("site_extraction", 1.0, f"Analysis complete: {len(sites)} sites found")
 
             return AnalysisResults(
                 sites=sites,

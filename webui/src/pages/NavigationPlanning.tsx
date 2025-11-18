@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { planNavigation, NavigationRequest } from '../services/api'
+import ProgressBar from '../components/ProgressBar'
+
+// Generate UUID for task tracking
+function generateTaskId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0
+    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
 
 export default function NavigationPlanning() {
   const [siteId, setSiteId] = useState(1)
@@ -8,16 +18,32 @@ export default function NavigationPlanning() {
   const [startLon, setStartLon] = useState(180.0)
   const [strategy, setStrategy] = useState<'safest' | 'balanced' | 'direct'>('balanced')
   const [analysisDir, setAnalysisDir] = useState('data/output')
+  const [taskId, setTaskId] = useState<string | null>(null)
 
   const mutation = useMutation({
-    mutationFn: (request: NavigationRequest) => planNavigation(request),
+    mutationFn: async (request: NavigationRequest & { task_id?: string }) => {
+      // Generate task_id before making request
+      const taskId = generateTaskId()
+      // Set task_id immediately so WebSocket can connect
+      setTaskId(taskId)
+      // Add task_id to request
+      return planNavigation({ ...request, task_id: taskId })
+    },
+    onSuccess: (data) => {
+      // Task_id should already be set, but keep this for compatibility
+      if (data.task_id && !taskId) {
+        setTaskId(data.task_id)
+      }
+    },
     onError: (error: any) => {
       alert(`Navigation planning failed: ${error.response?.data?.detail || error.message}`)
+      setTaskId(null)
     },
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setTaskId(null) // Reset task_id for new request
     mutation.mutate({
       site_id: siteId,
       start_lat: startLat,
@@ -31,6 +57,12 @@ export default function NavigationPlanning() {
     <div className="space-y-6">
       <h2 className="text-3xl font-bold">Navigation Planning</h2>
       
+      {taskId && (
+        <div className="mb-4">
+          <ProgressBar taskId={taskId} onComplete={() => setTaskId(null)} />
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-6 space-y-4">
         <div>
           <label className="block text-sm font-medium mb-2">Target Site ID</label>

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ from marshab.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXAclass NavigationEngine:
+class NavigationEngine:
     """Generates rover navigation commands and waypoints."""
 
     def __init__(self):
@@ -220,7 +220,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         start_lat: float,
         start_lon: float,
         max_waypoint_spacing_m: float = 100.0,
-        max_slope_deg: float = 25.0
+        max_slope_deg: float = 25.0,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None
     ) -> pd.DataFrame:
         """Plan navigation route to target site.
 
@@ -243,6 +244,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         )
 
         try:
+            if progress_callback:
+                progress_callback("cost_map_generation", 0.0, "Loading analysis results...")
+            
             # Try to load from pickle file first
             try:
                 results = self._load_analysis_results(analysis_dir)
@@ -381,6 +385,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                     logger.info("Adjusted start position to nearest valid cell", new_start_pixel=start_pixel)
             
             # Generate cost surface with navigation config
+            if progress_callback:
+                progress_callback("cost_map_generation", 0.3, "Generating cost map...")
             nav_config = self.config.navigation
             cost_map = generate_cost_surface(
                 metrics.slope,
@@ -394,6 +400,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                 cell_size_m=cell_size_m,
                 cliff_threshold_m=nav_config.cliff_threshold_m
             )
+            if progress_callback:
+                progress_callback("cost_map_generation", 0.3, "Cost map generated")
             
             # Validate start/goal are passable before pathfinding
             start_cost = cost_map[start_pixel[0], start_pixel[1]]
@@ -602,6 +610,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
             # Calculate waypoint spacing in pixels (adjusted for downsampling)
             max_spacing_pixels = int(max_waypoint_spacing_m / (resolution_m * downsample_factor))
             
+            if progress_callback:
+                progress_callback("pathfinding", 0.3, "Running A* pathfinding...")
+            
             try:
                 waypoint_pixels = pathfinder.find_path_with_waypoints(
                     start_pixel,
@@ -633,6 +644,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                 raise
             
             logger.info(f"Found path with {len(waypoint_pixels)} waypoints")
+            
+            if progress_callback:
+                progress_callback("waypoint_generation", 0.9, "Generating waypoints...")
             
             # Convert waypoints to lat/lon
             waypoints_latlon = []
@@ -669,14 +683,19 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
             # Create DataFrame
             waypoints_df = pd.DataFrame(waypoints_site)
             
+            total_distance = float(
+                np.sqrt(waypoints_df['x_site'].iloc[-1]**2 + 
+                       waypoints_df['y_site'].iloc[-1]**2)
+            ) if len(waypoints_df) > 0 else 0.0
+            
             logger.info(
                 "Navigation plan complete",
                 num_waypoints=len(waypoints_df),
-                total_distance_m=float(
-                    np.sqrt(waypoints_df['x_site'].iloc[-1]**2 + 
-                           waypoints_df['y_site'].iloc[-1]**2)
-                ) if len(waypoints_df) > 0 else 0.0
+                total_distance_m=total_distance
             )
+            
+            if progress_callback:
+                progress_callback("waypoint_generation", 1.0, f"Navigation plan complete: {len(waypoints_df)} waypoints")
             
             return waypoints_df
 

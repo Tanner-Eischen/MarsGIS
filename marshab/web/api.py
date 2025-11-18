@@ -11,7 +11,7 @@ import time
 from marshab.config import get_config
 from marshab.utils.logging import configure_logging, get_logger
 
-from .routes import analysis, download, navigation, status, visualization, site_analysis, route_analysis, mission_scenarios, export, projects, health, examples
+from .routes import analysis, download, navigation, status, visualization, site_analysis, route_analysis, mission_scenarios, export, projects, health, examples, progress
 
 logger = get_logger(__name__)
 
@@ -115,6 +115,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router, tags=["projects"])
     app.include_router(health.router, tags=["health"])
     app.include_router(examples.router, tags=["examples"])
+    app.include_router(progress.router, tags=["progress"])
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):

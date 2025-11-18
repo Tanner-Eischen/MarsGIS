@@ -12,6 +12,7 @@ from marshab.config import PathfindingStrategy, get_config
 from marshab.core.navigation_engine import NavigationEngine
 from marshab.exceptions import NavigationError
 from marshab.utils.logging import get_logger
+from marshab.web.routes.progress import ProgressTracker, generate_task_id
 
 logger = get_logger(__name__)
 
@@ -29,6 +30,7 @@ class NavigationRequest(BaseModel):
     start_lon: float = Field(..., ge=0, le=360)
     max_waypoint_spacing_m: float = Field(100.0, gt=0)
     max_slope_deg: float = Field(25.0, gt=0, le=90)
+    task_id: Optional[str] = Field(None, description="Optional task ID for progress tracking (client-generated)")
 
 
 class NavigationResponse(BaseModel):
@@ -37,6 +39,7 @@ class NavigationResponse(BaseModel):
     num_waypoints: int
     total_distance_m: float
     site_id: int
+    task_id: str = Field(None, description="Task ID for progress tracking")
 
 
 @router.post("/plan-route", response_model=NavigationResponse)
@@ -55,6 +58,16 @@ async def plan_route(request: NavigationRequest):
             start_lon=request.start_lon
         )
         
+        # Use provided task_id or generate new one
+        task_id = request.task_id or generate_task_id()
+        
+        # Create progress tracker (queue will be created when WebSocket connects)
+        progress_tracker = ProgressTracker(task_id)
+        
+        # Progress callback wrapper (will be called from thread pool)
+        def progress_callback(stage: str, progress: float, message: str):
+            progress_tracker.update(stage, progress, message)
+        
         engine = NavigationEngine()
         
         # Run CPU-bound pathfinding in thread pool to avoid blocking event loop
@@ -69,7 +82,8 @@ async def plan_route(request: NavigationRequest):
                         start_lat=request.start_lat,
                         start_lon=request.start_lon,
                         max_waypoint_spacing_m=request.max_waypoint_spacing_m,
-                        max_slope_deg=request.max_slope_deg
+                        max_slope_deg=request.max_slope_deg,
+                        progress_callback=progress_callback
                     )
                 ),
                 timeout=120.0  # 2 minute timeout for pathfinding
@@ -100,7 +114,8 @@ async def plan_route(request: NavigationRequest):
             waypoints=waypoints_df.to_dict('records'),
             num_waypoints=len(waypoints_df),
             total_distance_m=total_distance,
-            site_id=request.site_id
+            site_id=request.site_id,
+            task_id=task_id
         )
         
     except HTTPException:

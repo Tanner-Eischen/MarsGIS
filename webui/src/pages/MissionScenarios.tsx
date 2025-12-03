@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import MissionLandingWizard from '../components/MissionLandingWizard'
 import RoverTraverseWizard from '../components/RoverTraverseWizard'
+import { useGeoPlan } from '../context/GeoPlanContext'
 
 export default function MissionScenarios() {
   const [activeTab, setActiveTab] = useState<'landing' | 'traverse'>('landing')
+  const { landingSites } = useGeoPlan()
 
   return (
     <div className="space-y-6">
@@ -34,7 +36,7 @@ export default function MissionScenarios() {
       </div>
 
       {/* Wizard Content */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="bg-gray-800 rounded-lg p-6 space-y-6">
         {activeTab === 'landing' ? (
           <MissionLandingWizard />
         ) : (

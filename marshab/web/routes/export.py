@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from marshab.analysis.export import export_suitability_geotiff, generate_analysis_report
 from marshab.core.analysis_pipeline import AnalysisPipeline
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.config.preset_loader import PresetLoader
 from marshab.utils.logging import get_logger
 

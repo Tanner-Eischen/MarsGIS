@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 from typing import Dict
 
-from marshab.types import TerrainMetrics
+from marshab.models import TerrainMetrics
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

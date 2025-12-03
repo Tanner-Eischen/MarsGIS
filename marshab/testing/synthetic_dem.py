@@ -175,8 +175,16 @@ def create_synthetic_dem_complex(
         
         elif feature_type == "crater":
             depth = feature.get("depth", 100.0)
-            crater_dem = create_synthetic_dem_crater(size, center, depth, radius, 0.0, cell_size_m)
-            elevation_array += crater_dem.values - 0.0  # Subtract crater
+            # Create crater by subtracting from base elevation
+            height_px, width_px = size
+            center_row, center_col = center
+            y_coords = np.arange(height_px)
+            x_coords = np.arange(width_px)
+            y_grid, x_grid = np.meshgrid(y_coords, x_coords, indexing='ij')
+            dist = np.sqrt((y_grid - center_row)**2 + (x_grid - center_col)**2)
+            # Subtract crater depth (Gaussian depression)
+            crater_depression = depth * np.exp(-(dist**2) / (2 * (radius**2)))
+            elevation_array -= crater_depression
     
     dem = xr.DataArray(
         elevation_array,

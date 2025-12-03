@@ -6,7 +6,7 @@ import numpy as np
 from scipy import ndimage
 import xarray as xr
 
-from marshab.types import TerrainMetrics
+from marshab.models import TerrainMetrics
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

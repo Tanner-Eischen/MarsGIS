@@ -35,17 +35,9 @@ class TestAnalysisPipeline:
             dims=["y", "x"],
             coords={"y": np.arange(100), "x": np.arange(100)}
         )
-        # Mock rio accessor using object.__setattr__ to bypass xarray restrictions
-        # This is needed because xarray DataArray doesn't allow setting arbitrary attributes
-        rio_mock = MagicMock()
-        rio_mock.bounds.return_value = type('Bounds', (), {
-            'left': 180.0,
-            'right': 181.0,
-            'bottom': 40.0,
-            'top': 41.0
-        })()
-        rio_mock.res = (0.01, 0.01)
-        object.__setattr__(dem, 'rio', rio_mock)
+        # Note: rio accessor is only needed if the code checks for it
+        # The analysis pipeline checks hasattr(dem, 'rio') before using it
+        # So we don't need to set it for basic tests
         return dem
 
     @pytest.fixture

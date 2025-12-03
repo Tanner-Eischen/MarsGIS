@@ -7,7 +7,7 @@ from typing import Optional, Dict, List
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.analysis.site_scoring import SiteScoringEngine
 from marshab.config.preset_loader import PresetLoader
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

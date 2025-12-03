@@ -37,14 +37,15 @@ class TestNavigationPipeline:
                 dims=["y", "x"],
                 coords={"y": np.arange(100), "x": np.arange(100)}
             )
-            mock_dem.rio = pytest.mock.MagicMock()
+            mock_dem.rio = MagicMock()
             mock_dem.rio.bounds.return_value = (180.0, 40.0, 180.5, 40.5)
+            mock_dem.rio.res = (463.0, 463.0)
             mock_dem.attrs = {'resolution_m': 463.0}
             mock_get_dem.return_value = mock_dem
             
             # Mock criteria extraction
-            with pytest.mock.patch('marshab.core.analysis_pipeline.CriteriaExtractor') as mock_extractor:
-                mock_ext = pytest.mock.MagicMock()
+            with patch('marshab.core.analysis_pipeline.CriteriaExtractor') as mock_extractor:
+                mock_ext = MagicMock()
                 mock_extractor.return_value = mock_ext
                 mock_ext.extract_all.return_value = {
                     'slope': np.ones((100, 100)) * 5.0,

@@ -5,7 +5,7 @@ import numpy as np
 from dataclasses import dataclass
 
 from marshab.processing.mcdm import MCDMEvaluator
-from marshab.types import SiteCandidate
+from marshab.models import SiteCandidate
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

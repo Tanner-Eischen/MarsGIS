@@ -48,21 +48,21 @@ class TestNavigationEngine:
     @pytest.fixture
     def mock_dem(self):
         """Create a mock DEM DataArray."""
+        # Use MagicMock to allow setting rio attribute
+        dem = MagicMock(spec=xr.DataArray)
+        dem.shape = (100, 100)
         elevation = np.random.randn(100, 100) * 50 + 1000.0
-        dem = xr.DataArray(
-            elevation,
-            dims=["y", "x"],
-            coords={"y": np.arange(100), "x": np.arange(100)}
-        )
-        # Mock rio accessor using object.__setattr__ to bypass xarray restrictions
+        dem.values = elevation
+        # Mock rio accessor
         rio_mock = MagicMock()
-        rio_mock.bounds.return_value = type('Bounds', (), {
+        bounds_obj = type('Bounds', (), {
             'left': 180.0,
             'right': 181.0,
             'bottom': 40.0,
             'top': 41.0
         })()
-        object.__setattr__(dem, 'rio', rio_mock)
+        rio_mock.bounds.return_value = bounds_obj
+        dem.rio = rio_mock
         return dem
 
     def test_plan_to_site_loads_site(self, engine, mock_sites_csv):
@@ -374,8 +374,14 @@ class TestNavigationEngine:
     
     def test_latlon_to_pixel(self, engine, mock_dem):
         """Test lat/lon to pixel conversion."""
-        # Mock DEM with rio accessor
-        mock_dem.rio.bounds.return_value = (180.0, 40.0, 181.0, 41.0)
+        # Mock DEM with rio accessor - ensure bounds() returns proper object
+        bounds_obj = type('Bounds', (), {
+            'left': 180.0,
+            'right': 181.0,
+            'bottom': 40.0,
+            'top': 41.0
+        })()
+        mock_dem.rio.bounds.return_value = bounds_obj
         
         row, col = engine._latlon_to_pixel(40.5, 180.5, mock_dem)
         
@@ -386,7 +392,13 @@ class TestNavigationEngine:
     
     def test_pixel_to_latlon(self, engine, mock_dem):
         """Test pixel to lat/lon conversion."""
-        mock_dem.rio.bounds.return_value = (180.0, 40.0, 181.0, 41.0)
+        bounds_obj = type('Bounds', (), {
+            'left': 180.0,
+            'right': 181.0,
+            'bottom': 40.0,
+            'top': 41.0
+        })()
+        mock_dem.rio.bounds.return_value = bounds_obj
         
         lat, lon = engine._pixel_to_latlon(50, 50, mock_dem)
         

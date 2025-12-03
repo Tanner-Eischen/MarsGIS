@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from marshab.config import get_config
 from marshab.utils.logging import get_logger
@@ -54,6 +55,24 @@ async def get_status():
     except Exception as e:
         logger.exception("Failed to get status")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+class DemoModeUpdate(BaseModel):
+    enabled: bool
+
+@router.get("/demo-mode")
+async def get_demo_mode():
+    config = get_config()
+    return {"enabled": bool(getattr(config, "demo_mode", False))}
+
+@router.post("/demo-mode")
+async def set_demo_mode(update: DemoModeUpdate):
+    config = get_config()
+    config.demo_mode = update.enabled
+    logger.info("Demo mode updated", enabled=update.enabled)
+    return {"enabled": config.demo_mode}
 
 
 

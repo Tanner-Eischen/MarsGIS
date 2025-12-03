@@ -9,7 +9,7 @@ import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from marshab.types import CriteriaWeights
+from marshab.models import CriteriaWeights
 
 
 class PathfindingStrategy(str, Enum):
@@ -131,6 +131,7 @@ class Config(BaseSettings):
     navigation: NavigationConfig = Field(default_factory=NavigationConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
+    demo_mode: bool = Field(False)
 
     model_config = SettingsConfigDict(
         env_prefix="MARSHAB_",

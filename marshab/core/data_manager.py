@@ -12,7 +12,7 @@ import xarray as xr
 from marshab.config import get_config
 from marshab.exceptions import DataError
 from marshab.processing.dem_loader import DEMLoader
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

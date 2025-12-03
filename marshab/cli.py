@@ -15,7 +15,7 @@ from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.core.navigation_engine import NavigationEngine
 from marshab.mission.scenarios import run_landing_site_scenario, run_rover_traverse_scenario, LandingScenarioParams, TraverseScenarioParams
 from marshab.analysis.export import export_suitability_geotiff, generate_analysis_report
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import configure_logging, get_logger
 
 # Disable Rich help to avoid compatibility issues

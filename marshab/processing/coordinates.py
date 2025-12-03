@@ -13,7 +13,7 @@ except ImportError:
     warnings.warn("SpiceyPy not available, using simplified transforms")
 
 from marshab.exceptions import CoordinateError
-from marshab.types import SiteOrigin
+from marshab.models import SiteOrigin
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

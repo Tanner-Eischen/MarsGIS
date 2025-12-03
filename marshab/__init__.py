@@ -5,7 +5,7 @@ __author__ = "MarsHab Development Team"
 __description__ = "Geospatial analysis for Mars habitat construction site selection"
 
 # Export commonly used types and functions
-from marshab.types import (
+from marshab.models import (
     BoundingBox,
     SiteOrigin,
     Waypoint,

@@ -12,6 +12,10 @@ A production-grade geospatial analysis system for identifying optimal Mars habit
 - **Terrain Analysis**: Automated calculation of slope, aspect, roughness, and terrain ruggedness index (TRI)
 - **Site Suitability Analysis**: Multi-criteria decision making (MCDM) with weighted sum and TOPSIS methods
 - **Rover Navigation Planning**: A* pathfinding algorithm with coordinate transformations to Mars SITE frame
+- **Solar Potential Analysis**: Calculate solar energy generation and mission cost savings from terrain data
+- **3D Terrain Visualization**: Interactive 3D visualization with Plotly.js showing sites and routes
+- **Cost Analysis**: Route cost breakdown and solar-powered mission cost savings calculations
+- **Web UI**: Modern React-based interface for all features
 - **Coordinate Transformations**: IAU_MARS to rover SITE frame transformations
 - **CLI Interface**: Comprehensive command-line interface for automation and scripting
 - **Docker Support**: Containerized deployment for reproducible environments
@@ -67,7 +71,14 @@ docker-compose run marshab --version
 
 ## Quick Start
 
-### Native Installation
+### Web UI (Recommended for Interactive Use)
+
+1. **Start Backend**: `poetry run python -m marshab.web.server`
+2. **Start Frontend**: `cd webui && npm run dev`
+3. **Open Browser**: http://localhost:4000
+4. **Follow Demo**: See `DEMO_WORKFLOW.md` for complete step-by-step guide
+
+### CLI (For Automation)
 
 ```bash
 # Run a complete analysis pipeline
@@ -86,6 +97,15 @@ This command will:
 2. Analyze terrain characteristics
 3. Identify suitable construction sites
 4. Generate navigation waypoints to the top-ranked site
+
+### Demo Workflow
+
+For a complete demonstration showcasing all features (3D visualization, solar analysis, cost savings), see **DEMO_WORKFLOW.md**.
+
+Pre-load demo data:
+```powershell
+.\scripts\prepare_demo_data.ps1
+```
 
 ## Usage
 

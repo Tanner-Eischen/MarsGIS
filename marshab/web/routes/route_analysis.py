@@ -9,7 +9,7 @@ from marshab.analysis.route_cost import RouteCostEngine
 from marshab.analysis.routing import plan_route, compute_route_cost
 from marshab.config.preset_loader import PresetLoader
 from marshab.core.data_manager import DataManager
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

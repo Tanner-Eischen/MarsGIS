@@ -18,8 +18,8 @@ def simple_cost_map():
 def cost_map_with_obstacle():
     """Create a cost map with an obstacle."""
     cost_map = np.ones((10, 10))
-    # Create a wall in the middle
-    cost_map[4:6, :] = np.inf
+    # Create a wall in the middle (rows 4-5, columns 3-7 to leave paths around)
+    cost_map[4:6, 3:7] = np.inf
     return cost_map
 
 
@@ -81,10 +81,12 @@ def test_astar_path_with_obstacle(cost_map_with_obstacle):
     assert path[0] == start
     assert path[-1] == goal
     
-    # Path should avoid the obstacle (rows 4-6 are blocked)
-    # The obstacle is in rows 4-6 (inclusive), so path should not go through rows 4, 5, or 6
+    # Path should avoid the obstacle (rows 4-5, columns 3-6 are blocked)
+    # Check that path doesn't go through the blocked area
     for pos in path:
-        assert pos[0] not in [4, 5, 6], f"Path goes through blocked row {pos[0]} at position {pos}"
+        row, col = pos
+        if row in [4, 5] and col in [3, 4, 5, 6]:
+            pytest.fail(f"Path goes through blocked area at position {pos}")
 
 
 def test_astar_no_path(cost_map_fully_blocked):

@@ -12,7 +12,7 @@ from rasterio.transform import from_bounds
 import xarray as xr
 
 from marshab.core.analysis_pipeline import AnalysisResults
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

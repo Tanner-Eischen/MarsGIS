@@ -23,6 +23,12 @@ data_sources:
   ctx:
     url: "https://ode.rsl.wustl.edu/mars/data/ctx/"
     resolution_m: 18.0
+  tes_dci:
+    # TES Dust Cover Index - measures spectrally-obscuring surface dust
+    # Source: Ruff & Christensen (2002), J. Geophys. Res., DOI:10.1029/2001JE001580
+    url: "https://tes.asu.edu/~ruff/DCI/"
+    resolution_m: 3500.0  # ~3.5 km per pixel (16 pixels per degree)
+    description: "Mars Global Surveyor Thermal Emission Spectrometer Dust Cover Index"
 
 analysis:
   criteria_weights:

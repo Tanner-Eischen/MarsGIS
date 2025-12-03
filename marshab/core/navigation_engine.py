@@ -6,13 +6,13 @@ import pandas as pd
 import xarray as xr
 from scipy.spatial.distance import cdist
 
-from marshab.config import get_config
+from marshab.config import get_config, PathfindingStrategy
 from marshab.core.data_manager import DataManager
 from marshab.exceptions import NavigationError
 from marshab.processing.coordinates import CoordinateTransformer
 from marshab.processing.pathfinding import AStarPathfinder, smooth_path
 from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface
-from marshab.types import SiteOrigin, Waypoint, SiteCandidate
+from marshab.models import SiteOrigin, Waypoint, SiteCandidate
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -94,7 +94,8 @@ class NavigationEngine:
         self,
         lat: float,
         lon: float,
-        dem: xr.DataArray
+        dem: xr.DataArray,
+        roi: Optional[Tuple[float, float, float, float]] = None
     ) -> Tuple[int, int]:
         """Convert lat/lon to pixel coordinates.
         
@@ -221,7 +222,8 @@ class NavigationEngine:
         start_lon: float,
         max_waypoint_spacing_m: float = 100.0,
         max_slope_deg: float = 25.0,
-        progress_callback: Optional[Callable[[str, float, str], None]] = None
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+        strategy: Optional[PathfindingStrategy] = None
     ) -> pd.DataFrame:
         """Plan navigation route to target site.
 
@@ -257,7 +259,7 @@ class NavigationEngine:
             except NavigationError:
                 # Fallback to direct DEM loading (backward compatibility)
                 logger.warning("Pickle file not found, falling back to direct DEM loading")
-                from marshab.types import BoundingBox
+                from marshab.models import BoundingBox
                 
                 # Load site location from CSV
             sites_csv = analysis_dir / "sites.csv"
@@ -302,7 +304,7 @@ class NavigationEngine:
             # Convert sites from DataFrame to SiteCandidate objects
             sites = []
             for _, row in sites_df.iterrows():
-                from marshab.types import SiteCandidate
+                from marshab.models import SiteCandidate
                 site = SiteCandidate(
                     site_id=int(row["site_id"]),
                     geometry_type=row.get("geometry_type", "POINT"),
@@ -388,6 +390,17 @@ class NavigationEngine:
             if progress_callback:
                 progress_callback("cost_map_generation", 0.3, "Generating cost map...")
             nav_config = self.config.navigation
+            weights = {
+                "slope_weight": nav_config.slope_weight,
+                "roughness_weight": nav_config.roughness_weight,
+            }
+            if strategy is not None:
+                if strategy == PathfindingStrategy.SAFEST:
+                    weights = {"slope_weight": 50.0, "roughness_weight": 30.0}
+                elif strategy == PathfindingStrategy.BALANCED:
+                    weights = {"slope_weight": 10.0, "roughness_weight": 5.0}
+                elif strategy == PathfindingStrategy.DIRECT:
+                    weights = {"slope_weight": 2.0, "roughness_weight": 1.0}
             cost_map = generate_cost_surface(
                 metrics.slope,
                 metrics.roughness,
@@ -395,8 +408,8 @@ class NavigationEngine:
                 max_roughness=nav_config.max_roughness_m,  # Use configurable max roughness
                 elevation=metrics.elevation,
                 elevation_penalty_factor=0.1,
-                slope_weight=nav_config.slope_weight,
-                roughness_weight=nav_config.roughness_weight,
+                slope_weight=weights["slope_weight"],
+                roughness_weight=weights["roughness_weight"],
                 cell_size_m=cell_size_m,
                 cliff_threshold_m=nav_config.cliff_threshold_m
             )
@@ -464,8 +477,8 @@ class NavigationEngine:
                             # Update start pixel to the passable one
                             start_pixel = best_pixel
                             start_cost = cost_map[start_pixel[0], start_pixel[1]]
-                            start_slope_val = slope[start_pixel[0], start_pixel[1]]
-                            start_roughness_val = roughness[start_pixel[0], start_pixel[1]]
+                            start_slope_val = metrics.slope[start_pixel[0], start_pixel[1]]                                                                             
+                            start_roughness_val = metrics.roughness[start_pixel[0], start_pixel[1]]
                             start_elevation_val = metrics.elevation[start_pixel[0], start_pixel[1]]
                             logger.info(
                                 "Adjusted start position from edge cliff to nearby passable pixel",
@@ -668,24 +681,24 @@ class NavigationEngine:
                 x, y, z = self.coord_transformer.iau_mars_to_site_frame(
                     lat, lon, elev, site_origin
                 )
-                
+
                 waypoints_site.append({
                     'waypoint_id': i + 1,
-                    'x_site': x,  # North (meters)
-                    'y_site': y,  # East (meters)
-                    'z_site': z,  # Down (meters)
-                    'latitude': lat,
-                    'longitude': lon,
+                    'x_meters': x,
+                    'y_meters': y,
+                    'z_site': z,
+                    'lat': lat,
+                    'lon': lon,
                     'elevation_m': elev,
-                    'tolerance_m': max_waypoint_spacing_m / 2.0
+                    'tolerance_meters': max_waypoint_spacing_m / 2.0
                 })
             
             # Create DataFrame
             waypoints_df = pd.DataFrame(waypoints_site)
             
             total_distance = float(
-                np.sqrt(waypoints_df['x_site'].iloc[-1]**2 + 
-                       waypoints_df['y_site'].iloc[-1]**2)
+                np.sqrt(waypoints_df['x_meters'].iloc[-1]**2 + 
+                       waypoints_df['y_meters'].iloc[-1]**2)
             ) if len(waypoints_df) > 0 else 0.0
             
             logger.info(
@@ -704,5 +717,4 @@ class NavigationEngine:
                 "Navigation planning failed",
                 details={"site_id": site_id, "error": str(e)},
             )
-
 

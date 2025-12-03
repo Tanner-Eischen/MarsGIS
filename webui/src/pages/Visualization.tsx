@@ -1,20 +1,65 @@
 import { useState } from 'react'
 import TerrainMap from '../components/TerrainMap'
 import Terrain3D from '../components/Terrain3D'
+import OverlaySwitcher from '../components/OverlaySwitcher'
+import RoverAnimationControls from '../components/RoverAnimationControls'
+import { OverlayLayerProvider } from '../contexts/OverlayLayerContext'
+import { use3DTerrain } from '../hooks/use3DMapData'
+import { useWaypointsGeoJson } from '../hooks/useMapData'
+import { useRoverAnimation, RoverPosition } from '../hooks/useRoverAnimation'
 
-export default function Visualization() {
+function VisualizationContent() {
   const [roi, setRoi] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 })
   const [dataset, setDataset] = useState('mola')
   const [showSites, setShowSites] = useState(true)
   const [showWaypoints, setShowWaypoints] = useState(true)
   const [relief, setRelief] = useState(1.0) // Default to shaded relief
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
+  const [overlayType, setOverlayType] = useState<'elevation' | 'solar' | 'dust' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri'>('elevation')
+  const [colormap, setColormap] = useState('terrain')
+  const [sunAzimuth, setSunAzimuth] = useState(315)
+  const [sunAltitude, setSunAltitude] = useState(45)
+  const [enableRoverAnimation, setEnableRoverAnimation] = useState(false)
+  const [roverPosition, setRoverPosition] = useState<RoverPosition | null>(null)
+
+  // Get terrain data and waypoints for rover animation
+  const { terrainData } = use3DTerrain(roi, dataset)
+  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints)
+
+  // Create rover animation hook
+  const roverAnimation = useRoverAnimation(
+    enableRoverAnimation && showWaypoints ? waypointsGeoJson : null,
+    terrainData,
+    (pos) => setRoverPosition(pos)
+  )
 
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold">Terrain Visualization</h2>
       
-      <div className="bg-gray-800 rounded-lg p-6 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Overlay Controls */}
+        <div className="lg:col-span-1">
+          <OverlaySwitcher
+            overlayType={overlayType}
+            onOverlayTypeChange={setOverlayType}
+            colormap={colormap}
+            onColormapChange={setColormap}
+            relief={relief}
+            onReliefChange={setRelief}
+            sunAzimuth={sunAzimuth}
+            onSunAzimuthChange={setSunAzimuth}
+            sunAltitude={sunAltitude}
+            onSunAltitudeChange={setSunAltitude}
+            dataset={dataset}
+            roi={roi}
+            showLayerList={true}
+            showCacheStats={true}
+          />
+        </div>
+
+        {/* Map Controls */}
+        <div className="lg:col-span-2 bg-gray-800 rounded-lg p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Latitude Min</label>
@@ -120,6 +165,7 @@ export default function Visualization() {
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       {viewMode === '2d' ? (
@@ -129,16 +175,72 @@ export default function Visualization() {
           showSites={showSites}
           showWaypoints={showWaypoints}
           relief={relief}
+          overlayType={overlayType}
+          overlayOptions={{
+            colormap,
+            relief,
+            sunAzimuth,
+            sunAltitude
+          }}
         />
       ) : (
-        <Terrain3D
-          roi={roi}
-          dataset={dataset}
-          showSites={showSites}
-          showWaypoints={showWaypoints}
-        />
+        <>
+          <Terrain3D
+            roi={roi}
+            dataset={dataset}
+            showSites={showSites}
+            showWaypoints={showWaypoints}
+            enableRoverAnimation={enableRoverAnimation}
+            roverPosition={roverPosition}
+            isAnimating={roverAnimation.state.isPlaying}
+            overlayType={overlayType}
+            overlayOptions={{
+              colormap,
+              relief,
+              sunAzimuth,
+              sunAltitude
+            }}
+          />
+          {viewMode === '3d' && (
+            <div className="mt-4">
+              <div className="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  checked={enableRoverAnimation}
+                  onChange={(e) => {
+                    setEnableRoverAnimation(e.target.checked)
+                    if (!e.target.checked) {
+                      roverAnimation.reset()
+                      setRoverPosition(null)
+                    }
+                  }}
+                  className="mr-2"
+                  disabled={!showWaypoints || !waypointsGeoJson}
+                />
+                <label className="text-sm font-medium">
+                  Enable Rover Animation
+                </label>
+              </div>
+              {enableRoverAnimation && showWaypoints && waypointsGeoJson && terrainData && (
+                <RoverAnimationControls
+                  waypointsGeoJson={waypointsGeoJson}
+                  terrainData={terrainData}
+                  animation={roverAnimation}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
+  )
+}
+
+export default function Visualization() {
+  return (
+    <OverlayLayerProvider maxCacheSize={5}>
+      <VisualizationContent />
+    </OverlayLayerProvider>
   )
 }
 

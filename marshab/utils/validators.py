@@ -6,7 +6,7 @@ import rasterio
 from rasterio.crs import CRS
 
 from marshab.exceptions import DataError
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

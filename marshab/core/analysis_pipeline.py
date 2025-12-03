@@ -7,7 +7,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy import ndimage
-from skimage import measure
+try:
+    from skimage import measure as sk_measure
+except ImportError:
+    sk_measure = None
 
 from marshab.config import get_config
 from marshab.config.criteria_config import DEFAULT_CRITERIA
@@ -16,7 +19,7 @@ from marshab.exceptions import AnalysisError
 from marshab.processing.criteria import CriteriaExtractor
 from marshab.processing.mcdm import MCDMEvaluator
 from marshab.processing.terrain import TerrainAnalyzer
-from marshab.types import BoundingBox, SiteCandidate, TerrainMetrics
+from marshab.models import BoundingBox, SiteCandidate, TerrainMetrics
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -135,10 +138,14 @@ class AnalysisPipeline:
                 # Estimate from DEM bounds
                 if hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
                     cell_size_m = float(abs(dem.rio.res[0]))
-                else:
+                elif hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
                     # Fallback: estimate from bounds
                     bounds = dem.rio.bounds()
                     width_m = (bounds.right - bounds.left) * 111000 * np.cos(np.radians(roi.lat_min))
+                    cell_size_m = width_m / dem.shape[1] if dem.shape[1] > 0 else 200.0
+                else:
+                    # Final fallback: use default or estimate from ROI
+                    width_m = (roi.lon_max - roi.lon_min) * 111000 * np.cos(np.radians(roi.lat_min))
                     cell_size_m = width_m / dem.shape[1] if dem.shape[1] > 0 else 200.0
             
             logger.info("DEM loaded", shape=dem.shape, cell_size_m=cell_size_m)
@@ -170,10 +177,30 @@ class AnalysisPipeline:
                     if name in criteria_config.criteria:
                         criteria_config.criteria[name].weight = weight
             
-            criteria_config.validate_weights()
+            # Always normalize weights to sum to 1.0 to handle floating point precision issues
+            total = sum(c.weight for c in criteria_config.criteria.values())
+            if total > 0:
+                for criterion in criteria_config.criteria.values():
+                    criterion.weight = criterion.weight / total
+            else:
+                raise ValueError("Total weight cannot be zero - no criteria have weights")
             
-            weights = {name: c.weight for name, c in criteria_config.criteria.items()}
-            beneficial = {name: c.beneficial for name, c in criteria_config.criteria.items()}
+            # Filter weights and beneficial to only include criteria that were actually extracted
+            # This ensures weights sum correctly even if some criteria are missing
+            weights = {name: c.weight for name, c in criteria_config.criteria.items() if name in criteria}
+            beneficial = {name: c.beneficial for name, c in criteria_config.criteria.items() if name in criteria}
+            
+            # Re-normalize weights to sum to 1.0 for the actually extracted criteria
+            total_weight = sum(weights.values())
+            if total_weight > 0:
+                weights = {name: w / total_weight for name, w in weights.items()}
+            else:
+                raise ValueError("No valid criteria weights found - all criteria may have zero weight")
+            
+            # Validate weights sum to 1.0 (with tolerance for floating point)
+            total_weight = sum(weights.values())
+            if not 0.99 <= total_weight <= 1.01:
+                raise ValueError(f"Weights must sum to 1.0, got {total_weight}")
             
             # 5. MCDM evaluation
             if progress_callback:
@@ -296,33 +323,75 @@ class AnalysisPipeline:
                 # Extract polygon boundary from region_mask
                 polygon_coords = None
                 try:
-                    # Find contours of the region
-                    contours = measure.find_contours(region_mask.astype(float), 0.5)
-                    if len(contours) > 0:
-                        # Use the largest contour (outer boundary)
-                        largest_contour = max(contours, key=len)
-                        # Convert pixel coordinates to lat/lon
-                        if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                            bounds = dem.rio.bounds()
-                            lon_min = bounds.left
-                            lon_max = bounds.right
-                            lat_max = bounds.top
-                            lat_min = bounds.bottom
-                        else:
-                            lon_min = roi.lon_min
-                            lon_max = roi.lon_max
-                            lat_max = roi.lat_max
-                            lat_min = roi.lat_min
-                        
-                        # Convert contour coordinates (y, x) to (lon, lat)
-                        polygon_coords = []
-                        for y_px, x_px in largest_contour:
-                            lon_px = float(lon_min + (x_px / dem.shape[1]) * (lon_max - lon_min))
-                            lat_px = float(lat_max - (y_px / dem.shape[0]) * (lat_max - lat_min))
-                            polygon_coords.append([lon_px, lat_px])
-                        
-                        # Ensure polygon is closed (first point == last point)
-                        if len(polygon_coords) > 0 and polygon_coords[0] != polygon_coords[-1]:
+                    if sk_measure is not None:
+                        # Find contours of the region
+                        contours = sk_measure.find_contours(region_mask.astype(float), 0.5)
+                        if len(contours) > 0:
+                            # Use the largest contour (outer boundary)
+                            largest_contour = max(contours, key=len)
+                            # Convert pixel coordinates to lat/lon
+                            if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
+                                try:
+                                    bounds = dem.rio.bounds()
+                                    lon_min = bounds.left
+                                    lon_max = bounds.right
+                                    lat_max = bounds.top
+                                    lat_min = bounds.bottom
+                                except (AttributeError, TypeError):
+                                    # Fallback if bounds() doesn't work
+                                    lon_min = roi.lon_min
+                                    lon_max = roi.lon_max
+                                    lat_max = roi.lat_max
+                                    lat_min = roi.lat_min
+                            else:
+                                lon_min = roi.lon_min
+                                lon_max = roi.lon_max
+                                lat_max = roi.lat_max
+                                lat_min = roi.lat_min
+                            
+                            # Convert contour coordinates (y, x) to (lon, lat)
+                            polygon_coords = []
+                            for y_px, x_px in largest_contour:
+                                lon_px = float(lon_min + (x_px / dem.shape[1]) * (lon_max - lon_min))
+                                lat_px = float(lat_max - (y_px / dem.shape[0]) * (lat_max - lat_min))
+                                polygon_coords.append([lon_px, lat_px])
+                            
+                            # Ensure polygon is closed (first point == last point)
+                            if len(polygon_coords) > 0 and polygon_coords[0] != polygon_coords[-1]:
+                                polygon_coords.append(polygon_coords[0])
+                    else:
+                        # Fallback without scikit-image: use bounding box polygon
+                        y_indices, x_indices = np.where(region_mask)
+                        if len(y_indices) > 0 and len(x_indices) > 0:
+                            y_min = float(np.min(y_indices))
+                            y_max = float(np.max(y_indices))
+                            x_min = float(np.min(x_indices))
+                            x_max = float(np.max(x_indices))
+                            if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
+                                try:
+                                    bounds = dem.rio.bounds()
+                                    lon_min = bounds.left
+                                    lon_max = bounds.right
+                                    lat_max = bounds.top
+                                    lat_min = bounds.bottom
+                                except (AttributeError, TypeError):
+                                    lon_min = roi.lon_min
+                                    lon_max = roi.lon_max
+                                    lat_max = roi.lat_max
+                                    lat_min = roi.lat_min
+                            else:
+                                lon_min = roi.lon_min
+                                lon_max = roi.lon_max
+                                lat_max = roi.lat_max
+                                lat_min = roi.lat_min
+                            # Construct rectangle polygon (clockwise)
+                            polygon_coords = [
+                                [float(lon_min + (x_min / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_min / dem.shape[0]) * (lat_max - lat_min))],
+                                [float(lon_min + (x_max / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_min / dem.shape[0]) * (lat_max - lat_min))],
+                                [float(lon_min + (x_max / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_max / dem.shape[0]) * (lat_max - lat_min))],
+                                [float(lon_min + (x_min / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_max / dem.shape[0]) * (lat_max - lat_min))],
+                            ]
+                            # Close polygon
                             polygon_coords.append(polygon_coords[0])
                 except Exception as e:
                     logger.warning(f"Failed to extract polygon for site {site_id}, using point geometry", error=str(e))

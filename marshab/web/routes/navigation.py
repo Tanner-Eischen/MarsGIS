@@ -95,12 +95,9 @@ async def plan_route(request: NavigationRequest):
                 detail="Navigation planning timed out. The DEM may be too large or the path is too complex. Try a smaller ROI or different start/goal positions."
             )
         
-        # Calculate total distance
         if len(waypoints_df) > 0:
-            last_waypoint = waypoints_df.iloc[-1]
-            total_distance = float(
-                (last_waypoint['x_site']**2 + last_waypoint['y_site']**2)**0.5
-            )
+            last = waypoints_df.iloc[-1]
+            total_distance = float((last['x_meters']**2 + last['y_meters']**2)**0.5)
         else:
             total_distance = 0.0
         
@@ -122,7 +119,13 @@ async def plan_route(request: NavigationRequest):
         raise
     except NavigationError as e:
         logger.error("Navigation planning failed", error=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        # Provide more helpful error messages
+        error_detail = str(e)
+        if "impassable" in error_detail.lower():
+            error_detail += " Try adjusting the start position or selecting a different site. The terrain may be too steep or rough at the selected location."
+        elif "outside DEM bounds" in error_detail.lower():
+            error_detail += " Ensure the start position is within the analyzed region."
+        raise HTTPException(status_code=400, detail=error_detail)
     except Exception as e:
         logger.exception("Unexpected error in navigation planning", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -157,16 +160,16 @@ async def get_waypoints_geojson(
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [row['longitude'], row['latitude']]
+                    "coordinates": [row.get('lon', row.get('longitude')), row.get('lat', row.get('latitude'))]
                 },
                 "properties": {
                     "waypoint_id": int(row['waypoint_id']),
-                    "x_site": float(row['x_site']),
-                    "y_site": float(row['y_site']),
-                    "tolerance_m": float(row['tolerance_m'])
+                    "x_meters": float(row.get('x_meters', row.get('x_site'))),
+                    "y_meters": float(row.get('y_meters', row.get('y_site'))),
+                    "tolerance_meters": float(row.get('tolerance_meters', row.get('tolerance_m')))
                 }
             })
-            coordinates.append([row['longitude'], row['latitude']])
+            coordinates.append([row.get('lon', row.get('longitude')), row.get('lat', row.get('latitude'))])
         
         # Add LineString for path
         if len(coordinates) > 1:
@@ -194,3 +197,104 @@ async def get_waypoints_geojson(
 
 
 
+
+class RouteSummary(BaseModel):
+    strategy: PathfindingStrategy
+    waypoints: List[dict]
+    num_waypoints: int
+    total_distance_m: float
+    relative_cost_percent: float
+
+
+class MultiRouteRequest(BaseModel):
+    site_id: int
+    analysis_dir: str
+    start_lat: float
+    start_lon: float
+    strategies: List[PathfindingStrategy] = Field(default_factory=lambda: [PathfindingStrategy.BALANCED, PathfindingStrategy.DIRECT])
+    max_waypoint_spacing_m: float = Field(100.0, gt=0)
+    max_slope_deg: float = Field(25.0, gt=0, le=90)
+    task_id: Optional[str] = None
+
+
+class MultiRouteResponse(BaseModel):
+    routes: List[RouteSummary]
+    site_id: int
+    task_id: str
+
+
+@router.post("/plan-routes", response_model=MultiRouteResponse)
+async def plan_routes(request: MultiRouteRequest):
+    try:
+        task_id = request.task_id or generate_task_id()
+        progress_tracker = ProgressTracker(task_id)
+        def progress_callback(stage: str, progress: float, message: str):
+            progress_tracker.update(stage, progress, message)
+        engine = NavigationEngine()
+        loop = asyncio.get_event_loop()
+        routes_data = []
+        from marshab.analysis.route_cost import RouteCostEngine
+        cost_engine = RouteCostEngine()
+        config = get_config()
+        output_dir = config.paths.output_dir
+        colors = {
+            PathfindingStrategy.SAFEST: "#00ff00",
+            PathfindingStrategy.BALANCED: "#1e90ff",
+            PathfindingStrategy.DIRECT: "#ffa500",
+        }
+        for strat in request.strategies:
+            try:
+                df = await asyncio.wait_for(
+                    loop.run_in_executor(
+                        _executor,
+                        lambda: engine.plan_to_site(
+                            site_id=request.site_id,
+                            analysis_dir=Path(request.analysis_dir),
+                            start_lat=request.start_lat,
+                            start_lon=request.start_lon,
+                            max_waypoint_spacing_m=request.max_waypoint_spacing_m,
+                            max_slope_deg=request.max_slope_deg,
+                            progress_callback=progress_callback,
+                            strategy=strat,
+                        )
+                    ),
+                    timeout=180.0,
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(status_code=504, detail="Navigation planning timed out")
+            if len(df) > 0:
+                last = df.iloc[-1]
+                dist = float((last['x_meters']**2 + last['y_meters']**2)**0.5)
+            else:
+                dist = 0.0
+            weights = {
+                "distance": 1.0,
+                "slope_penalty": 1.0,
+                "roughness_penalty": 1.0,
+                "elevation_penalty": 0.2,
+            }
+            breakdown = cost_engine.analyze_route(df, weights)
+            routes_data.append({
+                "strategy": strat,
+                "waypoints": df.to_dict('records'),
+                "num_waypoints": len(df),
+                "total_distance_m": dist,
+                "_cost": breakdown.total_cost,
+            })
+            try:
+                fname = output_dir / f"waypoints_{request.site_id}_{strat.value}.csv"
+                df.to_csv(fname, index=False)
+            except Exception:
+                pass
+        if not routes_data:
+            raise HTTPException(status_code=500, detail="No routes generated")
+        min_cost = min(r["_cost"] for r in routes_data)
+        for r in routes_data:
+            r["relative_cost_percent"] = float((r["_cost"] / (min_cost if min_cost > 0 else 1.0)) * 100.0)
+            del r["_cost"]
+        return MultiRouteResponse(routes=routes_data, site_id=request.site_id, task_id=task_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Unexpected error in multi-route planning", error=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

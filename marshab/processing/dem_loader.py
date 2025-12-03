@@ -14,7 +14,7 @@ except ImportError:
     pass  # rioxarray not available, will use fallback methods
 
 from marshab.exceptions import DataError
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

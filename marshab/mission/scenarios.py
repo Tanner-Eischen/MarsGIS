@@ -7,7 +7,7 @@ from datetime import datetime
 
 from marshab.core.analysis_pipeline import AnalysisPipeline, AnalysisResults
 from marshab.core.navigation_engine import NavigationEngine
-from marshab.types import BoundingBox, SiteCandidate
+from marshab.models import BoundingBox, SiteCandidate
 from marshab.config.preset_loader import PresetLoader
 from marshab.utils.logging import get_logger
 

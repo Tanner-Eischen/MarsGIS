@@ -6,7 +6,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import json
 
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)

@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 
 from marshab.plugins.base import CriterionPlugin
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 
 
 class ExampleCriterionPlugin(CriterionPlugin):

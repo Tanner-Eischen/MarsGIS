@@ -7,7 +7,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 150000, // 2.5 minute timeout for pathfinding (can take 30-120 seconds for large DEMs)
+  timeout: 30000, // 30 second timeout for better user experience
 })
 
 // Add request interceptor for logging
@@ -72,6 +72,7 @@ export interface AnalysisRequest {
   dataset?: string
   threshold?: number
   task_id?: string
+  criteria_weights?: Record<string, number>
 }
 
 export interface SiteCandidate {
@@ -137,6 +138,7 @@ export const analyzeTerrain = async (request: AnalysisRequest): Promise<Analysis
     dataset: request.dataset || 'mola',
     threshold: request.threshold || 0.7,
     roi: request.roi,
+    criteria_weights: request.criteria_weights,
   })
   return response.data
 }
@@ -149,6 +151,45 @@ export const planNavigation = async (request: NavigationRequest): Promise<Naviga
     start_lon: request.start_lon,
     max_waypoint_spacing_m: request.max_waypoint_spacing_m || 100.0,
     max_slope_deg: request.max_slope_deg || 25.0,
+  })
+  return response.data
+}
+
+export interface MultiRouteRequest {
+  site_id: number
+  analysis_dir: string
+  start_lat: number
+  start_lon: number
+  strategies?: ('safest' | 'balanced' | 'direct')[]
+  max_waypoint_spacing_m?: number
+  max_slope_deg?: number
+  task_id?: string
+}
+
+export interface RouteSummary {
+  strategy: 'safest' | 'balanced' | 'direct'
+  waypoints: Waypoint[]
+  num_waypoints: number
+  total_distance_m: number
+  relative_cost_percent: number
+}
+
+export interface MultiRouteResponse {
+  routes: RouteSummary[]
+  site_id: number
+  task_id: string
+}
+
+export const planMultipleRoutes = async (request: MultiRouteRequest): Promise<MultiRouteResponse> => {
+  const response = await api.post<MultiRouteResponse>('/navigation/plan-routes', {
+    site_id: request.site_id,
+    analysis_dir: request.analysis_dir,
+    start_lat: request.start_lat,
+    start_lon: request.start_lon,
+    strategies: request.strategies || ['balanced', 'direct'],
+    max_waypoint_spacing_m: request.max_waypoint_spacing_m || 100.0,
+    max_slope_deg: request.max_slope_deg || 25.0,
+    task_id: request.task_id,
   })
   return response.data
 }
@@ -200,3 +241,83 @@ export const runTraverseScenario = async (request: TraverseScenarioRequest): Pro
   return response.data
 }
 
+// Solar Analysis API
+export interface SolarAnalysisRequest {
+  roi: { lat_min: number; lat_max: number; lon_min: number; lon_max: number }
+  dataset?: string
+  sun_azimuth?: number
+  sun_altitude?: number
+  panel_efficiency?: number
+  panel_area_m2?: number
+  battery_capacity_kwh?: number
+  daily_power_needs_kwh?: number
+  battery_cost_per_kwh?: number
+  mission_duration_days?: number
+}
+
+export interface SolarStatistics {
+  min: number
+  max: number
+  mean: number
+  std: number
+  min_irradiance_w_per_m2: number
+  max_irradiance_w_per_m2: number
+  mean_irradiance_w_per_m2: number
+}
+
+export interface MissionImpactsResponse {
+  power_generation_kwh_per_day: number
+  power_surplus_kwh_per_day: number
+  mission_duration_extension_days: number
+  cost_savings_usd: number
+  battery_reduction_kwh: number
+}
+
+export interface SolarAnalysisResponse {
+  solar_potential_map: number[][]
+  irradiance_map: number[][]
+  statistics: SolarStatistics
+  mission_impacts: MissionImpactsResponse
+  shape: { rows: number; cols: number }
+}
+
+export const analyzeSolarPotential = async (request: SolarAnalysisRequest): Promise<SolarAnalysisResponse> => {
+  const response = await api.post<SolarAnalysisResponse>('/solar/analyze', request)
+  return response.data
+}
+
+export interface DemoModeResponse { enabled: boolean }
+export const getDemoMode = async (): Promise<DemoModeResponse> => {
+  const response = await api.get<DemoModeResponse>('/demo-mode')
+  return response.data
+}
+export const setDemoMode = async (enabled: boolean): Promise<DemoModeResponse> => {
+  const response = await api.post<DemoModeResponse>('/demo-mode', { enabled })
+  return response.data
+}
+
+export interface ExampleROIItem { id: string; name: string; description: string; bbox: { lat_min: number; lat_max: number; lon_min: number; lon_max: number }; dataset: string }
+export const getExampleROIs = async (): Promise<ExampleROIItem[]> => {
+  const response = await api.get<ExampleROIItem[]>('/examples/rois')
+  return response.data
+}
+
+export type OverlayType = 'elevation' | 'solar' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri'
+
+export interface OverlayOptions {
+  colormap?: string
+  relief?: number
+  sunAzimuth?: number
+  sunAltitude?: number
+  width?: number
+  height?: number
+  buffer?: number
+}
+
+export interface OverlayImageResponse {
+  url: string
+  bounds: L.LatLngBounds
+  overlayType: OverlayType
+  loading: boolean
+  error: string | null
+}

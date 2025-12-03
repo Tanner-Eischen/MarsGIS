@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getStatus } from '../services/api'
+import { getStatus, getDemoMode, setDemoMode } from '../services/api'
 
 export default function Dashboard() {
   const { data: status, isLoading, error, isError } = useQuery({
@@ -9,6 +10,14 @@ export default function Dashboard() {
     retry: 1,
     retryDelay: 1000,
   })
+  const { data: demoMode } = useQuery({
+    queryKey: ['demo-mode'],
+    queryFn: getDemoMode,
+  })
+  const toggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => setDemoMode(enabled),
+  })
+  const [toggleMessage, setToggleMessage] = useState<string | null>(null)
 
   return (
     <div className="space-y-6">
@@ -36,6 +45,25 @@ export default function Dashboard() {
           >
             Plan Navigation
           </Link>
+        </div>
+        <div className="mt-4 flex items-center space-x-3">
+          <span className="text-sm text-gray-300">Demo Mode</span>
+          <button
+            onClick={async () => {
+              const next = !demoMode?.enabled
+              try {
+                await toggleMutation.mutateAsync(next)
+                setToggleMessage(next ? 'Demo mode enabled' : 'Demo mode disabled')
+                setTimeout(() => setToggleMessage(null), 2000)
+              } catch {}
+            }}
+            className={`px-3 py-1 rounded-md text-sm ${demoMode?.enabled ? 'bg-green-600' : 'bg-gray-600'} text-white`}
+          >
+            {demoMode?.enabled ? 'On' : 'Off'}
+          </button>
+          {toggleMessage && (
+            <span className="text-xs text-gray-400 ml-2">{toggleMessage}</span>
+          )}
         </div>
       </div>
 

@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 import numpy as np
 import xarray as xr
 
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 
 
 class DatasetPlugin(ABC):

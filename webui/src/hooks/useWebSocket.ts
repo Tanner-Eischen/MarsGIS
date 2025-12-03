@@ -99,12 +99,16 @@ export function useWebSocket({
         setIsConnected(false)
         onDisconnect?.()
 
-        // Attempt to reconnect if we haven't exceeded max attempts
+        // Attempt to reconnect if we haven't exceeded max attempts and taskId is still valid
+        // Use a more conservative reconnection strategy
         if (reconnectAttempts.current < maxReconnectAttempts && taskId) {
           reconnectAttempts.current++
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current - 1), 10000)
+          const delay = Math.min(2000 * reconnectAttempts.current, 10000) // Linear backoff: 2s, 4s, 6s, 8s, 10s
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect()
+            // Check taskId is still valid before reconnecting
+            if (taskId && wsRef.current === null) { // Only reconnect if no active connection
+              connect()
+            }
           }, delay)
         }
       }
@@ -112,16 +116,27 @@ export function useWebSocket({
       console.error('Failed to create WebSocket:', error)
       onError?.(error as Error)
     }
-  }, [taskId, onProgress, onError, onConnect, onDisconnect])
+  }, [taskId]) // Remove callback dependencies to prevent infinite re-renders
 
   useEffect(() => {
+    // Reset reconnect attempts when taskId changes
+    reconnectAttempts.current = 0
+    
     if (taskId) {
       connect()
+    } else {
+      // If taskId is null, close any existing connection
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+      setIsConnected(false)
     }
 
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
       }
       if (wsRef.current) {
         wsRef.current.close()

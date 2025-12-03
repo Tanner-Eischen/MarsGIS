@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { runTraverseScenario, TraverseScenarioRequest, TraverseScenarioResponse } from '../services/api'
+import { useGeoPlan } from '../context/GeoPlanContext'
+import { planMultipleRoutes, MultiRouteRequest, MultiRouteResponse } from '../services/api'
 import TerrainMap from './TerrainMap'
 
 interface Preset {
@@ -27,7 +28,8 @@ export default function RoverTraverseWizard() {
   const [presets, setPresets] = useState<Preset[]>([])
   const [sites, setSites] = useState<Site[]>([])
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<TraverseScenarioResponse | null>(null)
+  const [results, setResults] = useState<MultiRouteResponse | null>(null)
+  const { recommendedLandingSiteId } = useGeoPlan()
 
   // Fetch route presets on mount
   useEffect(() => {
@@ -66,18 +68,25 @@ export default function RoverTraverseWizard() {
     }
   }, [analysisDir])
 
+  useEffect(() => {
+    if (recommendedLandingSiteId) setStartSiteId(recommendedLandingSiteId)
+  }, [recommendedLandingSiteId])
+
   const handleRunScenario = async () => {
     setLoading(true)
     try {
-      const request: TraverseScenarioRequest = {
-        start_site_id: startSiteId,
-        end_site_id: endSiteId,
+      const startSite = sites.find(s => s.site_id === startSiteId)
+      const endSite = sites.find(s => s.site_id === endSiteId)
+      if (!startSite || !endSite) throw new Error('Invalid start or end site')
+      const request: MultiRouteRequest = {
+        site_id: endSite.site_id,
         analysis_dir: analysisDir,
-        preset_id: presetId,
-        rover_capabilities: roverCapabilities,
+        start_lat: startSite.lat,
+        start_lon: startSite.lon,
+        strategies: ['safest', 'balanced', 'direct'],
+        max_slope_deg: roverCapabilities.max_slope_deg,
       }
-      
-      const response = await runTraverseScenario(request)
+      const response = await planMultipleRoutes(request)
       setResults(response)
       setStep(3)
     } catch (error: any) {
@@ -247,28 +256,25 @@ export default function RoverTraverseWizard() {
           
           <div className="bg-gray-700 rounded-lg p-4">
             <h4 className="font-semibold text-lg mb-2">Route Metrics</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-400">Total Distance:</span> {results.total_distance_m.toFixed(2)} m
-              </div>
-              <div>
-                <span className="text-gray-400">Estimated Time:</span> {results.estimated_time_h.toFixed(2)} hours
-              </div>
-              <div>
-                <span className="text-gray-400">Risk Score:</span> {results.risk_score.toFixed(3)}
-              </div>
-              <div>
-                <span className="text-gray-400">Waypoints:</span> {results.waypoints.length}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              {results.routes.map((r) => (
+                <div key={r.strategy} className="p-3 rounded border" style={{ borderColor: r.strategy === 'safest' ? '#00ff00' : r.strategy === 'balanced' ? '#1e90ff' : '#ffa500' }}>
+                  <div className="font-semibold capitalize">{r.strategy}</div>
+                  <div><span className="text-gray-400">Distance:</span> {r.total_distance_m.toFixed(2)} m</div>
+                  <div><span className="text-gray-400">Waypoints:</span> {r.num_waypoints}</div>
+                  <div><span className="text-gray-400">Relative Cost:</span> {r.relative_cost_percent.toFixed(1)}%</div>
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="bg-gray-700 rounded-lg p-4">
-            <h4 className="font-semibold mb-2">Waypoints ({results.waypoints.length} total)</h4>
+            <h4 className="font-semibold mb-2">Waypoints (showing up to 20 per route)</h4>
             <div className="max-h-64 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-600">
+                    <th className="text-left p-2">Route</th>
                     <th className="text-left p-2">ID</th>
                     <th className="text-left p-2">X (m)</th>
                     <th className="text-left p-2">Y (m)</th>
@@ -276,14 +282,15 @@ export default function RoverTraverseWizard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.waypoints.slice(0, 20).map(wp => (
-                    <tr key={wp.waypoint_id} className="border-b border-gray-600">
+                  {results.routes.flatMap(r => r.waypoints.slice(0, 20).map(wp => (
+                    <tr key={`${r.strategy}-${wp.waypoint_id}`} className="border-b border-gray-600">
+                      <td className="p-2 capitalize">{r.strategy}</td>
                       <td className="p-2">{wp.waypoint_id}</td>
                       <td className="p-2">{wp.x_meters.toFixed(2)}</td>
                       <td className="p-2">{wp.y_meters.toFixed(2)}</td>
                       <td className="p-2">{wp.tolerance_meters.toFixed(2)}</td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>

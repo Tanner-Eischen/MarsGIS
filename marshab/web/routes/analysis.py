@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.exceptions import AnalysisError
-from marshab.types import BoundingBox
+from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 from marshab.web.routes.progress import ProgressTracker, generate_task_id
 
@@ -24,6 +24,7 @@ class AnalysisRequest(BaseModel):
     dataset: str = Field("mola", description="Dataset to use (mola, hirise, ctx)")
     threshold: float = Field(0.7, ge=0, le=1, description="Suitability threshold (0-1)")
     task_id: Optional[str] = Field(None, description="Optional task ID for progress tracking (client-generated)")
+    criteria_weights: Optional[dict[str, float]] = Field(None, description="Optional custom weights for criteria")
 
 
 class SiteCandidateResponse(BaseModel):
@@ -93,6 +94,7 @@ async def analyze_terrain(request: AnalysisRequest):
             roi=bbox,
             dataset=request.dataset.lower(),
             threshold=request.threshold,
+            criteria_weights=request.criteria_weights,
             progress_callback=progress_callback,
         )
         

@@ -3,6 +3,7 @@
 import pytest
 import numpy as np
 import xarray as xr
+from unittest.mock import MagicMock
 
 from marshab.analysis.routing import (
     plan_route,
@@ -134,9 +135,16 @@ class TestRouteCost:
 
 @pytest.fixture
 def mock_dem():
-    """Create mock DEM for testing."""
-    # Create a simple 100x100 DEM
-    elevation = np.random.rand(100, 100) * 1000 + 2000
+    """Create mock DEM for testing with gentle slopes."""
+    np.random.seed(42)  # Reproducible
+    # Create a simple 100x100 DEM with gentle slopes
+    # Use smooth gradient instead of random to avoid impassable terrain
+    y, x = np.meshgrid(np.linspace(40.0, 41.0, 100), np.linspace(180.0, 181.0, 100), indexing='ij')
+    # Create gentle elevation gradient (max ~100m variation over 100 pixels = ~1m per pixel)
+    elevation = 2000.0 + (x - 180.0) * 50.0 + (y - 40.0) * 30.0
+    # Add small random noise (max 5m)
+    elevation += np.random.randn(100, 100) * 5.0
+    
     dem = xr.DataArray(
         elevation,
         dims=["y", "x"],
@@ -145,5 +153,6 @@ def mock_dem():
             "x": np.linspace(180.0, 181.0, 100),
         }
     )
+    # Note: rio accessor not needed for routing tests
     return dem
 

@@ -117,3 +117,4 @@
 - **Configured but not working**: 4 datasets (TES DCI, Nomenclature, Contours, Albedo)
 - **Total overlays available**: 11 types (elevation, solar, dust, hillshade, slope, aspect, roughness, TRI, nomenclature, contours, albedo)
 
+

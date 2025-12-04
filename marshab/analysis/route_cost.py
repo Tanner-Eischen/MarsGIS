@@ -18,6 +18,8 @@ class RouteCostBreakdown:
     slope_penalty: float
     roughness_penalty: float
     elevation_penalty: float
+    comms_risk_penalty: float  # New metric
+    solar_opportunity_bonus: float # New metric (negative cost)
     components: Dict[str, float]
     explanation: str
 
@@ -82,19 +84,25 @@ class RouteCostEngine:
         roughness_penalty = 30.0  # Stub
         elevation_penalty = 20.0  # Stub
         
+        # New Metrics Stubs (Real Logic would sample Visibility/Solar Maps)
+        comms_risk_penalty = 15.0 
+        solar_opportunity_bonus = 10.0
+
         # Calculate weighted cost
         components = {
             "distance": total_distance * weights.get("distance", 0.3),
             "slope": slope_penalty * weights.get("slope_penalty", 0.3),
             "roughness": roughness_penalty * weights.get("roughness_penalty", 0.2),
-            "elevation": elevation_penalty * weights.get("elevation_penalty", 0.2)
+            "elevation": elevation_penalty * weights.get("elevation_penalty", 0.2),
+            "comms_risk": comms_risk_penalty * weights.get("comms_risk", 0.1),
+            "solar_opp": -solar_opportunity_bonus * weights.get("solar", 0.1) # Bonus reduces cost
         }
         
         total_cost = sum(components.values())
         
         # Generate explanation
         explanation = self._generate_explanation(
-            total_distance, slope_penalty, roughness_penalty
+            total_distance, slope_penalty, roughness_penalty, comms_risk_penalty
         )
         
         return RouteCostBreakdown(
@@ -103,6 +111,8 @@ class RouteCostEngine:
             slope_penalty=slope_penalty,
             roughness_penalty=roughness_penalty,
             elevation_penalty=elevation_penalty,
+            comms_risk_penalty=comms_risk_penalty,
+            solar_opportunity_bonus=solar_opportunity_bonus,
             components=components,
             explanation=explanation
         )
@@ -111,7 +121,8 @@ class RouteCostEngine:
         self,
         distance: float,
         slope_penalty: float,
-        roughness_penalty: float
+        roughness_penalty: float,
+        comms_risk: float
     ) -> str:
         """Generate route explanation."""
         parts = []
@@ -131,6 +142,8 @@ class RouteCostEngine:
             parts.append("moderate surface roughness")
         else:
             parts.append("smooth terrain")
+            
+        if comms_risk > 20:
+            parts.append("significant communication blackout risk")
         
         return "This route " + ", ".join(parts) + "."
-

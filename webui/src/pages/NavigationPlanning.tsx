@@ -3,7 +3,6 @@ import { useMutation } from '@tanstack/react-query'
 import { planNavigation, NavigationRequest, getExampleROIs, ExampleROIItem } from '../services/api'
 import MLSiteRecommendation from '../components/MLSiteRecommendation'
 import { useGeoPlan } from '../context/GeoPlanContext'
-import ProgressBar from '../components/ProgressBar'
 
 // Generate UUID for task tracking
 function generateTaskId(): string {
@@ -24,6 +23,7 @@ export default function NavigationPlanning() {
   const [taskId, setTaskId] = useState<string | null>(null)
   const [examples, setExamples] = useState<ExampleROIItem[]>([])
   const [mlRecs, setMlRecs] = useState<any[] | null>(null)
+  
   useEffect(() => {
     const sLat = localStorage.getItem('nav.startLat')
     const sLon = localStorage.getItem('nav.startLon')
@@ -38,22 +38,17 @@ export default function NavigationPlanning() {
 
   const mutation = useMutation({
     mutationFn: async (request: NavigationRequest & { task_id?: string }) => {
-      // Generate task_id before making request
       const taskId = generateTaskId()
-      // Add task_id to request
       const response = await planNavigation({ ...request, task_id: taskId })
-      // Only set taskId after successful API call so WebSocket can connect
       setTaskId(taskId)
       return response
     },
     onSuccess: (data) => {
-      // Use task_id from response if available, otherwise keep the one we generated
       if (data.task_id) {
         setTaskId(data.task_id)
       }
     },
     onError: (error: any) => {
-      // Clear taskId on error to stop WebSocket connection attempts
       setTaskId(null)
       alert(`Navigation planning failed: ${error.response?.data?.detail || error.message}`)
     },
@@ -61,7 +56,7 @@ export default function NavigationPlanning() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setTaskId(null) // Reset task_id for new request
+    setTaskId(null)
     mutation.mutate({
       site_id: siteId,
       start_lat: startLat,
@@ -72,12 +67,11 @@ export default function NavigationPlanning() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold">Navigation Planning</h2>
-      <div className="bg-gray-800 rounded-lg p-6 space-y-3">
-        <div className="text-sm text-gray-300">Select a starting site from the list, or use mission-type ranking to explore options.</div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Starting Site (Landing)</label>
+    <div className="space-y-6 text-sm">
+      <div className="glass-panel p-6 rounded-lg space-y-3">
+        <div className="text-xs font-bold text-gray-400 uppercase mb-2">Start Point Selection</div>
+        <div className="bg-gray-900/50 p-3 rounded border border-gray-700">
+          <label className="block text-xs text-gray-500 mb-1">AVAILABLE SITES</label>
           <select
             value={landingSites.find(s => Math.abs(s.lat - startLat) < 1e-6 && Math.abs(s.lon - startLon) < 1e-6)?.site_id || ''}
             onChange={(e) => {
@@ -85,9 +79,9 @@ export default function NavigationPlanning() {
               const site = landingSites.find(s => s.site_id === id)
               if (site) { setStartLat(site.lat); setStartLon(site.lon) }
             }}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
+            className="w-full bg-gray-800 text-white px-3 py-2 rounded text-sm border border-gray-600 focus:border-cyan-500 focus:outline-none"
           >
-            <option value="" disabled>{landingSites.length > 0 ? 'Select starting site' : 'No landing sites found — run Terrain Analysis'}</option>
+            <option value="" disabled>{landingSites.length > 0 ? 'Select starting site...' : 'No landing sites found'}</option>
             {landingSites.map(site => (
               <option key={site.site_id} value={site.site_id}>
                 Site {site.site_id} (Rank {site.rank}, Score {site.suitability_score.toFixed(2)})
@@ -96,9 +90,10 @@ export default function NavigationPlanning() {
           </select>
         </div>
       </div>
+
       {(landingSites.length > 0 || constructionSites.length > 0) && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">ML Site Recommendation</h3>
+        <div className="glass-panel p-6 rounded-lg">
+          <h3 className="text-sm font-bold text-cyan-400 uppercase mb-4">AI Recommendations</h3>
           <MLSiteRecommendation
             candidateSites={(landingSites.length > 0 ? landingSites : constructionSites).map(s => ({
               coordinates: [s.lat, s.lon] as [number, number],
@@ -129,25 +124,23 @@ export default function NavigationPlanning() {
                   const match = pool.find(s => Math.abs(s.lat - top.coordinates[0]) < 1e-6 && Math.abs(s.lon - top.coordinates[1]) < 1e-6)
                   setRecommendedLandingSiteId(match ? match.site_id : null)
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded"
+                className="bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-2 rounded text-xs font-bold uppercase"
               >
-                Apply top recommendation as starting site
+                USE TOP RECOMMENDATION
               </button>
-              <span className="text-xs text-gray-400">Or select a starting site from the list above.</span>
             </div>
           )}
-          <div className="mt-3 text-xs text-gray-400">Use mission type to explore options. Select a site above to apply as the starting location.</div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-300">Seed from Example ROI</div>
+      <form onSubmit={handleSubmit} className="glass-panel p-6 rounded-lg space-y-4">
+        <div className="flex items-center justify-between border-b border-gray-700/50 pb-2">
+          <div className="text-xs font-bold text-gray-400 uppercase">Example Seed</div>
           <div className="flex items-center space-x-2">
             <button
               type="button"
               onClick={async () => { const data = await getExampleROIs(); setExamples(data) }}
-              className="px-3 py-2 bg-gray-700 text-white rounded"
+              className="px-2 py-1 bg-gray-800 text-xs text-cyan-400 border border-cyan-500/30 rounded hover:bg-gray-700"
             >
               Load Examples
             </button>
@@ -162,10 +155,10 @@ export default function NavigationPlanning() {
                     setStartLon(cLon)
                   }
                 }}
-                className="bg-gray-700 text-white px-2 py-2 rounded"
+                className="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-600"
                 defaultValue=""
               >
-                <option value="" disabled>Select example</option>
+                <option value="" disabled>Select...</option>
                 {examples.map(x => (
                   <option key={x.id} value={x.id}>{x.name}</option>
                 ))}
@@ -173,99 +166,91 @@ export default function NavigationPlanning() {
             )}
           </div>
         </div>
+
         <div>
-          <label className="block text-sm font-medium mb-2">Target Site ID</label>
+          <label className="block text-xs text-gray-500 mb-1">TARGET SITE ID</label>
           <input
             type="number"
             value={siteId}
             onChange={(e) => setSiteId(parseInt(e.target.value))}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
+            className="w-full bg-gray-900/50 border border-gray-700 text-white px-3 py-2 rounded text-sm font-mono focus:border-cyan-500 focus:outline-none"
             min="1"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Start Latitude</label>
+            <label className="block text-xs text-gray-500 mb-1">START LAT</label>
             <input
               type="number"
               value={startLat}
               onChange={(e) => setStartLat(parseFloat(e.target.value))}
-              className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
+              className="w-full bg-gray-900/50 border border-gray-700 text-white px-3 py-2 rounded text-sm font-mono focus:border-cyan-500 focus:outline-none"
               step="0.1"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Start Longitude</label>
+            <label className="block text-xs text-gray-500 mb-1">START LON</label>
             <input
               type="number"
               value={startLon}
               onChange={(e) => setStartLon(parseFloat(e.target.value))}
-              className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
+              className="w-full bg-gray-900/50 border border-gray-700 text-white px-3 py-2 rounded text-sm font-mono focus:border-cyan-500 focus:outline-none"
               step="0.1"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Pathfinding Strategy</label>
+          <label className="block text-xs text-gray-500 mb-1">STRATEGY</label>
           <select
             value={strategy}
             onChange={(e) => setStrategy(e.target.value as 'safest' | 'balanced' | 'direct')}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
+            className="w-full bg-gray-800 border border-gray-600 text-white px-3 py-2 rounded text-sm focus:border-cyan-500 focus:outline-none"
           >
-            <option value="safest">Safest (prioritize safety)</option>
-            <option value="balanced">Balanced (default)</option>
-            <option value="direct">Direct (prioritize distance)</option>
+            <option value="safest">Safest (Risk Averse)</option>
+            <option value="balanced">Balanced (Standard)</option>
+            <option value="direct">Direct (Distance Priority)</option>
           </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Analysis Directory</label>
-          <input
-            type="text"
-            value={analysisDir}
-            onChange={(e) => setAnalysisDir(e.target.value)}
-            className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
-          />
         </div>
 
       <button
         type="submit"
         disabled={mutation.isPending}
-        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50"
+        className="w-full bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded font-bold tracking-wider transition-colors disabled:opacity-50 shadow-[0_0_15px_rgba(34,197,94,0.2)]"
       >
-        {mutation.isPending ? 'Planning...' : 'Generate Waypoints'}
+        {mutation.isPending ? 'CALCULATING...' : 'GENERATE FLIGHTPATH'}
       </button>
       </form>
 
       {mutation.data && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">
-            Navigation Plan ({mutation.data.num_waypoints} waypoints)
+        <div className="glass-panel p-6 rounded-lg">
+          <h3 className="text-lg font-bold mb-4 text-green-400 tracking-wider">
+            FLIGHTPATH_DATA
           </h3>
           {mutation.data.path_length_m && (
-            <p className="text-gray-300 mb-4">
-              Estimated Path Length: {mutation.data.path_length_m.toFixed(2)} meters
-            </p>
+             <div className="bg-gray-900 p-3 rounded border border-gray-700 mb-4 flex justify-between items-center">
+                <span className="text-xs text-gray-500">EST. DISTANCE</span>
+                <span className="text-lg font-mono text-white">{(mutation.data.path_length_m).toFixed(2)} m</span>
+             </div>
           )}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left p-2">Waypoint ID</th>
-                  <th className="text-left p-2">X (meters)</th>
-                  <th className="text-left p-2">Y (meters)</th>
-                  <th className="text-left p-2">Tolerance (meters)</th>
+          <div className="overflow-x-auto max-h-60 custom-scrollbar">
+            <table className="w-full text-xs font-mono">
+              <thead className="sticky top-0 bg-gray-900">
+                <tr className="border-b border-gray-700 text-gray-500">
+                  <th className="text-left p-2">WP</th>
+                  <th className="text-left p-2">X</th>
+                  <th className="text-left p-2">Y</th>
+                  <th className="text-left p-2">TOL</th>
                 </tr>
               </thead>
               <tbody>
                 {mutation.data.waypoints.map((waypoint) => (
-                  <tr key={waypoint.waypoint_id} className="border-b border-gray-700">
-                    <td className="p-2">{waypoint.waypoint_id}</td>
-                    <td className="p-2">{waypoint.x_meters.toFixed(2)}</td>
-                    <td className="p-2">{waypoint.y_meters.toFixed(2)}</td>
-                    <td className="p-2">{waypoint.tolerance_meters.toFixed(2)}</td>
+                  <tr key={waypoint.waypoint_id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                    <td className="p-2 text-green-300">{waypoint.waypoint_id}</td>
+                    <td className="p-2 text-gray-400">{waypoint.x_meters.toFixed(1)}</td>
+                    <td className="p-2 text-gray-400">{waypoint.y_meters.toFixed(1)}</td>
+                    <td className="p-2 text-gray-500">{waypoint.tolerance_meters.toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -276,7 +261,3 @@ export default function NavigationPlanning() {
     </div>
   )
 }
-
-
-
-

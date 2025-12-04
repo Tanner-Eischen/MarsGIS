@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useOverlayLayerContext } from '../contexts/OverlayLayerContext'
-import { getOverlayDefinition, MARS_OVERLAY_DEFINITIONS, type OverlayType, type MarsDataset } from '../config/marsDataSources'
+import { getOverlayDefinition, MARS_OVERLAY_DEFINITIONS, type MarsDataset } from '../config/marsDataSources'
 import LayerStatusBadge from './LayerStatusBadge'
+import { Layers, Eye, EyeOff, Database, RefreshCw, Trash2, Settings, Sun } from 'lucide-react'
 
-export type OverlayType = 'elevation' | 'solar' | 'dust' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri'
+export type OverlayType = 'elevation' | 'solar' | 'dust' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri' | 'viewshed' | 'comms_risk'
 
 interface OverlaySwitcherProps {
   overlayType: OverlayType
@@ -23,12 +24,11 @@ interface OverlaySwitcherProps {
 }
 
 const COLORMAPS = [
-  { value: 'terrain', label: 'Terrain' },
-  { value: 'viridis', label: 'Viridis' },
-  { value: 'plasma', label: 'Plasma' },
-  { value: 'inferno', label: 'Inferno' },
-  { value: 'magma', label: 'Magma' },
-  { value: 'cividis', label: 'Cividis' },
+  { value: 'terrain', label: 'Natural Terrain' },
+  { value: 'viridis', label: 'Viridis (Analytical)' },
+  { value: 'plasma', label: 'Plasma (Solar/Heat)' },
+  { value: 'magma', label: 'Magma (Geological)' },
+  { value: 'cividis', label: 'Cividis (Colorblind Safe)' },
 ]
 
 export default function OverlaySwitcher({
@@ -48,8 +48,7 @@ export default function OverlaySwitcher({
   showCacheStats = true,
 }: OverlaySwitcherProps) {
   const [expanded, setExpanded] = useState(true)
-  const [showLayerSection, setShowLayerSection] = useState(true)
-  const [showCacheSection, setShowCacheSection] = useState(true)
+  const [activeTab, setActiveTab] = useState<'layers' | 'settings'>('layers')
   
   const overlayContext = useOverlayLayerContext()
   const cacheStats = overlayContext.getCacheStats()
@@ -88,238 +87,178 @@ export default function OverlaySwitcher({
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-white">Map Overlay</h3>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-gray-400 hover:text-white"
-        >
-          {expanded ? '▼' : '▶'}
-        </button>
+    <div className="glass-panel rounded-lg overflow-hidden text-sm">
+      <div className="bg-gray-800/50 p-3 border-b border-gray-700 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-cyan-400">
+          <Layers size={16} />
+          <h3 className="font-bold tracking-wider">VISUAL_LAYERS</h3>
+        </div>
+        <div className="flex gap-2">
+           <button 
+             onClick={() => setActiveTab('layers')}
+             className={`p-1 rounded ${activeTab === 'layers' ? 'bg-cyan-900/50 text-cyan-300' : 'text-gray-500 hover:text-gray-300'}`}
+           >
+             <Layers size={14} />
+           </button>
+           <button 
+             onClick={() => setActiveTab('settings')}
+             className={`p-1 rounded ${activeTab === 'settings' ? 'bg-cyan-900/50 text-cyan-300' : 'text-gray-500 hover:text-gray-300'}`}
+           >
+             <Settings size={14} />
+           </button>
+           <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-gray-500 hover:text-white p-1"
+          >
+            {expanded ? <Eye size={14} /> : <EyeOff size={14} />}
+          </button>
+        </div>
       </div>
 
       {expanded && (
-        <div className="space-y-4">
-          {/* Layer List */}
-          {showLayerList && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  Available Layers
-                </label>
-                <button
-                  onClick={() => setShowLayerSection(!showLayerSection)}
-                  className="text-gray-400 hover:text-white text-xs"
-                >
-                  {showLayerSection ? '▼' : '▶'}
-                </button>
-              </div>
-              {showLayerSection && (
-                <div className="space-y-1 mb-4">
-                  {MARS_OVERLAY_DEFINITIONS.filter(def => 
-                    ['elevation', 'solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri'].includes(def.name)
-                  ).map((def) => {
-                    const isActive = overlayType === def.name
-                    const status = getLayerStatus(def.name)
-                    return (
-                      <button
-                        key={def.name}
-                        onClick={() => onOverlayTypeChange(def.name)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
-                          isActive
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600'
-                        }`}
-                        title={def.description}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span>{def.icon}</span>
-                          <span className="font-medium">{def.displayName}</span>
-                        </div>
-                        <LayerStatusBadge status={status} dataset={dataset} />
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Cache Statistics */}
-          {showCacheStats && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                  Cache Statistics
-                </label>
-                <button
-                  onClick={() => setShowCacheSection(!showCacheSection)}
-                  className="text-gray-400 hover:text-white text-xs"
-                >
-                  {showCacheSection ? '▼' : '▶'}
-                </button>
-              </div>
-              {showCacheSection && (
-                <div className="bg-gray-700/50 rounded-md p-3 mb-4 space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Cached Layers:</span>
-                    <span className="text-white font-semibold">{cacheStats.cachedCount}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Memory Usage:</span>
-                    <span className="text-white font-semibold">{cacheStats.memoryUsageKB.toLocaleString()} KB</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Active Layer:</span>
-                    <span className="text-white font-semibold">
-                      {cacheStats.activeLayer ? getOverlayDefinition(cacheStats.activeLayer)?.displayName || cacheStats.activeLayer : 'None'}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Cache Actions */}
-          {showCacheStats && (
-            <div className="space-y-2 mb-4">
-              <button
-                onClick={handlePreloadAll}
-                disabled={!roi}
-                className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm rounded-md transition-colors"
-              >
-                Preload All Layers
-              </button>
-              <button
-                onClick={handleClearCache}
-                className="w-full px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-md transition-colors"
-              >
-                Clear Cache
-              </button>
-            </div>
-          )}
-
-          {/* Overlay Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Overlay Type
-            </label>
+        <div className="p-3 space-y-4 bg-gray-900/30">
+          {activeTab === 'layers' && (
             <div className="grid grid-cols-2 gap-2">
-              {MARS_OVERLAY_DEFINITIONS.filter(def => 
-                ['elevation', 'solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri'].includes(def.name)
-              ).map((def) => (
-                <button
-                  key={def.name}
-                  onClick={() => onOverlayTypeChange(def.name)}
-                  className={`px-3 py-2 rounded-md text-sm text-left transition-colors ${
-                    overlayType === def.name
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                  title={def.description}
-                >
-                  {def.icon} {def.displayName}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Layer Metadata */}
-          {activeOverlayDef && (
-            <div className="bg-gray-700/30 rounded-md p-2 text-xs text-gray-400">
-              <div className="font-medium text-gray-300 mb-1">{activeOverlayDef.displayName}</div>
-              <div>{activeOverlayDef.description}</div>
-              {activeOverlayDef.resolution && (
-                <div className="mt-1">Resolution: {activeOverlayDef.resolution}</div>
-              )}
-              <div className="mt-1">Dataset: {dataset.toUpperCase()}</div>
+               {MARS_OVERLAY_DEFINITIONS.filter(def => 
+                ['elevation', 'solar', 'viewshed', 'comms_risk', 'hillshade', 'slope', 'roughness', 'tri'].includes(def.name)
+               ).map((def) => {
+                 const isActive = overlayType === def.name
+                 const status = getLayerStatus(def.name as OverlayType)
+                 return (
+                   <button
+                     key={def.name}
+                     onClick={() => onOverlayTypeChange(def.name as OverlayType)}
+                     className={`relative flex flex-col items-start p-2 rounded border transition-all duration-200 ${
+                       isActive
+                         ? 'bg-cyan-900/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
+                         : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-700 hover:border-gray-500'
+                     }`}
+                   >
+                     <div className="flex items-center justify-between w-full mb-1">
+                        <span className="font-mono text-xs font-bold uppercase">{def.displayName}</span>
+                        <LayerStatusBadge status={status} dataset={dataset} />
+                     </div>
+                     <span className="text-[10px] opacity-70 truncate w-full text-left">{def.description}</span>
+                   </button>
+                 )
+               })}
             </div>
           )}
 
-          {/* Colormap Selector */}
-          {showColormap && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Colormap
-              </label>
-              <select
-                value={colormap}
-                onChange={(e) => onColormapChange(e.target.value)}
-                className="w-full bg-gray-700 text-white px-3 py-2 rounded-md text-sm"
-              >
-                {COLORMAPS.map((cm) => (
-                  <option key={cm.value} value={cm.value}>
-                    {cm.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {activeTab === 'settings' && (
+             <div className="space-y-4">
+                {/* Metadata */}
+                {activeOverlayDef && (
+                  <div className="p-2 bg-cyan-900/10 border border-cyan-500/20 rounded text-xs text-cyan-200/80 font-mono">
+                    <div className="flex justify-between">
+                      <span>RES: {activeOverlayDef.resolution || 'N/A'}</span>
+                      <span>SRC: {dataset.toUpperCase()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Colormap */}
+                {showColormap && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Spectral Palette</label>
+                    <select
+                      value={colormap}
+                      onChange={(e) => onColormapChange(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-xs focus:border-cyan-500 focus:outline-none"
+                    >
+                      {COLORMAPS.map((cm) => (
+                        <option key={cm.value} value={cm.value}>{cm.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Relief Slider */}
+                {showRelief && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Exaggeration: {relief.toFixed(1)}x</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="3"
+                      step="0.1"
+                      value={relief}
+                      onChange={(e) => onReliefChange(parseFloat(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
+                {/* Sun Angles */}
+                {showSunAngles && (
+                  <div className="space-y-2 pt-2 border-t border-gray-700/50">
+                    <div className="flex items-center gap-2 text-amber-500 mb-1">
+                        <Sun size={12} />
+                        <span className="text-xs font-bold uppercase">Solar Ephemeris</span>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-gray-400">
+                        <span>Azimuth</span>
+                        <span>{sunAzimuth.toFixed(0)}°</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="360"
+                        step="15"
+                        value={sunAzimuth}
+                        onChange={(e) => onSunAzimuthChange(parseFloat(e.target.value))}
+                        className="w-full accent-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-gray-400">
+                        <span>Altitude</span>
+                        <span>{sunAltitude.toFixed(0)}°</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="90"
+                        step="5"
+                        value={sunAltitude}
+                        onChange={(e) => onSunAltitudeChange(parseFloat(e.target.value))}
+                        className="w-full accent-amber-500"
+                      />
+                    </div>
+                  </div>
+                )}
+             </div>
           )}
 
-          {/* Relief Slider (for elevation) */}
-          {showRelief && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Relief / Hillshade Intensity: {relief.toFixed(1)}x
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="3"
-                step="0.1"
-                value={relief}
-                onChange={(e) => onReliefChange(parseFloat(e.target.value))}
-                className="w-full"
-              />
-              <div className="text-xs text-gray-400 mt-1">
-                {relief === 0 ? 'Flat color (no shading)' : `3D shading intensity`}
-              </div>
+          {/* System Stats / Cache */}
+          {showCacheStats && (
+            <div className="pt-2 border-t border-gray-700/50">
+               <div className="flex items-center justify-between mb-2">
+                 <span className="text-xs font-bold text-gray-500 uppercase">Memory Cache</span>
+                 <span className="text-xs font-mono text-cyan-400">{(cacheStats.memoryUsageKB / 1024).toFixed(1)} MB</span>
+               </div>
+               <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handlePreloadAll}
+                    disabled={!roi}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs rounded border border-gray-600 transition-colors disabled:opacity-50"
+                  >
+                    <Database size={10} />
+                    PRELOAD
+                  </button>
+                  <button
+                    onClick={handleClearCache}
+                    className="flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-800 hover:bg-red-900/30 text-xs rounded border border-gray-600 hover:border-red-500/50 transition-colors"
+                  >
+                    <Trash2 size={10} />
+                    PURGE
+                  </button>
+               </div>
             </div>
-          )}
-
-          {/* Sun Angle Controls (for solar and hillshade) */}
-          {showSunAngles && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Sun Azimuth: {sunAzimuth.toFixed(0)}°
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="360"
-                  step="1"
-                  value={sunAzimuth}
-                  onChange={(e) => onSunAzimuthChange(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-xs text-gray-400 mt-1">
-                  0°=North, 90°=East, 180°=South, 270°=West
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Sun Altitude: {sunAltitude.toFixed(0)}°
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="90"
-                  step="1"
-                  value={sunAltitude}
-                  onChange={(e) => onSunAltitudeChange(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-xs text-gray-400 mt-1">
-                  0°=Horizon, 90°=Zenith
-                </div>
-              </div>
-            </>
           )}
         </div>
       )}
     </div>
   )
 }
-

@@ -1,8 +1,8 @@
 import { MapContainer, ImageOverlay, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useDemImage, useSitesGeoJson, useWaypointsGeoJson } from '../hooks/useMapData';
-import { useEffect } from 'react';
+import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
+import { useEffect, useRef } from 'react';
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -16,11 +16,33 @@ L.Icon.Default.mergeOptions({
 
 function FitBounds({ bounds }) {
   const map = useMap();
+  
   useEffect(() => {
-    if (bounds) {
-      map.fitBounds(bounds, { padding: [0, 0], maxZoom: 12 });
+    if (bounds && bounds.isValid()) {
+      console.log("Fitting bounds:", bounds);
+      try {
+        map.fitBounds(bounds, { padding: [20, 20], maxZoom: 14, animate: true });
+      } catch (e) {
+        console.error("Error fitting bounds:", e);
+      }
     }
   }, [map, bounds]);
+  
+  return null;
+}
+
+function MapController({ roi }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (roi) {
+        // Initial center if no bounds available yet
+        const lat = (roi.lat_min + roi.lat_max) / 2;
+        const lon = (roi.lon_min + roi.lon_max) / 2;
+        map.panTo([lat, lon]);
+    }
+  }, [map, roi]);
+  
   return null;
 }
 
@@ -75,6 +97,34 @@ const onEachFeature = (feature, layer, onSiteSelect) => {
   }
 };
 
+// --- Layer Components ---
+
+function SitesLayer({ showSites, onSiteSelect, selectedSiteId }) {
+  const sitesGeoJson = useSitesGeoJson(showSites);
+  if (!sitesGeoJson) return null;
+  
+  return (
+    <GeoJSON 
+      data={sitesGeoJson} 
+      pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
+      onEachFeature={(f, l) => onEachFeature(f, l, onSiteSelect)}
+    />
+  );
+}
+
+function WaypointsLayer({ showWaypoints, selectedSiteId }) {
+  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints);
+  if (!waypointsGeoJson) return null;
+
+  return (
+    <GeoJSON 
+      data={waypointsGeoJson} 
+      pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
+      style={(feature) => ({ color: feature?.properties?.line_color || '#ff0000', weight: 2, opacity: 0.8 })}
+    />
+  );
+}
+
 // --- Main Component ---
 
 interface TerrainMapProps {
@@ -111,49 +161,58 @@ export default function TerrainMap({
   overlayType,
   overlayOptions = {}
 }: TerrainMapProps) {
-  // Use overlay system if overlayType is provided, otherwise use DEM
-  const useOverlay = overlayType && overlayType !== 'elevation'
+  // Use overlay system for everything (including elevation) to benefit from caching
+  const activeOverlayType = overlayType || 'elevation';
   
-  const { useOverlayImage } = require('../hooks/useMapData')
-  const overlayImage = useOverlay 
-    ? useOverlayImage(roi, dataset, overlayType, {
-        colormap: overlayOptions.colormap || 'terrain',
-        relief: overlayOptions.relief ?? relief,
-        sunAzimuth: overlayOptions.sunAzimuth || 315,
-        sunAltitude: overlayOptions.sunAltitude || 45,
-        width: overlayOptions.width || 2400,
-        height: overlayOptions.height || 1600,
-        buffer: overlayOptions.buffer || 1.5,
-        marsSol: overlayOptions.marsSol,
-        season: overlayOptions.season,
-        dustStormPeriod: overlayOptions.dustStormPeriod
-      })
-    : null
+  const overlayImage = useOverlayImage(roi, dataset, activeOverlayType, {
+    colormap: overlayOptions.colormap || 'terrain',
+    relief: overlayOptions.relief ?? relief,
+    sunAzimuth: overlayOptions.sunAzimuth || 315,
+    sunAltitude: overlayOptions.sunAltitude || 45,
+    width: overlayOptions.width || 2400,
+    height: overlayOptions.height || 1600,
+    buffer: overlayOptions.buffer || 1.5,
+    marsSol: overlayOptions.marsSol,
+    season: overlayOptions.season,
+    dustStormPeriod: overlayOptions.dustStormPeriod
+  });
 
-  const { url: demImageUrl, bounds: imageBounds, loading, error } = useDemImage(roi, dataset, relief);
-  const sitesGeoJson = useSitesGeoJson(showSites);
-  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints);
+  const displayImageUrl = overlayImage?.url;
+  const displayBounds = overlayImage?.bounds;
+  const displayLoading = overlayImage?.loading;
+  const displayError = overlayImage?.error;
 
-  // Use overlay image if available, otherwise fall back to DEM
-  const displayImageUrl = useOverlay && overlayImage?.url ? overlayImage.url : demImageUrl
-  const displayBounds = useOverlay && overlayImage?.bounds ? overlayImage.bounds : imageBounds
-  const displayLoading = useOverlay && overlayImage ? overlayImage.loading : loading
-  const displayError = useOverlay && overlayImage ? overlayImage.error : error
-
+  // Calculate center for initial map render
   const centerTuple: [number, number] = roi 
     ? [ (roi.lat_min + roi.lat_max) / 2, (roi.lon_min + roi.lon_max) / 2 ]
     : [0, 180];
 
   if (displayLoading) {
-    return <div className="map-loading">Loading Map...</div>;
+    return (
+      <div className="flex items-center justify-center h-full w-full bg-gray-900 text-cyan-400 font-mono">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mx-auto mb-2"></div>
+          LOADING MAP DATA...
+        </div>
+      </div>
+    );
   }
 
   if (displayError) {
-    return <div className="map-error">Error: {displayError}</div>;
+    return (
+      <div className="flex items-center justify-center h-full w-full bg-gray-900 text-red-400 font-mono border border-red-900/50">
+        <div className="text-center p-4">
+          <div className="text-xl mb-2">⚠ ERROR</div>
+          <div>{displayError}</div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <MapContainer center={centerTuple} zoom={6} style={{ height: '100%', width: '100%' }}>
+    <MapContainer center={centerTuple} zoom={6} style={{ height: '100%', width: '100%' }} className="bg-black">
+      <MapController roi={roi} />
+      
       {displayImageUrl && displayBounds && (
         <>
           <ImageOverlay url={displayImageUrl} bounds={displayBounds} />
@@ -161,22 +220,13 @@ export default function TerrainMap({
         </>
       )}
 
-      {sitesGeoJson && (
-        <GeoJSON 
-          data={sitesGeoJson} 
-          pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
-          onEachFeature={(f, l) => onEachFeature(f, l, onSiteSelect)}
-        />
+      {showSites && (
+        <SitesLayer showSites={showSites} onSiteSelect={onSiteSelect} selectedSiteId={selectedSiteId} />
       )}
 
-      {waypointsGeoJson && (
-        <GeoJSON 
-          data={waypointsGeoJson} 
-          pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
-          style={(feature) => ({ color: feature?.properties?.line_color || '#ff0000', weight: 2, opacity: 0.8 })}
-        />
+      {showWaypoints && (
+        <WaypointsLayer showWaypoints={showWaypoints} selectedSiteId={selectedSiteId} />
       )}
     </MapContainer>
   );
 }
-

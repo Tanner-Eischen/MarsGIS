@@ -1,3 +1,4 @@
+import { Activity, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react'
 
 interface RouteCostSummaryProps {
   distance_m: number
@@ -17,82 +18,98 @@ export default function RouteCostSummary({
   const totalCost = slope_cost + roughness_cost + shadow_cost
   const maxComponent = Math.max(slope_cost, roughness_cost, shadow_cost, 0.01)
 
+  // Risk Assessment Logic
+  let riskLevel: 'LOW' | 'MED' | 'HIGH' = 'LOW'
+  let riskColor = 'text-green-400'
+  if (totalCost > 50 || slope_cost > 30) {
+    riskLevel = 'MED'
+    riskColor = 'text-yellow-400'
+  }
+  if (totalCost > 80 || slope_cost > 50 || roughness_cost > 40) {
+    riskLevel = 'HIGH'
+    riskColor = 'text-red-500'
+  }
+
   return (
-    <div className="p-4 bg-gray-800 rounded-lg border border-gray-700">
-      <h3 className="font-semibold mb-4">Route Cost Summary</h3>
+    <div className="glass-panel rounded-lg p-4 text-white font-mono text-sm">
+      <div className="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
+        <h3 className="font-bold tracking-wider text-cyan-400 flex items-center gap-2">
+            <Activity size={16} />
+            TRAVERSE_METRICS
+        </h3>
+        <div className={`flex items-center gap-1 font-bold ${riskColor}`}>
+            {riskLevel === 'HIGH' && <AlertTriangle size={14} />}
+            {riskLevel === 'LOW' && <CheckCircle size={14} />}
+            <span>RISK: {riskLevel}</span>
+        </div>
+      </div>
       
       <div className="space-y-4">
-        {/* Distance */}
-        <div>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-400">Total Distance</span>
-            <span className="font-semibold">{(distance_m / 1000).toFixed(2)} km</span>
-          </div>
+        {/* Distance Display */}
+        <div className="bg-gray-900/50 p-2 rounded border border-gray-700/50 flex justify-between items-center">
+            <span className="text-gray-400 text-xs">DISTANCE</span>
+            <span className="text-lg font-bold">{(distance_m / 1000).toFixed(2)} <span className="text-xs font-normal text-gray-500">km</span></span>
         </div>
 
-        {/* Cost Components */}
+        {/* Cost Component Breakdown */}
         <div className="space-y-2">
-          <div className="text-xs text-gray-400 mb-2">Cost Components:</div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">Impedance Factors</div>
           
-          <div>
+          {/* Slope */}
+          <div className="group">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-400">Slope Cost</span>
-              <span className="text-gray-300">{slope_cost.toFixed(2)}</span>
+              <span className="text-gray-400 group-hover:text-white transition-colors">Slope Grade</span>
+              <span className="text-cyan-300">{slope_cost.toFixed(1)}</span>
             </div>
-            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
               <div
-                className="h-full bg-yellow-500"
-                style={{ width: `${(slope_cost / maxComponent) * 100}%` }}
+                className="h-full bg-gradient-to-r from-cyan-900 to-cyan-400"
+                style={{ width: `${Math.min((slope_cost / maxComponent) * 100, 100)}%` }}
               />
             </div>
           </div>
 
-          <div>
+          {/* Roughness */}
+          <div className="group">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-400">Roughness Cost</span>
-              <span className="text-gray-300">{roughness_cost.toFixed(2)}</span>
+              <span className="text-gray-400 group-hover:text-white transition-colors">Terrain Roughness</span>
+              <span className="text-orange-300">{roughness_cost.toFixed(1)}</span>
             </div>
-            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
               <div
-                className="h-full bg-orange-500"
-                style={{ width: `${(roughness_cost / maxComponent) * 100}%` }}
+                className="h-full bg-gradient-to-r from-orange-900 to-orange-400"
+                style={{ width: `${Math.min((roughness_cost / maxComponent) * 100, 100)}%` }}
               />
             </div>
           </div>
 
-          <div>
+          {/* Shadow/Solar */}
+          <div className="group">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-400">Shadow Cost</span>
-              <span className="text-gray-300">{shadow_cost.toFixed(2)}</span>
+              <span className="text-gray-400 group-hover:text-white transition-colors">Occlusion/Shadow</span>
+              <span className="text-purple-300">{shadow_cost.toFixed(1)}</span>
             </div>
-            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
               <div
-                className="h-full bg-purple-500"
-                style={{ width: `${(shadow_cost / maxComponent) * 100}%` }}
+                className="h-full bg-gradient-to-r from-purple-900 to-purple-400"
+                style={{ width: `${Math.min((shadow_cost / maxComponent) * 100, 100)}%` }}
               />
             </div>
           </div>
         </div>
 
-        {/* Energy Estimate */}
-        <div className="pt-2 border-t border-gray-700">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Estimated Energy</span>
-            <span className="font-semibold text-blue-400">
-              {(energy_estimate_j / 1000).toFixed(1)} kJ
-            </span>
+        {/* Energy & Total */}
+        <div className="pt-3 border-t border-gray-700 grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-[10px] text-gray-500 block">EST. ENERGY</span>
+            <span className="text-base font-bold text-blue-400">{(energy_estimate_j / 1000).toFixed(1)} <span className="text-xs">kJ</span></span>
           </div>
-        </div>
-
-        {/* Total Cost */}
-        <div className="pt-2 border-t border-gray-700">
-          <div className="flex justify-between">
-            <span className="text-sm font-semibold">Total Cost</span>
-            <span className="text-lg font-bold text-green-400">{totalCost.toFixed(2)}</span>
+          <div className="text-right">
+            <span className="text-[10px] text-gray-500 block">AGGREGATE COST</span>
+            <span className="text-base font-bold text-white">{totalCost.toFixed(1)}</span>
           </div>
         </div>
       </div>
     </div>
   )
 }
-

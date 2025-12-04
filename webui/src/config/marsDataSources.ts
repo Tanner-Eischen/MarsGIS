@@ -17,6 +17,8 @@ export type OverlayType =
   | 'nomenclature'
   | 'contours'
   | 'albedo'
+  | 'viewshed'
+  | 'comms_risk'
 
 export type MarsDataset = 'mola' | 'hirise' | 'ctx' | 'mola_200m'
 
@@ -76,6 +78,29 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
       marsSol: true,
       timeOfDay: true
     }
+  },
+  {
+    name: 'viewshed',
+    displayName: 'Comms / Viewshed',
+    icon: '📡',
+    description: 'Line-of-sight visibility from observer',
+    color: '#00FF00',
+    temporalType: 'static',
+    datasets: ['mola', 'hirise', 'ctx'],
+    backendEndpoint: '/api/v1/visualization/overlay',
+    dataType: 'raster',
+    resolution: 'Variable'
+  },
+  {
+    name: 'comms_risk',
+    displayName: 'Comms Risk Map',
+    icon: '📶',
+    description: 'Signal occlusion risk probability',
+    color: '#FF4500',
+    temporalType: 'static',
+    datasets: ['mola', 'hirise', 'ctx'],
+    backendEndpoint: '/api/v1/visualization/overlay',
+    dataType: 'raster'
   },
   {
     name: 'dust',
@@ -231,4 +256,3 @@ export function getTemporalParams(overlayType: OverlayType): string[] {
   
   return params
 }
-

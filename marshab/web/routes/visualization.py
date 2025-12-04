@@ -149,6 +149,7 @@ async def get_dem_image(
         data_manager = DataManager()
         loop = asyncio.get_event_loop()
         use_synthetic = False
+        dem = None
         try:
             # Increase timeout for large DEMs, but add progress logging
             logger.info("Starting DEM load in thread pool...")
@@ -170,7 +171,7 @@ async def get_dem_image(
         
         logger.info("Processing elevation data...")
         # Get elevation data (or synthesize if DEM unavailable)
-        if not use_synthetic:
+        if not use_synthetic and dem is not None:
             elevation = dem.values.astype(np.float32)
         else:
             # Create a synthetic elevation surface for visualization (fast demo fallback)
@@ -183,7 +184,7 @@ async def get_dem_image(
             elevation = elevation.astype(np.float32)
         
         # Handle nodata values
-        if hasattr(dem, 'attrs') and 'nodata' in dem.attrs:
+        if not use_synthetic and dem is not None and hasattr(dem, 'attrs') and 'nodata' in dem.attrs:
             nodata = dem.attrs['nodata']
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
@@ -843,6 +844,7 @@ async def get_overlay(
         data_manager = DataManager()
         loop = asyncio.get_event_loop()
         use_synthetic = False
+        dem = None
         
         # Load DEM
         try:
@@ -866,7 +868,7 @@ async def get_overlay(
         config = get_config()
         if dataset.lower() in config.data_sources:
             cell_size_m = config.data_sources[dataset.lower()].resolution_m
-        elif not use_synthetic and hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
+        elif not use_synthetic and dem is not None and hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
             cell_size_m = float(abs(dem.rio.res[0]))
         else:
             cell_size_m = 200.0

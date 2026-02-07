@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useGeoPlan } from '../context/GeoPlanContext'
 import TerrainMap from '../components/TerrainMap'
-import Terrain3D from '../components/Terrain3D'
 import OverlaySwitcher, { OverlayType } from '../components/OverlaySwitcher'
 import TerrainAnalysis from './TerrainAnalysis'
 import SolarAnalysis from './SolarAnalysis'
 import { getStatus } from '../services/api'
 import { Layers, Sun, Box, Activity } from 'lucide-react'
+
+const Terrain3D = lazy(() => import('../components/Terrain3D'))
 
 export default function AnalysisDashboard() {
   const [mode, setMode] = useState<'terrain' | 'solar' | '3d'>('terrain')
@@ -128,7 +129,15 @@ export default function AnalysisDashboard() {
       {/* Main Visualization Area */}
       <div className="flex-1 relative bg-black">
         {mode === '3d' ? (
-          <Terrain3D />
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full w-full bg-gray-900 text-cyan-400 font-mono">
+                Loading 3D module...
+              </div>
+            }
+          >
+            <Terrain3D />
+          </Suspense>
         ) : (
           <TerrainMap
             roi={roi}

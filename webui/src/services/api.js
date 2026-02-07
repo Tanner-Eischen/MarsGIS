@@ -7,6 +7,7 @@ const api = axios.create({
     },
     timeout: 30000, // 30 second timeout for better user experience
 });
+const LONG_RUNNING_TIMEOUT_MS = 180000;
 // Add request interceptor for logging
 api.interceptors.request.use((config) => {
     console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.data ? { data: config.data } : '');
@@ -31,7 +32,9 @@ export const getStatus = async () => {
     return response.data;
 };
 export const downloadDEM = async (request) => {
-    const response = await api.post('/download', request);
+    const response = await api.post('/download', request, {
+        timeout: LONG_RUNNING_TIMEOUT_MS,
+    });
     return response.data;
 };
 export const analyzeTerrain = async (request) => {
@@ -40,6 +43,8 @@ export const analyzeTerrain = async (request) => {
         threshold: request.threshold || 0.7,
         roi: request.roi,
         criteria_weights: request.criteria_weights,
+    }, {
+        timeout: LONG_RUNNING_TIMEOUT_MS,
     });
     return response.data;
 };

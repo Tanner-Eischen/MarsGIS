@@ -1,10 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
-import Plot from 'react-plotly.js';
-import Plotly from 'plotly.js';
+import createPlotlyComponent from 'react-plotly.js/factory';
+import Plotly from 'plotly.js/dist/plotly.min.js';
+import type { PlotlyHTMLElement } from 'plotly.js';
 import { use3DTerrain } from '../hooks/use3DMapData';
 import { useSitesGeoJson, useWaypointsGeoJson } from '../hooks/useMapData';
 import { RoverPosition } from '../hooks/useRoverAnimation';
 import { useCameraFollow } from '../hooks/useCameraFollow';
+
+const Plot = createPlotlyComponent(Plotly as any);
 
 interface Terrain3DProps {
   roi?: { lat_min: number; lat_max: number; lon_min: number; lon_max: number };
@@ -49,7 +52,7 @@ export default function Terrain3D({
   const [colorScale, setColorScale] = useState('Terrain');
   const [enableContourLines, setEnableContourLines] = useState(false);
   
-  const plotRef = useRef<Plotly.PlotlyHTMLElement | null>(null);
+  const plotRef = useRef<PlotlyHTMLElement | null>(null);
 
   // Use external rover position if provided, otherwise use internal state
   const roverPosition = externalRoverPosition;
@@ -252,7 +255,7 @@ export default function Terrain3D({
           style={{ width: '100%', height: '100%' }}
           useResizeHandler={true}
           onInitialized={(figure, graphDiv) => {
-            plotRef.current = graphDiv as Plotly.PlotlyHTMLElement;
+            plotRef.current = graphDiv as PlotlyHTMLElement;
           }}
         />
       </div>

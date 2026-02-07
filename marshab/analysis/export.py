@@ -218,6 +218,12 @@ def _generate_html_report(
 ) -> str:
     """Generate HTML report content."""
     markdown = _generate_markdown_report(sites, top_site, metadata)
+    table_markup = (
+        markdown
+        .replace("|", "</td><td>")
+        .replace("\n|", "<tr><td>")
+        .replace("|", "</td></tr>")
+    )
 
     # Simple Markdown to HTML conversion (basic)
     html = f"""<!DOCTYPE html>
@@ -232,7 +238,7 @@ def _generate_html_report(
     </style>
 </head>
 <body>
-{markdown.replace('|', '</td><td>').replace('\n|', '<tr><td>').replace('|', '</td></tr>')}
+{table_markup}
 </body>
 </html>"""
 

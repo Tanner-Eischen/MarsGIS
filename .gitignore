@@ -44,6 +44,10 @@ data/output/**
 *.geojson
 *.csv
 *.json
+!webui/package.json
+!webui/package-lock.json
+!webui/tsconfig.json
+!webui/tsconfig.node.json
 !webui/vercel.json
 
 # Testing

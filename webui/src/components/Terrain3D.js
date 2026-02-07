@@ -1,10 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState, useRef } from 'react';
-import Plot from 'react-plotly.js';
-import Plotly from 'plotly.js';
+import createPlotlyComponent from 'react-plotly.js/factory';
+import Plotly from 'plotly.js/dist/plotly.min.js';
 import { use3DTerrain } from '../hooks/use3DMapData';
 import { useSitesGeoJson, useWaypointsGeoJson } from '../hooks/useMapData';
 import { useCameraFollow } from '../hooks/useCameraFollow';
+const Plot = createPlotlyComponent(Plotly);
 export default function Terrain3D({ roi, dataset = 'mola', showSites = false, showWaypoints = false, enableRoverAnimation = false, roverPosition: externalRoverPosition = null, isAnimating = false, overlayType, overlayOptions = {} }) {
     const { terrainData, loading: terrainLoading, error: terrainError } = use3DTerrain(roi, dataset);
     const sitesGeoJson = useSitesGeoJson(showSites);

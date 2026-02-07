@@ -1,0 +1,2 @@
+# Render Python runtime fallback: install this package and its declared dependencies.
+-e .

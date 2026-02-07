@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import Plotly from 'plotly.js'
+import Plotly from 'plotly.js/dist/plotly.min.js'
+import type { PlotlyHTMLElement } from 'plotly.js'
 import { RoverPosition } from './useRoverAnimation'
 
 interface CameraConfig {
@@ -20,7 +21,7 @@ const DEFAULT_CONFIG: CameraConfig = {
 export function useCameraFollow(
   roverPosition: RoverPosition | null,
   isAnimating: boolean,
-  plotRef: RefObject<Plotly.PlotlyHTMLElement | null>,
+  plotRef: RefObject<PlotlyHTMLElement | null>,
   config: Partial<CameraConfig> = {}
 ) {
   const cameraConfig = { ...DEFAULT_CONFIG, ...config }

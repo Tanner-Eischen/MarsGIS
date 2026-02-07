@@ -9,6 +9,8 @@ const api = axios.create({
   timeout: 30000, // 30 second timeout for better user experience
 })
 
+const LONG_RUNNING_TIMEOUT_MS = 180000
+
 // Add request interceptor for logging
 api.interceptors.request.use(
   (config) => {
@@ -128,7 +130,9 @@ export const getStatus = async (): Promise<StatusResponse> => {
 }
 
 export const downloadDEM = async (request: DownloadRequest): Promise<DownloadResponse> => {
-  const response = await api.post<DownloadResponse>('/download', request)
+  const response = await api.post<DownloadResponse>('/download', request, {
+    timeout: LONG_RUNNING_TIMEOUT_MS,
+  })
   return response.data
 }
 
@@ -138,6 +142,8 @@ export const analyzeTerrain = async (request: AnalysisRequest): Promise<Analysis
     threshold: request.threshold || 0.7,
     roi: request.roi,
     criteria_weights: request.criteria_weights,
+  }, {
+    timeout: LONG_RUNNING_TIMEOUT_MS,
   })
   return response.data
 }

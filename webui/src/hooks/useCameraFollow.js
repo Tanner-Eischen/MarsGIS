@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import Plotly from 'plotly.js';
+import Plotly from 'plotly.js/dist/plotly.min.js';
 const DEFAULT_CONFIG = {
     distance: 0.01, // ~1km in degrees (approximate)
     height: 500, // meters above rover

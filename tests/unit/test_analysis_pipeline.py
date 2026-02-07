@@ -1,14 +1,14 @@
 """Unit tests for analysis pipeline."""
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 import xarray as xr
 
 from marshab.core.analysis_pipeline import AnalysisPipeline, AnalysisResults
 from marshab.exceptions import AnalysisError
-from marshab.types import BoundingBox, SiteCandidate
+from marshab.types import BoundingBox
 
 
 class TestAnalysisPipeline:
@@ -29,7 +29,7 @@ class TestAnalysisPipeline:
         elevation = np.random.randn(100, 100) * 50 + 1000.0
         # Make some areas suitable (low slope, low roughness)
         elevation[30:50, 30:50] = 1000.0  # Flat area
-        
+
         dem = xr.DataArray(
             elevation,
             dims=["y", "x"],
@@ -56,11 +56,11 @@ class TestAnalysisPipeline:
         """Test basic pipeline execution."""
         # Mock data manager
         pipeline.data_manager.get_dem_for_roi = MagicMock(return_value=mock_dem)
-        
+
         # Mock terrain analyzer
         mock_analyzer_instance = MagicMock()
         mock_terrain.return_value = mock_analyzer_instance
-        
+
         # Create mock terrain metrics
         from marshab.types import TerrainMetrics
         mock_metrics = TerrainMetrics(
@@ -72,7 +72,7 @@ class TestAnalysisPipeline:
             elevation=np.random.rand(100, 100) * 1000.0 + 2000.0
         )
         mock_analyzer_instance.analyze.return_value = mock_metrics
-        
+
         # Mock CriteriaExtractor
         with patch('marshab.core.analysis_pipeline.CriteriaExtractor') as mock_extractor:
             mock_extractor_instance = MagicMock()
@@ -85,32 +85,32 @@ class TestAnalysisPipeline:
                 "solar_exposure": np.random.rand(100, 100),
                 "science_value": np.ones((100, 100)) * 0.5
             }
-            
+
             # Mock MCDM evaluator
             # Create suitability scores - some areas above threshold
             suitability = np.random.rand(100, 100) * 0.3 + 0.7  # Most above 0.7
             suitability[0:20, 0:20] = 0.5  # Some below threshold
             mock_mcdm.evaluate.return_value = suitability
-            
+
             # Add config data source
             from marshab.config import DataSource
             test_config.data_sources = {
                 "mola": DataSource(url="http://test.com/dem.tif", resolution_m=463.0)
             }
             test_config.analysis.min_site_area_km2 = 0.1  # Lower threshold for testing
-            
+
             # Run pipeline
             results = pipeline.run(test_roi, dataset="mola", threshold=0.7)
-            
+
             # Verify results
             assert isinstance(results, AnalysisResults)
             assert len(results.sites) > 0  # Should find some sites
             assert results.top_site_id > 0
             assert results.top_site_score > 0.0
-            
+
             # Verify terrain analyzer was called
             mock_analyzer_instance.analyze.assert_called_once()
-            
+
             # Verify MCDM was called
             mock_mcdm.evaluate.assert_called_once()
 
@@ -118,7 +118,7 @@ class TestAnalysisPipeline:
         """Test pipeline when no suitable sites are found."""
         # Mock data manager
         pipeline.data_manager.get_dem_for_roi = MagicMock(return_value=mock_dem)
-        
+
         # Create terrain metrics with high slopes (unsuitable)
         from marshab.types import TerrainMetrics
         high_slope = np.ones((100, 100)) * 30.0  # Very steep
@@ -130,12 +130,12 @@ class TestAnalysisPipeline:
             hillshade=np.random.randint(0, 256, (100, 100), dtype=np.uint8),
             elevation=np.ones((100, 100)) * 3000.0
         )
-        
+
         with patch('marshab.core.analysis_pipeline.TerrainAnalyzer') as mock_terrain:
             mock_analyzer = MagicMock()
             mock_terrain.return_value = mock_analyzer
             mock_analyzer.analyze.return_value = metrics
-            
+
             # Mock CriteriaExtractor
             with patch('marshab.core.analysis_pipeline.CriteriaExtractor') as mock_extractor:
                 mock_extractor_instance = MagicMock()
@@ -151,13 +151,13 @@ class TestAnalysisPipeline:
                 with patch('marshab.core.analysis_pipeline.MCDMEvaluator') as mock_mcdm:
                     low_suitability = np.ones((100, 100)) * 0.3  # All below threshold
                     mock_mcdm.evaluate.return_value = low_suitability
-                
+
                 # Add config
                 from marshab.config import DataSource
                 test_config.data_sources = {"mola": DataSource(url="http://test.com/dem.tif", resolution_m=463.0)}
-                
+
                 results = pipeline.run(test_roi, dataset="mola", threshold=0.7)
-                
+
                 # Should return empty results
                 assert len(results.sites) == 0
                 assert results.top_site_id == 0
@@ -166,7 +166,7 @@ class TestAnalysisPipeline:
     def test_analysis_results_save(self, tmp_path):
         """Test saving analysis results."""
         from marshab.types import SiteCandidate
-        
+
         sites = [
             SiteCandidate(
                 site_id=1,
@@ -193,20 +193,20 @@ class TestAnalysisPipeline:
                 rank=2
             )
         ]
-        
+
         results = AnalysisResults(
             sites=sites,
             top_site_id=1,
             top_site_score=0.85
         )
-        
+
         output_dir = tmp_path / "output"
         results.save(output_dir)
-        
+
         # Verify file was created
         sites_file = output_dir / "sites.csv"
         assert sites_file.exists()
-        
+
         # Verify content
         import pandas as pd
         df = pd.read_csv(sites_file)
@@ -218,10 +218,10 @@ class TestAnalysisPipeline:
         """Test error handling in pipeline."""
         # Mock data manager to raise error
         pipeline.data_manager.get_dem_for_roi = MagicMock(side_effect=Exception("DEM load failed"))
-        
+
         with pytest.raises(AnalysisError) as exc_info:
             pipeline.run(test_roi, dataset="mola")
-        
+
         assert "Analysis pipeline failed" in str(exc_info.value)
 
 

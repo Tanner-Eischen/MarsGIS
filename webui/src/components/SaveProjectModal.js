@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
+import { apiFetch } from '../lib/apiBase';
 export default function SaveProjectModal({ roi, dataset, presetId, selectedSites, onClose, onSave }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -19,7 +20,7 @@ export default function SaveProjectModal({ roi, dataset, presetId, selectedSites
             metadata: {}
         };
         try {
-            const response = await fetch('http://localhost:5000/api/v1/projects', {
+            const response = await apiFetch('/projects', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(projectData)

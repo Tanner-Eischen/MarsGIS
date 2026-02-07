@@ -1,12 +1,13 @@
 """Criteria configuration for MCDM analysis."""
 
-from typing import Dict, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class Criterion(BaseModel):
     """Single criterion definition."""
-    
+
     name: str
     display_name: str
     description: str
@@ -17,9 +18,9 @@ class Criterion(BaseModel):
 
 class CriteriaConfig(BaseModel):
     """Complete criteria configuration."""
-    
-    criteria: Dict[str, Criterion]
-    
+
+    criteria: dict[str, Criterion]
+
     def validate_weights(self):
         """Ensure weights sum to 1.0."""
         total = sum(c.weight for c in self.criteria.values())

@@ -1,8 +1,6 @@
-import os
-import json
 from fastapi.testclient import TestClient
-from marshab.web.api import app
 
+from marshab.web.api import app
 
 client = TestClient(app)
 

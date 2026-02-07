@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Brain, TrendingUp, AlertTriangle, CheckCircle, BarChart3, Target } from 'lucide-react';
+import { apiFetch } from '../lib/apiBase';
 
 interface SiteFeatures {
   safety: number;
@@ -245,8 +246,7 @@ export default function MLSiteRecommendation({
 
   const fetchModelInsights = async () => {
     try {
-      const BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api/v1';
-      const response = await fetch(`${BASE}/ml-recommendation/insights`);
+      const response = await apiFetch('/ml-recommendation/insights');
       if (!response.ok) throw new Error('Failed to fetch model insights');
       
       const data = await response.json();
@@ -263,8 +263,7 @@ export default function MLSiteRecommendation({
     setError(null);
     
     try {
-      const BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api/v1';
-      const response = await fetch(`${BASE}/ml-recommendation/train`, {
+      const response = await apiFetch('/ml-recommendation/train', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -293,7 +292,6 @@ export default function MLSiteRecommendation({
     setError(null);
     
     try {
-      const BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api/v1';
       const endpoint = destinationCoordinates ? '/ml-recommendation/recommend-for-destination' : '/ml-recommendation/recommend';
       const payload = destinationCoordinates ? {
         destination_coordinates: destinationCoordinates,
@@ -305,7 +303,7 @@ export default function MLSiteRecommendation({
         mission_type: selectedMission,
         top_n: topN
       };
-      const response = await fetch(`${BASE}${endpoint}`, {
+      const response = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

@@ -4,22 +4,25 @@ Can fetch specific MOLA tiles based on latitude/longitude from PDS-like sources
 or fallback to local/synthetic data.
 """
 
-import hashlib
+import math
+import os
+import random
 import shutil
+import urllib.request
 from pathlib import Path
 from typing import Literal, Optional
-import urllib.request
-from urllib.error import URLError
-import math
 
+import numpy as np
+import rasterio
 import xarray as xr
+from rasterio.transform import from_bounds
 
 from marshab.config import get_config
 from marshab.exceptions import DataError
-from marshab.processing.dem_loader import DEMLoader
 from marshab.models import BoundingBox
-from marshab.utils.logging import get_logger
+from marshab.processing.dem_loader import DEMLoader
 from marshab.testing.synthetic_dem import create_synthetic_dem_complex
+from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -35,7 +38,7 @@ class DataManager:
         )
         self.cache_dir = self.config.paths.cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def _get_cache_path(
         self, dataset: str, roi: Optional[BoundingBox] = None
     ) -> Path:
@@ -52,7 +55,7 @@ class DataManager:
 
     def _download_real_mola_tile(self, roi: BoundingBox, dest_path: Path):
         """Attempt to download real MOLA data, handling global file caching and clipping."""
-        
+
         # 1. Check for manual 'real_mars.tif' (dev override)
         manual_file = self.cache_dir / "real_mars.tif"
         if manual_file.exists():
@@ -63,14 +66,14 @@ class DataManager:
         # 2. Check for cached GLOBAL file
         global_filename = "mars_mola_global.tif"
         global_path = self.cache_dir / global_filename
-        
+
         if global_path.exists():
             logger.info(f"Clipping ROI from global MOLA data: {global_path}")
             dem = None  # Initialize dem variable
             try:
                 # Load and clip using DEMLoader (handles windowed reading)
                 dem = self.loader.load(global_path, roi=roi)
-                
+
                 # Save the clipped DEM to dest_path
                 if hasattr(dem, 'rio'):
                     dem.rio.to_raster(dest_path)
@@ -90,39 +93,87 @@ class DataManager:
         logger.warning("Real data not available (Global MOLA not cached). Generating realistic synthetic proxy.")
         self._generate_synthetic_proxy(roi, dest_path)
 
+    def _get_demo_seed(self) -> int | None:
+        """Get deterministic demo seed from environment, if configured."""
+        seed_raw = os.getenv("MARSHAB_DEMO_SEED")
+        if not seed_raw:
+            return None
+        try:
+            return int(seed_raw)
+        except ValueError:
+            logger.warning("Invalid MARSHAB_DEMO_SEED value; expected int", value=seed_raw)
+            return None
+
     def _generate_synthetic_proxy(self, roi: BoundingBox, dest_path: Path):
         """Generate realistic synthetic data to proxy for real MOLA."""
         # Determine size based on ROI (approx 463m/pixel for MOLA)
         deg_height = roi.lat_max - roi.lat_min
         deg_width = roi.lon_max - roi.lon_min
-        
+
         # Mars degree ~59km
         height_km = deg_height * 59.0
         width_km = deg_width * 59.0
-        
+
         # MOLA is ~463m/pixel
         height_px = int((height_km * 1000) / 463)
         width_px = int((width_km * 1000) / 463)
-        
+
         # Clamp for safety
         height_px = max(100, min(height_px, 2000))
         width_px = max(100, min(width_px, 2000))
-        
+
         logger.info("Generating realistic synthetic DEM", size=(height_px, width_px))
-        
-        # Create complex terrain
-        dem = create_synthetic_dem_complex(
-            size=(height_px, width_px),
-            features=[
-                {"type": "crater", "center": (height_px//2, width_px//2), "radius": min(height_px, width_px)//4, "depth": 500},
-                {"type": "hill", "center": (height_px//4, width_px//4), "radius": min(height_px, width_px)//6, "height": 300}
-            ],
-            cell_size_m=463.0
-        )
-        
-        # Save to GeoTIFF
+        demo_seed = self._get_demo_seed()
+        np_state = None
+        py_state = None
+        if demo_seed is not None:
+            # Keep synthetic fallback deterministic for repeatable portfolio demos.
+            np_state = np.random.get_state()
+            py_state = random.getstate()
+            np.random.seed(demo_seed)
+            random.seed(demo_seed)
+
         try:
-            dem.rio.to_raster(dest_path)
+            # Create complex terrain
+            dem = create_synthetic_dem_complex(
+                size=(height_px, width_px),
+                features=[
+                    {"type": "crater", "center": (height_px//2, width_px//2), "radius": min(height_px, width_px)//4, "depth": 500},
+                    {"type": "hill", "center": (height_px//4, width_px//4), "radius": min(height_px, width_px)//6, "height": 300}
+                ],
+                cell_size_m=463.0
+            )
+        finally:
+            if demo_seed is not None and np_state is not None and py_state is not None:
+                np.random.set_state(np_state)
+                random.setstate(py_state)
+
+        # Save to GeoTIFF using rasterio directly (works even without rioxarray)
+        try:
+            transform = from_bounds(
+                roi.lon_min,
+                roi.lat_min,
+                roi.lon_max,
+                roi.lat_max,
+                width_px,
+                height_px,
+            )
+            dem_array = dem.values.astype("float32")
+            with rasterio.open(
+                dest_path,
+                "w",
+                driver="GTiff",
+                height=height_px,
+                width=width_px,
+                count=1,
+                dtype=dem_array.dtype,
+                crs=None,
+                transform=transform,
+                nodata=-9999.0,
+            ) as dst:
+                dst.write(dem_array, 1)
+                # Preserve Mars CRS hint for loaders/tests when CRS registry support is absent.
+                dst.update_tags(CRS_INFO="EPSG:49900")
         except Exception as e:
             logger.error("Failed to write synthetic GeoTIFF", error=str(e))
             raise DataError(f"Could not generate synthetic proxy: {e}")
@@ -151,15 +202,10 @@ class DataManager:
         if dataset == "mola" and roi:
             self._download_real_mola_tile(roi, cache_path)
             return cache_path
-            
+
         # Existing logic for fallback/other datasets
         if dataset not in self.config.data_sources:
-             # If unknown, try to use synthetic generator if ROI is present
-             if roi:
-                 logger.warning(f"Unknown dataset {dataset}, generating synthetic proxy.")
-                 self._generate_synthetic_proxy(roi, cache_path)
-                 return cache_path
-             raise DataError(f"Unknown dataset: {dataset}")
+            raise DataError(f"Unknown dataset: {dataset}")
 
         source = self.config.data_sources[dataset]
         url = source.url
@@ -170,7 +216,7 @@ class DataManager:
                  logger.warning(f"Dataset {dataset} requires manual download. Generating proxy for demo.")
                  self._generate_synthetic_proxy(roi, cache_path)
                  return cache_path
-        
+
         # Standard URL download
         try:
             temp_path = cache_path.with_suffix(".tmp")
@@ -201,9 +247,9 @@ class DataManager:
             dem_path = self._get_cache_path(dataset, roi)
             if not dem_path.exists():
                 # Attempt generation if missing
-                self.download_dem(dataset, roi) # This will trigger generation
+                dem_path = self.download_dem(dataset, roi)  # Assign return value
 
         dem = self.loader.load(dem_path, roi=roi if clip else None)
-        if clip and roi is None:
+        if clip and roi is not None:
             dem = self.loader.clip_to_roi(dem, roi)
         return dem

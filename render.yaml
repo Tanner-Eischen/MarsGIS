@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: marshab-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python -m marshab.web.server
+    healthCheckPath: /api/v1/health/live
+    envVars:
+      - key: MARSHAB_DEMO_SEED
+        value: "42"
+      - key: MARSHAB_WEB_RELOAD
+        value: "false"
+      - key: MARSHAB_CORS_ORIGINS
+        sync: false

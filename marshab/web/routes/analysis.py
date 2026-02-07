@@ -1,11 +1,11 @@
 """Terrain analysis endpoints."""
 
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from marshab.config import get_config
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.exceptions import AnalysisError
 from marshab.models import BoundingBox
@@ -60,7 +60,7 @@ async def analyze_terrain(request: AnalysisRequest):
         # Validate ROI
         if len(request.roi) != 4:
             raise HTTPException(status_code=400, detail="ROI must have 4 values: [lat_min, lat_max, lon_min, lon_max]")
-        
+
         lat_min, lat_max, lon_min, lon_max = request.roi
         bbox = BoundingBox(
             lat_min=lat_min,
@@ -68,7 +68,7 @@ async def analyze_terrain(request: AnalysisRequest):
             lon_min=lon_min,
             lon_max=lon_max,
         )
-        
+
         # Validate dataset
         valid_datasets = ["mola", "hirise", "ctx"]
         if request.dataset.lower() not in valid_datasets:
@@ -76,17 +76,17 @@ async def analyze_terrain(request: AnalysisRequest):
                 status_code=400,
                 detail=f"Invalid dataset. Must be one of: {', '.join(valid_datasets)}",
             )
-        
+
         # Use provided task_id or generate new one
         task_id = request.task_id or generate_task_id()
-        
+
         # Create progress tracker (queue will be created when WebSocket connects)
         progress_tracker = ProgressTracker(task_id)
-        
+
         # Progress callback wrapper
         def progress_callback(stage: str, progress: float, message: str):
             progress_tracker.update(stage, progress, message)
-        
+
         # Run analysis
         logger.info("Running terrain analysis", roi=bbox.model_dump(), threshold=request.threshold, task_id=task_id)
         pipeline = AnalysisPipeline()
@@ -97,7 +97,11 @@ async def analyze_terrain(request: AnalysisRequest):
             criteria_weights=request.criteria_weights,
             progress_callback=progress_callback,
         )
-        
+
+        # Persist outputs for downstream route planning and GeoJSON export endpoints.
+        config = get_config()
+        results.save(config.paths.output_dir)
+
         # Convert sites to response format
         sites_response = [
             SiteCandidateResponse(
@@ -114,12 +118,10 @@ async def analyze_terrain(request: AnalysisRequest):
             )
             for site in results.sites
         ]
-        
+
         # Get output directory
-        from marshab.config import get_config
-        config = get_config()
         output_dir = str(config.paths.output_dir)
-        
+
         return AnalysisResponse(
             status="success",
             sites=sites_response,

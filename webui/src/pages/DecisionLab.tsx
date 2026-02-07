@@ -6,6 +6,7 @@ import ExplainabilityPanel from '../components/ExplainabilityPanel'
 import TerrainMap from '../components/TerrainMap'
 import SaveProjectModal from '../components/SaveProjectModal'
 import ExamplesDrawer from '../components/ExamplesDrawer'
+import { apiFetch } from '../lib/apiBase'
 
 interface ROI {
   lat_min: number
@@ -51,7 +52,7 @@ export default function DecisionLab() {
   const [presets, setPresets] = useState<Preset[]>([])
   
   useEffect(() => {
-    fetch('http://localhost:5000/api/v1/analysis/presets')
+    apiFetch('/analysis/presets')
       .then(res => res.json())
       .then(data => setPresets(data.site_presets || []))
       .catch(err => console.error('Failed to load presets:', err))
@@ -72,7 +73,7 @@ export default function DecisionLab() {
         threshold: 0.6
       }
       
-      const response = await fetch('http://localhost:5000/api/v1/analysis/site-scores', {
+      const response = await apiFetch('/analysis/site-scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)
@@ -225,7 +226,7 @@ export default function DecisionLab() {
                   <button
                     onClick={async () => {
                       try {
-                        const response = await fetch('http://localhost:5000/api/v1/export/suitability-geotiff', {
+                        const response = await apiFetch('/export/suitability-geotiff', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
@@ -257,7 +258,7 @@ export default function DecisionLab() {
                   <button
                     onClick={async () => {
                       try {
-                        const response = await fetch('http://localhost:5000/api/v1/export/report', {
+                        const response = await apiFetch('/export/report', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ format: 'markdown' })

@@ -1,9 +1,9 @@
 """Route cost analysis with breakdown."""
 
-from typing import Dict, Optional
 from dataclasses import dataclass
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 from marshab.utils.logging import get_logger
 
@@ -20,42 +20,42 @@ class RouteCostBreakdown:
     elevation_penalty: float
     comms_risk_penalty: float  # New metric
     solar_opportunity_bonus: float # New metric (negative cost)
-    components: Dict[str, float]
+    components: dict[str, float]
     explanation: str
 
 
 class RouteCostEngine:
     """Analyzes route costs with explainability."""
-    
+
     def analyze_route(
         self,
         waypoints: pd.DataFrame,
-        weights: Dict[str, float]
+        weights: dict[str, float]
     ) -> RouteCostBreakdown:
         """Analyze route cost with component breakdown.
-        
+
         Args:
             waypoints: Waypoint DataFrame with x_site, y_site (or similar coordinate columns)
             weights: Cost component weights
-            
+
         Returns:
             RouteCostBreakdown with explanation
         """
         logger.info("Analyzing route cost")
-        
+
         # Calculate distance
         distances = []
         for i in range(len(waypoints) - 1):
             # Try different possible column names
             x_col = None
             y_col = None
-            
+
             for col in waypoints.columns:
                 if 'x' in col.lower() and ('site' in col.lower() or 'meter' in col.lower()):
                     x_col = col
                 if 'y' in col.lower() and ('site' in col.lower() or 'meter' in col.lower()):
                     y_col = col
-            
+
             if x_col is None or y_col is None:
                 # Fallback: use first two numeric columns
                 numeric_cols = waypoints.select_dtypes(include=[np.number]).columns
@@ -66,7 +66,7 @@ class RouteCostEngine:
                     logger.warning("Could not find coordinate columns, using defaults")
                     x_col = 'x_meters' if 'x_meters' in waypoints.columns else 'x'
                     y_col = 'y_meters' if 'y_meters' in waypoints.columns else 'y'
-            
+
             if x_col in waypoints.columns and y_col in waypoints.columns:
                 dx = waypoints.iloc[i+1][x_col] - waypoints.iloc[i][x_col]
                 dy = waypoints.iloc[i+1][y_col] - waypoints.iloc[i][y_col]
@@ -75,17 +75,17 @@ class RouteCostEngine:
             else:
                 logger.warning(f"Coordinate columns not found: {x_col}, {y_col}")
                 distances.append(0.0)
-        
+
         total_distance = sum(distances) if distances else 0.0
-        
+
         # Placeholder for terrain penalties
         # In real implementation, would query terrain along path
         slope_penalty = 50.0  # Stub
         roughness_penalty = 30.0  # Stub
         elevation_penalty = 20.0  # Stub
-        
+
         # New Metrics Stubs (Real Logic would sample Visibility/Solar Maps)
-        comms_risk_penalty = 15.0 
+        comms_risk_penalty = 15.0
         solar_opportunity_bonus = 10.0
 
         # Calculate weighted cost
@@ -97,14 +97,14 @@ class RouteCostEngine:
             "comms_risk": comms_risk_penalty * weights.get("comms_risk", 0.1),
             "solar_opp": -solar_opportunity_bonus * weights.get("solar", 0.1) # Bonus reduces cost
         }
-        
+
         total_cost = sum(components.values())
-        
+
         # Generate explanation
         explanation = self._generate_explanation(
             total_distance, slope_penalty, roughness_penalty, comms_risk_penalty
         )
-        
+
         return RouteCostBreakdown(
             total_cost=total_cost,
             distance_m=total_distance,
@@ -116,7 +116,7 @@ class RouteCostEngine:
             components=components,
             explanation=explanation
         )
-    
+
     def _generate_explanation(
         self,
         distance: float,
@@ -126,24 +126,24 @@ class RouteCostEngine:
     ) -> str:
         """Generate route explanation."""
         parts = []
-        
+
         parts.append(f"Total distance: {distance:.0f}m")
-        
+
         if slope_penalty > 100:
             parts.append("includes steep terrain sections")
         elif slope_penalty > 50:
             parts.append("has moderate slope challenges")
         else:
             parts.append("traverses gentle slopes")
-        
+
         if roughness_penalty > 50:
             parts.append("rough surface conditions")
         elif roughness_penalty > 20:
             parts.append("moderate surface roughness")
         else:
             parts.append("smooth terrain")
-            
+
         if comms_risk > 20:
             parts.append("significant communication blackout risk")
-        
+
         return "This route " + ", ".join(parts) + "."

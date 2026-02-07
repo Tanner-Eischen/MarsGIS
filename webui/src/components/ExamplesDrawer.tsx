@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/apiBase'
 
 interface ExampleROI {
   id: string
@@ -20,7 +21,7 @@ export default function ExamplesDrawer({ onSelectExample, isOpen, onClose }: Exa
 
   useEffect(() => {
     if (isOpen) {
-      fetch('http://localhost:5000/api/v1/examples/rois')
+      apiFetch('/examples/rois')
         .then(res => res.json())
         .then(data => {
           setExamples(data)

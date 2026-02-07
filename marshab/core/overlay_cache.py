@@ -3,9 +3,8 @@
 import hashlib
 import json
 import shutil
-from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 from marshab.config import get_config
 from marshab.models import BoundingBox
@@ -31,13 +30,13 @@ class OverlayCache:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.max_size_bytes = max_size_bytes
         self.metadata_file = self.cache_dir / "metadata.json"
-        self._metadata: Dict[str, Dict] = self._load_metadata()
+        self._metadata: dict[str, dict] = self._load_metadata()
 
-    def _load_metadata(self) -> Dict[str, Dict]:
+    def _load_metadata(self) -> dict[str, dict]:
         """Load cache metadata from disk."""
         if self.metadata_file.exists():
             try:
-                with open(self.metadata_file, "r") as f:
+                with open(self.metadata_file) as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning("Failed to load cache metadata", error=str(e))

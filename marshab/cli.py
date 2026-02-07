@@ -9,12 +9,17 @@ from rich.console import Console
 from rich.table import Table
 
 from marshab import __version__
+from marshab.analysis.export import export_suitability_geotiff
 from marshab.config import PathfindingStrategy, get_config
-from marshab.core.data_manager import DataManager
 from marshab.core.analysis_pipeline import AnalysisPipeline
+from marshab.core.data_manager import DataManager
 from marshab.core.navigation_engine import NavigationEngine
-from marshab.mission.scenarios import run_landing_site_scenario, run_rover_traverse_scenario, LandingScenarioParams, TraverseScenarioParams
-from marshab.analysis.export import export_suitability_geotiff, generate_analysis_report
+from marshab.mission.scenarios import (
+    LandingScenarioParams,
+    TraverseScenarioParams,
+    run_landing_site_scenario,
+    run_rover_traverse_scenario,
+)
 from marshab.models import BoundingBox
 from marshab.utils.logging import configure_logging, get_logger
 
@@ -65,7 +70,7 @@ def main(
     # Configure logging
     log_level = "DEBUG" if verbose else "INFO"
     configure_logging(level=log_level, format_type="console")
-    
+
     # Set config path if provided
     if config_file:
         import os
@@ -75,7 +80,7 @@ def main(
 def _download_dem(dataset: str, roi: str, force: bool):
     """Internal function to download DEM data."""
     console.print(f"[bold blue]Downloading {dataset} DEM[/bold blue]")
-    
+
     # Parse ROI
     try:
         lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
@@ -88,7 +93,7 @@ def _download_dem(dataset: str, roi: str, force: bool):
     except Exception as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
-    
+
     # Download
     try:
         dm = DataManager()
@@ -117,7 +122,7 @@ def download(
 def _analyze_terrain(roi: str, dataset: str, output: Path, threshold: float):
     """Internal function to analyze terrain."""
     console.print("[bold blue]Starting terrain analysis[/bold blue]")
-    
+
     # Parse ROI
     try:
         lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
@@ -130,29 +135,29 @@ def _analyze_terrain(roi: str, dataset: str, output: Path, threshold: float):
     except Exception as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
-    
+
     # Run analysis
     try:
         pipeline = AnalysisPipeline()
         results = pipeline.run(bbox, dataset=dataset, threshold=threshold)
-        
+
         # Save results
         output.mkdir(parents=True, exist_ok=True)
         results.save(output)
-        
+
         # Display summary
         console.print("\n[bold green]Analysis complete![/bold green]\n")
-        
+
         table = Table(title="Analysis Results")
         table.add_column("Metric", style="cyan")
         table.add_column("Value", style="magenta")
-        
+
         table.add_row("Candidate Sites", str(len(results.sites)))
         table.add_row("Top Site Score", f"{results.top_site_score:.3f}")
         table.add_row("Output Directory", str(output))
-        
+
         console.print(table)
-        
+
     except Exception as e:
         console.print(f"[red]Error: Analysis failed: {e}[/red]")
         logger.exception("Analysis failed")
@@ -177,7 +182,7 @@ def analyze(
 def _navigate_to_site(site_id: int, analysis_dir: Path, start_lat: float, start_lon: float, output: Path, strategy: Optional[str] = None):
     """Internal function to generate navigation waypoints."""
     console.print("[bold blue]Generating navigation waypoints[/bold blue]")
-    
+
     try:
         # Update strategy if provided
         if strategy is not None:
@@ -188,7 +193,7 @@ def _navigate_to_site(site_id: int, analysis_dir: Path, start_lat: float, start_
                 console.print(f"[cyan]Using pathfinding strategy: {strategy}[/cyan]")
             except ValueError:
                 console.print(f"[yellow]Warning: Invalid strategy '{strategy}', using default[/yellow]")
-        
+
         engine = NavigationEngine()
         waypoints = engine.plan_to_site(
             site_id=site_id,
@@ -196,13 +201,13 @@ def _navigate_to_site(site_id: int, analysis_dir: Path, start_lat: float, start_
             start_lat=start_lat,
             start_lon=start_lon
         )
-        
+
         # Save waypoints
         waypoints.to_csv(output, index=False)
-        
+
         console.print(f"\n[green]Success! Generated {len(waypoints)} waypoints[/green]")
         console.print(f"[green]Saved to: {output}[/green]")
-        
+
     except Exception as e:
         console.print(f"[red]Error: Navigation failed: {e}[/red]")
         raise typer.Exit(1)
@@ -229,7 +234,7 @@ def pipeline(
 ):
     """Run complete analysis and navigation pipeline."""
     console.print("[bold blue]Running full MarsHab pipeline[/bold blue]\n")
-    
+
     # Parse ROI
     try:
         lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
@@ -242,20 +247,20 @@ def pipeline(
     except Exception as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
-    
+
     try:
         # 1. Download data
         with console.status("[bold green]Downloading DEM..."):
             dm = DataManager()
-            dem_path = dm.download_dem(dataset, bbox)
+            dm.download_dem(dataset, bbox)
         console.print("[green]Success! DEM downloaded[/green]")
-        
+
         # 2. Run analysis
         with console.status("[bold green]Analyzing terrain..."):
             pipeline_obj = AnalysisPipeline()
             results = pipeline_obj.run(bbox, dataset=dataset)
         console.print("[green]Success! Terrain analyzed[/green]")
-        
+
         # 3. Generate navigation
         with console.status("[bold green]Planning navigation..."):
             engine = NavigationEngine()
@@ -267,15 +272,15 @@ def pipeline(
                 start_lon=(bbox.lon_min + bbox.lon_max) / 2
             )
         console.print("[green]Success! Navigation planned[/green]")
-        
+
         # 4. Save all outputs
         output.mkdir(parents=True, exist_ok=True)
         results.save(output)
         waypoints.to_csv(output / "waypoints.csv", index=False)
-        
-        console.print(f"\n[bold green]Pipeline complete![/bold green]")
+
+        console.print("\n[bold green]Pipeline complete![/bold green]")
         console.print(f"[green]Results saved to: {output}[/green]")
-        
+
     except Exception as e:
         console.print(f"\n[red]Error: Pipeline failed: {e}[/red]")
         logger.exception("Pipeline failed")
@@ -319,15 +324,15 @@ def mars_main(
     # Configure logging
     log_level = "DEBUG" if verbose else "INFO"
     configure_logging(level=log_level, format_type="console")
-    
+
     # Set config path if provided
     if config_file:
         import os
         os.environ["MARSHAB_CONFIG_PATH"] = str(config_file)
 
 
-@mars_app.command()
-def download(
+@mars_app.command(name="download")
+def mars_download(
     dataset: str = typer.Argument(..., help="Dataset to download (mola/hirise/ctx)"),
     roi: str = typer.Option(
         ...,
@@ -382,17 +387,17 @@ def run_landing_scenario(
     except Exception as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
-    
+
     params = LandingScenarioParams(
         roi=bbox,
         dataset=dataset.lower(),
         preset_id=preset,
         suitability_threshold=0.7
     )
-    
+
     try:
         result = run_landing_site_scenario(params)
-        console.print(f"\n[green]Scenario complete![/green]")
+        console.print("\n[green]Scenario complete![/green]")
         console.print(f"[green]Found {len(result.sites)} sites[/green]")
         if result.top_site:
             console.print(f"[green]Top site: {result.top_site.site_id} (score: {result.top_site.suitability_score:.3f})[/green]")
@@ -416,10 +421,10 @@ def run_route_scenario(
         analysis_dir=analysis_dir,
         preset_id=preset
     )
-    
+
     try:
         result = run_rover_traverse_scenario(params)
-        console.print(f"\n[green]Route planned![/green]")
+        console.print("\n[green]Route planned![/green]")
         console.print(f"[green]Distance: {result.route_metrics.total_distance_m:.2f} m[/green]")
         console.print(f"[green]Waypoints: {result.route_metrics.num_waypoints}[/green]")
     except Exception as e:
@@ -441,21 +446,21 @@ def export_suitability(
     except Exception as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
-    
+
     # Load preset weights
     from marshab.config.preset_loader import PresetLoader
     loader = PresetLoader()
     preset_obj = loader.get_preset(preset, scope="site")
     weights = preset_obj.get_weights_dict() if preset_obj else {}
-    
+
     # Run analysis to get suitability
     pipeline = AnalysisPipeline()
     results = pipeline.run(bbox, dataset=dataset.lower(), threshold=0.5)
-    
+
     if results.suitability is None or results.dem is None:
         console.print("[red]Error: Suitability data not available[/red]")
         raise typer.Exit(1)
-    
+
     try:
         export_path = export_suitability_geotiff(
             roi=bbox,
@@ -473,5 +478,3 @@ def export_suitability(
 
 if __name__ == "__main__":
     app()
-
-

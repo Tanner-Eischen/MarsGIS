@@ -1,9 +1,10 @@
 """Load and manage criteria presets from configuration."""
 
 from pathlib import Path
-from typing import Dict, List, Optional, Literal
+from typing import Literal, Optional
+
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 from marshab.utils.logging import get_logger
 
@@ -21,7 +22,7 @@ class PresetWeights(BaseModel):
     slope_penalty: Optional[float] = None
     roughness_penalty: Optional[float] = None
     elevation_penalty: Optional[float] = None
-    
+
     @field_validator('*')
     @classmethod
     def validate_weight_range(cls, v):
@@ -46,14 +47,14 @@ class Preset(BaseModel):
     scope: Literal["site", "route"]
     weights: PresetWeights
     thresholds: PresetThresholds
-    
-    def get_weights_dict(self) -> Dict[str, float]:
+
+    def get_weights_dict(self) -> dict[str, float]:
         """Get non-None weights as dictionary."""
         return {
-            k: v for k, v in self.weights.model_dump().items() 
+            k: v for k, v in self.weights.model_dump().items()
             if v is not None
         }
-    
+
     def validate_weights_sum(self) -> bool:
         """Check if weights sum to approximately 1.0."""
         weights = self.get_weights_dict()
@@ -73,27 +74,27 @@ class CriterionDefinition(BaseModel):
 
 class PresetsConfig(BaseModel):
     """Complete presets configuration."""
-    site_presets: Dict[str, Preset]
-    route_presets: Dict[str, Preset]
-    criteria: Dict[str, CriterionDefinition]
+    site_presets: dict[str, Preset]
+    route_presets: dict[str, Preset]
+    criteria: dict[str, CriterionDefinition]
 
 
 class PresetLoader:
     """Loads and manages preset configurations."""
-    
+
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize preset loader.
-        
+
         Args:
             config_path: Optional path to presets YAML file
         """
         if config_path is None:
             # Default location
             config_path = Path(__file__).parent / "criteria_presets.yaml"
-        
+
         self.config_path = config_path
         self.config: Optional[PresetsConfig] = None
-        
+
         if self.config_path.exists():
             self.load()
         else:
@@ -101,34 +102,34 @@ class PresetLoader:
                 f"Presets config not found: {config_path}",
                 "Using minimal defaults"
             )
-    
+
     def load(self) -> PresetsConfig:
         """Load presets from YAML file.
-        
+
         Returns:
             Loaded PresetsConfig
         """
         logger.info(f"Loading presets from {self.config_path}")
-        
-        with open(self.config_path, 'r') as f:
+
+        with open(self.config_path) as f:
             data = yaml.safe_load(f)
-        
+
         # Parse into Pydantic models
         self.config = PresetsConfig(
             site_presets={
-                k: Preset(**{**v, "scope": "site"}) 
+                k: Preset(**{**v, "scope": "site"})
                 for k, v in data.get('site_presets', {}).items()
             },
             route_presets={
-                k: Preset(**{**v, "scope": "route"}) 
+                k: Preset(**{**v, "scope": "route"})
                 for k, v in data.get('route_presets', {}).items()
             },
             criteria={
-                k: CriterionDefinition(**v) 
+                k: CriterionDefinition(**v)
                 for k, v in data.get('criteria', {}).items()
             }
         )
-        
+
         # Validate presets
         for preset_id, preset in self.config.site_presets.items():
             if not preset.validate_weights_sum():
@@ -136,83 +137,83 @@ class PresetLoader:
                     f"Site preset weights don't sum to 1.0: {preset_id}",
                     weights=preset.get_weights_dict()
                 )
-        
+
         for preset_id, preset in self.config.route_presets.items():
             if not preset.validate_weights_sum():
                 logger.warning(
                     f"Route preset weights don't sum to 1.0: {preset_id}",
                     weights=preset.get_weights_dict()
                 )
-        
+
         logger.info(
             "Presets loaded",
             site_presets=len(self.config.site_presets),
             route_presets=len(self.config.route_presets),
             criteria=len(self.config.criteria)
         )
-        
+
         return self.config
-    
+
     def get_preset(
-        self, 
-        preset_id: str, 
+        self,
+        preset_id: str,
         scope: Literal["site", "route"]
     ) -> Optional[Preset]:
         """Get preset by ID and scope.
-        
+
         Args:
             preset_id: Preset identifier
             scope: "site" or "route"
-            
+
         Returns:
             Preset object or None if not found
         """
         if self.config is None:
             return None
-        
+
         presets = (
-            self.config.site_presets if scope == "site" 
+            self.config.site_presets if scope == "site"
             else self.config.route_presets
         )
-        
+
         return presets.get(preset_id)
-    
+
     def list_presets(
-        self, 
+        self,
         scope: Optional[Literal["site", "route"]] = None
-    ) -> List[Preset]:
+    ) -> list[Preset]:
         """List available presets.
-        
+
         Args:
             scope: Optional filter by scope
-            
+
         Returns:
             List of Preset objects
         """
         if self.config is None:
             return []
-        
+
         presets = []
-        
+
         if scope is None or scope == "site":
             presets.extend(self.config.site_presets.values())
-        
+
         if scope is None or scope == "route":
             presets.extend(self.config.route_presets.values())
-        
+
         return presets
-    
+
     def get_criterion(self, criterion_name: str) -> Optional[CriterionDefinition]:
         """Get criterion definition.
-        
+
         Args:
             criterion_name: Criterion identifier
-            
+
         Returns:
             CriterionDefinition or None
         """
         if self.config is None:
             return None
-        
+
         return self.config.criteria.get(criterion_name)
 

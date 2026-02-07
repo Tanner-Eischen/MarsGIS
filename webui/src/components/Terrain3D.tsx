@@ -49,7 +49,7 @@ export default function Terrain3D({
   const [colorScale, setColorScale] = useState('Terrain');
   const [enableContourLines, setEnableContourLines] = useState(false);
   
-  const plotRef = useRef<HTMLElement | null>(null);
+  const plotRef = useRef<Plotly.PlotlyHTMLElement | null>(null);
 
   // Use external rover position if provided, otherwise use internal state
   const roverPosition = externalRoverPosition;
@@ -252,11 +252,10 @@ export default function Terrain3D({
           style={{ width: '100%', height: '100%' }}
           useResizeHandler={true}
           onInitialized={(figure, graphDiv) => {
-            plotRef.current = graphDiv;
+            plotRef.current = graphDiv as Plotly.PlotlyHTMLElement;
           }}
         />
       </div>
     </div>
   );
 }
-

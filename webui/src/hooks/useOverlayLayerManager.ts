@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { getOverlayDefinition, type OverlayType, type MarsDataset } from '../config/marsDataSources'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'
+import { apiUrl } from '../lib/apiBase'
+import type { OverlayType, MarsDataset } from '../config/marsDataSources'
+export type { OverlayType, MarsDataset } from '../config/marsDataSources'
 
 export interface OverlayLayer {
   name: OverlayType
@@ -255,7 +255,7 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
         params.append('dust_storm_period', overlayOptions.dustStormPeriod)
       }
       
-      const url = `${API_BASE_URL}/visualization/overlay?${params.toString()}`
+      const url = apiUrl(`/visualization/overlay?${params.toString()}`)
       const timeoutId = setTimeout(() => controller.abort(), 60000)
 
       const response = await fetch(url, { signal: controller.signal })

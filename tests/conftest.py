@@ -1,13 +1,14 @@
 """Pytest configuration and shared fixtures."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 import rasterio
 from rasterio.transform import from_bounds
-from pathlib import Path
 
-from marshab.config import Config, PathsConfig, AnalysisConfig
-from marshab.types import BoundingBox, SiteOrigin, CriteriaWeights
+from marshab.config import AnalysisConfig, Config, PathsConfig
+from marshab.types import BoundingBox, CriteriaWeights, SiteOrigin
 
 
 @pytest.fixture
@@ -88,10 +89,10 @@ def synthetic_dem(tmp_path: Path) -> Path:
     # This is equivalent to EPSG:49900 but uses PROJ string format
     mars_crs_proj = "+proj=longlat +a=3396190 +b=3396190 +no_defs +type=crs"
     mars_crs_epsg = "EPSG:49900"  # For reference
-    
+
     crs_used = None
     crs_string = None
-    
+
     try:
         # Try EPSG code first (if available in PROJ database)
         crs_used = mars_crs_epsg
@@ -145,7 +146,7 @@ def synthetic_dem(tmp_path: Path) -> Path:
             ) as dst:
                 dst.write(elevation, 1)
             crs_string = mars_crs_epsg  # Store in metadata for tests
-    
+
     # Store CRS info in file metadata for test access
     # Reopen and add CRS metadata
     try:

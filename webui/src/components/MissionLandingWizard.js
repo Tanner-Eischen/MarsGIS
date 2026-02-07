@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { runLandingScenario } from '../services/api';
 import TerrainMap from './TerrainMap';
 import SaveProjectModal from './SaveProjectModal';
+import { apiFetch } from '../lib/apiBase';
 export default function MissionLandingWizard() {
     const [step, setStep] = useState(1);
     const [roi, setRoi] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 });
@@ -15,7 +16,7 @@ export default function MissionLandingWizard() {
     const [showSaveModal, setShowSaveModal] = useState(false);
     // Fetch presets on mount
     useEffect(() => {
-        fetch('http://localhost:5000/api/v1/analysis/presets?scope=site')
+        apiFetch('/analysis/presets?scope=site')
             .then(res => res.json())
             .then(data => {
             const sitePresets = data.site_presets || [];

@@ -1,10 +1,9 @@
 """Unit tests for DEM loader functionality."""
 
 import pytest
-import numpy as np
+import rasterio
 
 from marshab.processing.dem_loader import DEMLoader
-from marshab.types import BoundingBox
 
 
 class TestDEMLoader:
@@ -53,6 +52,8 @@ class TestDEMLoader:
 
         assert lat_min >= test_roi.lat_min - 0.01
         assert lat_max <= test_roi.lat_max + 0.01
+        assert lon_min >= test_roi.lon_min - 0.01
+        assert lon_max <= test_roi.lon_max + 0.01
 
     def test_resample(self, loader, synthetic_dem):
         """Test DEM resampling."""
@@ -72,4 +73,3 @@ class TestDEMLoader:
         assert "crs" in dem.attrs
         assert "resolution_m" in dem.attrs
         assert dem.attrs["resolution_m"] > 0
-

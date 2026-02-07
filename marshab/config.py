@@ -89,7 +89,7 @@ class NavigationConfig(BaseModel):
 
     def get_weights_for_strategy(self) -> dict[str, float]:
         """Get weight configuration based on selected strategy.
-        
+
         Returns:
             Dictionary with slope_weight, roughness_weight, distance_weight
         """
@@ -110,7 +110,7 @@ class NavigationConfig(BaseModel):
                 "distance_weight": 2.0,
             },
         }
-        
+
         if self.strategy in presets:
             return presets[self.strategy]
         else:

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { runLandingScenario, LandingScenarioRequest, LandingScenarioResponse } from '../services/api'
 import TerrainMap from './TerrainMap'
 import SaveProjectModal from './SaveProjectModal'
+import { apiFetch } from '../lib/apiBase'
 
 interface Preset {
   id: string
@@ -23,7 +24,7 @@ export default function MissionLandingWizard() {
 
   // Fetch presets on mount
   useEffect(() => {
-    fetch('http://localhost:5000/api/v1/analysis/presets?scope=site')
+    apiFetch('/analysis/presets?scope=site')
       .then(res => res.json())
       .then(data => {
         const sitePresets = data.site_presets || []

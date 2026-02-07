@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Layers, Settings, BarChart3, Download, Eye, Zap } from 'lucide-react';
+import { apiFetch } from '../lib/apiBase';
 
 interface FusionRequest {
   roi: {
@@ -101,7 +102,7 @@ export default function MultiResolutionFusion({
 
   const loadDatasetInfo = async () => {
     try {
-      const response = await fetch('/api/v1/fusion/info');
+      const response = await apiFetch('/fusion/info');
       const data = await response.json();
       setDatasetInfo(data);
     } catch (error) {
@@ -111,7 +112,7 @@ export default function MultiResolutionFusion({
 
   const loadFusionMethods = async () => {
     try {
-      const response = await fetch('/api/v1/fusion/methods');
+      const response = await apiFetch('/fusion/methods');
       const data = await response.json();
       setFusionMethods(data);
     } catch (error) {
@@ -149,14 +150,18 @@ export default function MultiResolutionFusion({
         noise_reduction: noiseReduction,
       };
 
-      const endpoint = activeTab === 'comparison' ? '/api/v1/fusion/compare' : '/api/v1/fusion/fuse';
-      const response = await fetch(endpoint, {
+      const endpoint = activeTab === 'comparison' ? '/fusion/compare' : '/fusion/fuse';
+      const response = await apiFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
       });
+
+      if (!response.ok) {
+        throw new Error(`Fusion request failed with status ${response.status}`);
+      }
 
       const data: FusionResponse = await response.json();
       setResponse(data);

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useGeoPlan } from '../context/GeoPlanContext';
 import { planMultipleRoutes } from '../services/api';
 import TerrainMap from './TerrainMap';
+import { apiFetch } from '../lib/apiBase';
 export default function RoverTraverseWizard() {
     const [step, setStep] = useState(1);
     const [startSiteId, setStartSiteId] = useState(1);
@@ -17,7 +18,7 @@ export default function RoverTraverseWizard() {
     const { recommendedLandingSiteId } = useGeoPlan();
     // Fetch route presets on mount
     useEffect(() => {
-        fetch('http://localhost:5000/api/v1/analysis/presets?scope=route')
+        apiFetch('/analysis/presets?scope=route')
             .then(res => res.json())
             .then(data => {
             const routePresets = data.route_presets || [];
@@ -31,7 +32,7 @@ export default function RoverTraverseWizard() {
     // Load sites from analysis results
     useEffect(() => {
         if (analysisDir) {
-            fetch(`http://localhost:5000/api/v1/visualization/sites-geojson`)
+            apiFetch('/visualization/sites-geojson')
                 .then(res => res.json())
                 .then(data => {
                 const siteList = data.features.map((f) => ({

@@ -25,7 +25,6 @@ COPY . .
 # Install marshab package in development mode
 RUN pip install -e .
 
-# Set entry point - use python -m marshab for better compatibility
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "marshab", "python", "-m", "marshab"]
-CMD ["--help"]
-
+# Keep entrypoint command-flexible so container can run CLI or API commands.
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "marshab"]
+CMD ["marshab", "--help"]

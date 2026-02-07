@@ -1,9 +1,7 @@
 """Integration tests for data pipeline."""
 
-import pytest
 
 from marshab.core.data_manager import DataManager
-from marshab.types import BoundingBox
 
 
 class TestDataPipeline:

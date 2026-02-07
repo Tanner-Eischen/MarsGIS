@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { wsUrl } from '../lib/apiBase';
 export function useWebSocket({ taskId, onProgress, onError, onConnect, onDisconnect, }) {
     const [isConnected, setIsConnected] = useState(false);
     const [lastEvent, setLastEvent] = useState(null);
@@ -15,15 +16,10 @@ export function useWebSocket({ taskId, onProgress, onError, onConnect, onDisconn
             wsRef.current.close();
             wsRef.current = null;
         }
-        // Determine WebSocket URL (use ws:// for localhost, wss:// for production)
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.hostname === 'localhost'
-            ? 'localhost:5000'
-            : window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/progress/${taskId}`;
-        console.log('[WebSocket] Connecting to:', wsUrl);
+        const wsEndpoint = wsUrl(`/ws/progress/${taskId}`);
+        console.log('[WebSocket] Connecting to:', wsEndpoint);
         try {
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(wsEndpoint);
             wsRef.current = ws;
             ws.onopen = () => {
                 console.log('[WebSocket] Connected for task:', taskId);

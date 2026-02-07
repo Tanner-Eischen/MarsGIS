@@ -1,17 +1,34 @@
 """FastAPI application for MarsHab web interface."""
 
+import os
+import time
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import time
 
 from marshab.config import get_config
-from marshab.utils.logging import configure_logging, get_logger
+from marshab.utils.logging import get_logger
 
-from .routes import analysis, download, navigation, status, visualization, site_analysis, route_analysis, mission_scenarios, export, projects, health, examples, progress, solar_analysis, ml_recommendation, ai_query
+from .routes import (
+    ai_query,
+    analysis,
+    download,
+    examples,
+    export,
+    health,
+    mission_scenarios,
+    ml_recommendation,
+    navigation,
+    progress,
+    projects,
+    route_analysis,
+    site_analysis,
+    solar_analysis,
+    status,
+    visualization,
+)
 
 logger = get_logger(__name__)
 
@@ -29,7 +46,7 @@ async def lifespan(app: FastAPI):
         print("✓ Config loaded")
         config.paths.create_directories()
         print("✓ Directories created")
-        
+
         # Load plugins
         try:
             from marshab.plugins import load_plugins_from_config
@@ -38,7 +55,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("Failed to load plugins", error=str(e))
             print(f"⚠ Plugins failed: {e}")
-        
+
         print("=" * 60)
         print("MarsHab Web API - Ready!")
         print("Server: http://localhost:5000")
@@ -48,7 +65,7 @@ async def lifespan(app: FastAPI):
         print(f"❌ Startup error: {e}")
         logger.exception("Startup failed")
         raise
-    
+
     yield
     # Shutdown
     print("MarsHab Web API - Shutting down...")
@@ -64,24 +81,31 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Configure CORS - allow common development ports
-    # In production, this should be restricted to specific domains
-    # Note: CORS doesn't support wildcards in origins when credentials are enabled
+    # Configure CORS.
+    # Default is local dev origins. Production can extend with:
+    # MARSHAB_CORS_ORIGINS=https://frontend.example.com,https://preview.example.com
+    # MARSHAB_CORS_ALLOW_ALL=true (disables credentials)
+    default_origins = [
+        "http://localhost:3000",
+        "http://localhost:4000",
+        "http://localhost:4001",
+        "http://localhost:4002",
+        "http://localhost:5173",  # Vite default
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:4000",
+        "http://127.0.0.1:4001",
+        "http://127.0.0.1:4002",
+        "http://127.0.0.1:5173",
+    ]
+    configured_origins = os.getenv("MARSHAB_CORS_ORIGINS", "")
+    extra_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+    allow_all = os.getenv("MARSHAB_CORS_ALLOW_ALL", "false").lower() in {"1", "true", "yes"}
+    cors_origins = ["*"] if allow_all else [*default_origins, *extra_origins]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://localhost:4000",
-            "http://localhost:4001",
-            "http://localhost:4002",
-            "http://localhost:5173",  # Vite default
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:4000",
-            "http://127.0.0.1:4001",
-            "http://127.0.0.1:4002",
-            "http://127.0.0.1:5173",
-        ],
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=not allow_all,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["*"],
         expose_headers=["*"],
@@ -101,7 +125,24 @@ def create_app() -> FastAPI:
             process_time = time.time() - start_time
             print(f"[{time.strftime('%H:%M:%S')}] {request.method} {request.url.path} - ERROR: {e} ({process_time:.3f}s)")
             raise
-    
+
+    # Root route
+    @app.get("/")
+    async def root():
+        """Root endpoint with API information."""
+        return {
+            "name": "MarsHab API",
+            "version": "0.1.0",
+            "description": "Mars Habitat Site Selection and Rover Navigation System API",
+            "docs": "/docs",
+            "api_base": "/api/v1",
+            "endpoints": {
+                "status": "/api/v1/status",
+                "health": "/api/v1/health/live",
+                "docs": "/docs"
+            }
+        }
+
     # Include routers
     app.include_router(status.router, prefix="/api/v1", tags=["status"])
     app.include_router(download.router, prefix="/api/v1", tags=["download"])
@@ -134,4 +175,3 @@ def create_app() -> FastAPI:
 
 # Create app instance
 app = create_app()
-

@@ -135,7 +135,17 @@ interface TerrainMapProps {
   relief?: number
   onSiteSelect?: any
   selectedSiteId?: any
-  overlayType?: 'elevation' | 'solar' | 'dust' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri'
+  overlayType?:
+    | 'elevation'
+    | 'solar'
+    | 'dust'
+    | 'hillshade'
+    | 'slope'
+    | 'aspect'
+    | 'roughness'
+    | 'tri'
+    | 'viewshed'
+    | 'comms_risk'
   overlayOptions?: {
     colormap?: string
     relief?: number
@@ -165,16 +175,16 @@ export default function TerrainMap({
   const activeOverlayType = overlayType || 'elevation';
   
   const overlayImage = useOverlayImage(roi, dataset, activeOverlayType, {
-    colormap: overlayOptions.colormap || 'terrain',
-    relief: overlayOptions.relief ?? relief,
-    sunAzimuth: overlayOptions.sunAzimuth || 315,
-    sunAltitude: overlayOptions.sunAltitude || 45,
-    width: overlayOptions.width || 2400,
-    height: overlayOptions.height || 1600,
-    buffer: overlayOptions.buffer || 1.5,
-    marsSol: overlayOptions.marsSol,
-    season: overlayOptions.season,
-    dustStormPeriod: overlayOptions.dustStormPeriod
+        colormap: overlayOptions.colormap || 'terrain',
+        relief: overlayOptions.relief ?? relief,
+        sunAzimuth: overlayOptions.sunAzimuth || 315,
+        sunAltitude: overlayOptions.sunAltitude || 45,
+        width: overlayOptions.width || 2400,
+        height: overlayOptions.height || 1600,
+        buffer: overlayOptions.buffer || 1.5,
+        marsSol: overlayOptions.marsSol,
+        season: overlayOptions.season,
+        dustStormPeriod: overlayOptions.dustStormPeriod
   });
 
   const displayImageUrl = overlayImage?.url;

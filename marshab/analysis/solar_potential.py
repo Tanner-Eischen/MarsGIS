@@ -1,10 +1,11 @@
 """Solar potential analysis for Mars terrain."""
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Optional
+
 import numpy as np
 import xarray as xr
-from marshab.processing.criteria import CriteriaExtractor
+
 from marshab.models import TerrainMetrics
 from marshab.utils.logging import get_logger
 
@@ -20,8 +21,8 @@ DUST_DEGRADATION_FACTOR = 0.85
 class SolarPotentialResult:
     solar_potential_map: np.ndarray  # Normalized 0-1
     irradiance_map: np.ndarray  # W/m²
-    statistics: Dict[str, float]
-    mission_impacts: Dict[str, float]
+    statistics: dict[str, float]
+    mission_impacts: dict[str, float]
 
 
 @dataclass
@@ -45,7 +46,7 @@ class SolarPotentialAnalyzer:
         sun_altitude: float
     ) -> np.ndarray:
         """Calculate shadow penalty using basic ray-casting/horizon checking.
-        
+
         This improved version checks if terrain blocks the sun vector, rather
         than just checking local slope orientation. This accounts for distant
         hills casting shadows.
@@ -53,27 +54,27 @@ class SolarPotentialAnalyzer:
         # 1. Local incidence angle (simple shading)
         azimuth_rad = np.deg2rad(sun_azimuth)
         altitude_rad = np.deg2rad(sun_altitude)
-        
+
         dy, dx = np.gradient(elevation, self.cell_size_m)
         slope = np.arctan(np.sqrt(dx**2 + dy**2))
         aspect = np.arctan2(-dx, dy)
-        
+
         sun_x = np.sin(azimuth_rad) * np.cos(altitude_rad)
         sun_y = np.cos(azimuth_rad) * np.cos(altitude_rad)
         sun_z = np.sin(altitude_rad)
-        
+
         normal_x = -np.sin(aspect) * np.sin(slope)
         normal_y = -np.cos(aspect) * np.sin(slope)
         normal_z = np.cos(slope)
-        
+
         dot_product = normal_x * sun_x + normal_y * sun_y + normal_z * sun_z
         local_shading = np.clip(dot_product, 0, 1)
-        
+
         # 2. Cast shadows (simplified ray-march)
         # For a 'real value' feature, we'd march along the sun vector inverse.
-        # Doing a full 2D ray march in Python is slow, so we'll stick to 
+        # Doing a full 2D ray march in Python is slow, so we'll stick to
         # local shading for interactivity, but we could add a horizon mask here.
-        
+
         return (1.0 - local_shading).astype(np.float32)
 
     def calculate_time_integrated_solar(
@@ -86,7 +87,7 @@ class SolarPotentialAnalyzer:
     ) -> SolarPotentialResult:
         """Calculate solar potential integrated over a full day."""
         logger.info("Calculating time-integrated solar potential")
-        
+
         elevation = dem.values.astype(np.float32)
         total_irradiance = np.zeros_like(elevation)
         samples = 0
@@ -98,30 +99,30 @@ class SolarPotentialAnalyzer:
             hour_angle = (hour - 12) * 15  # degrees
             sun_altitude = 90 - abs(hour_angle)
             sun_azimuth = 90 if hour < 12 else 270 # Simplified East -> West path
-            
+
             if sun_altitude <= 0:
                 continue
-                
+
             shadow_penalty = self._calculate_shadow_penalty(
                 elevation, sun_azimuth, sun_altitude
             )
-            
+
             # Instantaneous irradiance
             altitude_factor = np.sin(np.radians(sun_altitude))
             inst_irradiance = MARS_SOLAR_CONSTANT * altitude_factor * (1.0 - shadow_penalty)
             total_irradiance += inst_irradiance
             samples += 1
-            
+
         # Average daily irradiance
         avg_irradiance = total_irradiance / max(1, samples)
-        
+
         # Normalize for potential map (0-1)
         max_irr = np.max(avg_irradiance) if np.max(avg_irradiance) > 0 else 1.0
         potential_map = avg_irradiance / max_irr
-        
+
         # Apply dust factor globally
         avg_irradiance *= DUST_DEGRADATION_FACTOR
-        
+
         stats = {
             "mean_irradiance_w_per_m2": float(np.nanmean(avg_irradiance)),
             "max": float(np.nanmax(potential_map)),
@@ -132,7 +133,7 @@ class SolarPotentialAnalyzer:
             "min_irradiance_w_per_m2": float(np.nanmin(avg_irradiance)),
             "max_irradiance_w_per_m2": float(np.nanmax(avg_irradiance)),
         }
-        
+
         # Placeholder impacts
         mission_impacts = {
             "power_generation_kwh_per_day": 0.0,
@@ -160,20 +161,36 @@ class SolarPotentialAnalyzer:
         # Use time-integrated by default for "real value" if called generically,
         # or fallback to single-point if specific angles requested?
         # For backward compat, we keep single-point logic or redirect.
-        # Let's use the new sophisticated method if altitude is default? 
+        # Let's use the new sophisticated method if altitude is default?
         # Or just keep single point for the slider UI.
-        
+
         # ... (Existing single-point logic preserved for slider usage) ...
-        
+
         elevation = dem.values.astype(np.float32)
         shadow_penalty = self._calculate_shadow_penalty(elevation, sun_azimuth, sun_altitude)
-        
+
         altitude_factor = np.sin(np.radians(sun_altitude))
         base_irradiance = MARS_SOLAR_CONSTANT * altitude_factor
-        irradiance = base_irradiance * (1.0 - shadow_penalty) * DUST_DEGRADATION_FACTOR
-        
+
+        # Use spatially variable dust degradation if provided, otherwise use global factor
+        if dust_cover_index is not None:
+            # Dust Cover Index: lower values = more dust = more degradation
+            # DCI typically ranges 0.85-1.0, use directly as degradation factor
+            dust_factor = dust_cover_index.values.astype(np.float32)
+            # Ensure shapes match
+            if dust_factor.shape != elevation.shape:
+                logger.warning(
+                    f"Dust cover index shape {dust_factor.shape} doesn't match DEM shape {elevation.shape}, "
+                    "using global degradation factor"
+                )
+                dust_factor = np.full_like(elevation, DUST_DEGRADATION_FACTOR)
+        else:
+            dust_factor = DUST_DEGRADATION_FACTOR
+
+        irradiance = base_irradiance * (1.0 - shadow_penalty) * dust_factor
+
         potential = irradiance / MARS_SOLAR_CONSTANT
-        
+
         stats = {
             "mean_irradiance_w_per_m2": float(np.nanmean(irradiance)),
             "max": float(np.nanmax(potential)),
@@ -183,7 +200,7 @@ class SolarPotentialAnalyzer:
             "min_irradiance_w_per_m2": float(np.nanmin(irradiance)),
             "max_irradiance_w_per_m2": float(np.nanmax(irradiance)),
         }
-        
+
         mission_impacts = {
             "power_generation_kwh_per_day": 0.0,
             "power_surplus_kwh_per_day": 0.0,
@@ -211,24 +228,24 @@ class SolarPotentialAnalyzer:
     ) -> MissionImpacts:
         """Calculate mission impact from solar potential."""
         mean_irradiance = solar_result.statistics["mean_irradiance_w_per_m2"]
-        
+
         # 6 hours effective sunlight per day assumption
         power_generation_kw = (mean_irradiance * panel_area_m2 * panel_efficiency) / 1000.0
         power_generation_kwh_per_day = power_generation_kw * 6.0
-        
+
         power_surplus_kwh_per_day = power_generation_kwh_per_day - daily_power_needs_kwh
-        
+
         extension_days = 0.0
         if power_surplus_kwh_per_day > 0:
             surplus_total = power_surplus_kwh_per_day * mission_duration_days
             extension_days = surplus_total / daily_power_needs_kwh
-            
+
         battery_reduction_kwh = 0.0
         if power_surplus_kwh_per_day > 0:
             battery_reduction_kwh = min(power_surplus_kwh_per_day * 2.0, battery_capacity_kwh * 0.3)
-            
+
         cost_savings = (battery_reduction_kwh * battery_cost_per_kwh) + (extension_days * 10000.0)
-        
+
         return MissionImpacts(
             power_generation_kwh_per_day=power_generation_kwh_per_day,
             power_surplus_kwh_per_day=power_surplus_kwh_per_day,

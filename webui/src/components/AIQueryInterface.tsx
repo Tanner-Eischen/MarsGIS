@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Send, Brain, Settings, Info, AlertCircle, CheckCircle } from 'lucide-react';
+import { apiFetch } from '../lib/apiBase';
 
 interface AIQueryRequest {
   query: string;
@@ -76,8 +77,7 @@ export default function AIQueryInterface({ onQueryProcessed, className = '' }: A
         }
       };
 
-      const BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api/v1';
-      const response = await fetch(`${BASE}/ai-query`, {
+      const response = await apiFetch('/ai-query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,10 +1,11 @@
 """WebSocket progress tracking endpoints."""
 
-import uuid
 import asyncio
 import time
-from queue import Queue, Empty
-from typing import Dict, Optional, Callable
+import uuid
+from queue import Empty, Queue
+from typing import Optional
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
@@ -15,11 +16,11 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 # Store active WebSocket connections by task_id
-_active_connections: Dict[str, WebSocket] = {}
+_active_connections: dict[str, WebSocket] = {}
 
 # Store progress queues for each task (for thread-safe communication)
 # Use a regular queue that can be accessed from any thread
-_progress_queues: Dict[str, Queue] = {}
+_progress_queues: dict[str, Queue] = {}
 
 
 class ProgressEvent(BaseModel):
@@ -33,10 +34,10 @@ class ProgressEvent(BaseModel):
 
 class ProgressTracker:
     """Tracks progress for long-running operations."""
-    
+
     def __init__(self, task_id: str):
         """Initialize progress tracker.
-        
+
         Args:
             task_id: Unique task identifier
         """
@@ -44,7 +45,7 @@ class ProgressTracker:
         self.current_stage = ""
         self.current_progress = 0.0
         self.start_time = time.time()
-    
+
     def update(
         self,
         stage: str,
@@ -53,7 +54,7 @@ class ProgressTracker:
         estimated_seconds_remaining: Optional[int] = None
     ):
         """Update progress (thread-safe, can be called from any thread).
-        
+
         Args:
             stage: Stage name (e.g., "dem_loading", "terrain_metrics")
             progress: Progress value (0.0 to 1.0)
@@ -62,14 +63,14 @@ class ProgressTracker:
         """
         self.current_stage = stage
         self.current_progress = max(0.0, min(1.0, progress))
-        
+
         # Calculate estimated time remaining if not provided
         if estimated_seconds_remaining is None and self.start_time:
             elapsed = time.time() - self.start_time
             if progress > 0:
                 total_estimated = elapsed / progress
                 estimated_seconds_remaining = int(total_estimated - elapsed)
-        
+
         event = ProgressEvent(
             task_id=self.task_id,
             stage=stage,
@@ -77,17 +78,17 @@ class ProgressTracker:
             message=message,
             estimated_seconds_remaining=estimated_seconds_remaining
         )
-        
+
         # Put event in queue (thread-safe)
         # If queue doesn't exist yet (WebSocket not connected), create it
         # This allows progress updates to be buffered before WebSocket connects
         if self.task_id not in _progress_queues:
             # Create thread-safe queue (can be created from any thread)
             _progress_queues[self.task_id] = Queue(maxsize=100)
-        
+
         try:
             _progress_queues[self.task_id].put_nowait(event)
-        except:
+        except Exception:
             # Queue full, drop event
             logger.warning(f"Progress queue full for task {self.task_id}, dropping event")
 
@@ -95,22 +96,22 @@ class ProgressTracker:
 @router.websocket("/ws/progress/{task_id}")
 async def websocket_progress(websocket: WebSocket, task_id: str):
     """WebSocket endpoint for progress updates.
-    
+
     Clients connect to this endpoint to receive real-time progress updates
     for a specific task.
     """
     await websocket.accept()
     _active_connections[task_id] = websocket
-    
+
     # Use existing queue if it exists (created by progress tracker), otherwise create new one
     if task_id not in _progress_queues:
         _progress_queues[task_id] = Queue(maxsize=100)
-    
+
     # Get the thread-safe queue
     sync_queue = _progress_queues[task_id]
-    
+
     logger.info(f"WebSocket connected for task {task_id}")
-    
+
     try:
         # Send initial connection confirmation
         await websocket.send_json({
@@ -118,7 +119,7 @@ async def websocket_progress(websocket: WebSocket, task_id: str):
             "task_id": task_id,
             "message": "Connected to progress stream"
         })
-        
+
         # Start background task to send progress events
         async def send_progress():
             while True:
@@ -133,15 +134,15 @@ async def websocket_progress(websocket: WebSocket, task_id: str):
                         # Send ping to keep connection alive
                         try:
                             await websocket.send_json({"type": "ping"})
-                        except:
+                        except Exception:
                             break
                 except Exception as e:
                     logger.warning(f"Error sending progress: {e}")
                     break
-        
+
         # Start progress sender
         progress_task = asyncio.create_task(send_progress())
-        
+
         # Keep connection alive and wait for messages
         while True:
             try:
@@ -154,6 +155,8 @@ async def websocket_progress(websocket: WebSocket, task_id: str):
     except Exception as e:
         logger.error(f"WebSocket error for task {task_id}: {e}")
     finally:
+        if "progress_task" in locals():
+            progress_task.cancel()
         # Clean up connection and queue
         if task_id in _active_connections:
             del _active_connections[task_id]

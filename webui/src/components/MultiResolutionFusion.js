@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import React, { useState } from 'react';
 import { Layers, Settings, BarChart3, Download, Eye, Zap } from 'lucide-react';
+import { apiFetch } from '../lib/apiBase';
 export default function MultiResolutionFusion({ roi, className = '', onFusionComplete }) {
     const [datasetInfo, setDatasetInfo] = useState(null);
     const [fusionMethods, setFusionMethods] = useState(null);
@@ -24,7 +25,7 @@ export default function MultiResolutionFusion({ roi, className = '', onFusionCom
     }, []);
     const loadDatasetInfo = async () => {
         try {
-            const response = await fetch('/api/v1/fusion/info');
+            const response = await apiFetch('/fusion/info');
             const data = await response.json();
             setDatasetInfo(data);
         }
@@ -34,7 +35,7 @@ export default function MultiResolutionFusion({ roi, className = '', onFusionCom
     };
     const loadFusionMethods = async () => {
         try {
-            const response = await fetch('/api/v1/fusion/methods');
+            const response = await apiFetch('/fusion/methods');
             const data = await response.json();
             setFusionMethods(data);
         }
@@ -70,14 +71,17 @@ export default function MultiResolutionFusion({ roi, className = '', onFusionCom
                 edge_preservation: edgePreservation,
                 noise_reduction: noiseReduction,
             };
-            const endpoint = activeTab === 'comparison' ? '/api/v1/fusion/compare' : '/api/v1/fusion/fuse';
-            const response = await fetch(endpoint, {
+            const endpoint = activeTab === 'comparison' ? '/fusion/compare' : '/fusion/fuse';
+            const response = await apiFetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(request),
             });
+            if (!response.ok) {
+                throw new Error(`Fusion request failed with status ${response.status}`);
+            }
             const data = await response.json();
             setResponse(data);
             if (data.success && onFusionComplete) {

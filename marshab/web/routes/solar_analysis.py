@@ -1,12 +1,11 @@
 """Solar analysis API endpoints."""
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import Dict, Optional
 
 import numpy as np
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
-from marshab.analysis.solar_potential import SolarPotentialAnalyzer, MissionImpacts
+from marshab.analysis.solar_potential import MissionImpacts, SolarPotentialAnalyzer
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
@@ -23,8 +22,8 @@ async def solar_health():
 
 class SolarAnalysisRequest(BaseModel):
     """Request for solar analysis."""
-    roi: Dict[str, float] = Field(
-        ..., 
+    roi: dict[str, float] = Field(
+        ...,
         description="Bounding box: lat_min, lat_max, lon_min, lon_max"
     )
     dataset: str = Field("mola", description="DEM dataset")
@@ -64,20 +63,20 @@ class SolarAnalysisResponse(BaseModel):
     irradiance_map: list[list[float]] = Field(..., description="Irradiance map (W/m²)")
     statistics: SolarStatistics
     mission_impacts: MissionImpactsResponse
-    shape: Dict[str, int] = Field(..., description="Map dimensions (rows, cols)")
+    shape: dict[str, int] = Field(..., description="Map dimensions (rows, cols)")
 
 
 @router.post("/analyze", response_model=SolarAnalysisResponse)
 async def analyze_solar_potential(request: SolarAnalysisRequest):
     """Analyze solar potential for a region.
-    
+
     Returns solar potential map, statistics, and mission impact calculations.
     """
     try:
         # Run analysis pipeline to get terrain metrics
         pipeline = AnalysisPipeline()
         roi = BoundingBox(**request.roi)
-        
+
         logger.info("Running analysis pipeline for solar analysis", roi=roi.model_dump())
         use_synthetic = False
         try:
@@ -92,7 +91,7 @@ async def analyze_solar_potential(request: SolarAnalysisRequest):
         except Exception as e:
             logger.warning("Analysis pipeline failed for solar, using synthetic fallback", error=str(e))
             use_synthetic = True
-        
+
         # Get cell size from DEM (or synthetic default)
         if not use_synthetic:
             if hasattr(results.dem, 'rio') and hasattr(results.dem.rio, 'res'):
@@ -110,7 +109,7 @@ async def analyze_solar_potential(request: SolarAnalysisRequest):
                 cell_size_m = width_m / results.dem.shape[1] if results.dem.shape[1] > 0 else 200.0
         else:
             cell_size_m = 200.0
-        
+
         # Analyze solar potential
         analyzer = SolarPotentialAnalyzer(cell_size_m=cell_size_m)
         if not use_synthetic:
@@ -143,7 +142,7 @@ async def analyze_solar_potential(request: SolarAnalysisRequest):
                     self.irradiance_map = irr
                     self.statistics = statistics
             solar_result = SynthResult(solar_potential, irradiance, stats)
-        
+
         # Calculate mission impacts
         if not use_synthetic:
             mission_impacts = analyzer.calculate_mission_impacts(
@@ -171,11 +170,11 @@ async def analyze_solar_potential(request: SolarAnalysisRequest):
                 cost_savings_usd=cost_savings,
                 battery_reduction_kwh=battery_reduction,
             )
-        
+
         # Convert numpy arrays to lists for JSON serialization
         potential_list = solar_result.solar_potential_map.tolist()
         irradiance_list = solar_result.irradiance_map.tolist()
-        
+
         # Replace NaN with 0 for JSON serialization
         def clean_nan(arr):
             if isinstance(arr, list):
@@ -184,10 +183,10 @@ async def analyze_solar_potential(request: SolarAnalysisRequest):
                 arr = np.nan_to_num(arr, nan=0.0)
                 return arr.tolist()
             return arr
-        
+
         potential_list = clean_nan(potential_list)
         irradiance_list = clean_nan(irradiance_list)
-        
+
         return SolarAnalysisResponse(
             solar_potential_map=potential_list,
             irradiance_map=irradiance_list,
@@ -201,7 +200,7 @@ async def analyze_solar_potential(request: SolarAnalysisRequest):
             ),
             shape={"rows": solar_result.solar_potential_map.shape[0], "cols": solar_result.solar_potential_map.shape[1]}
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

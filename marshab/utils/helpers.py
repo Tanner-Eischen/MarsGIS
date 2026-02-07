@@ -1,7 +1,6 @@
 """Common helper functions."""
 
 import hashlib
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -9,10 +8,10 @@ import numpy as np
 
 def generate_cache_key(*args: Any) -> str:
     """Generate cache key from arguments.
-    
+
     Args:
         *args: Values to hash for cache key
-    
+
     Returns:
         Hexadecimal cache key string
     """
@@ -22,10 +21,10 @@ def generate_cache_key(*args: Any) -> str:
 
 def ensure_numpy_array(data: Any) -> np.ndarray:
     """Ensure data is numpy array.
-    
+
     Args:
         data: Input data (array-like)
-    
+
     Returns:
         NumPy array
     """
@@ -36,10 +35,10 @@ def ensure_numpy_array(data: Any) -> np.ndarray:
 
 def format_area(area_km2: float) -> str:
     """Format area for human-readable display.
-    
+
     Args:
         area_km2: Area in square kilometers
-    
+
     Returns:
         Formatted string (e.g., "1.23 km²" or "456.7 m²")
     """
@@ -52,10 +51,10 @@ def format_area(area_km2: float) -> str:
 
 def format_distance(distance_m: float) -> str:
     """Format distance for human-readable display.
-    
+
     Args:
         distance_m: Distance in meters
-    
+
     Returns:
         Formatted string (e.g., "1.23 km" or "456 m")
     """

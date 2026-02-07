@@ -1,6 +1,5 @@
 """Status and system information endpoints."""
 
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -20,7 +19,7 @@ async def get_status():
     try:
         config = get_config()
         logger.info("Config loaded")
-        
+
         # Check cache directory
         cache_dir = config.paths.cache_dir
         cache_size = 0
@@ -29,13 +28,13 @@ async def get_status():
             for file in cache_dir.glob("*.tif"):
                 cache_size += file.stat().st_size
                 cache_files += 1
-        
+
         # Check output directory
         output_dir = config.paths.output_dir
         output_files = 0
         if output_dir.exists():
             output_files = len(list(output_dir.glob("*.csv")))
-        
+
         return {
             "status": "operational",
             "cache": {

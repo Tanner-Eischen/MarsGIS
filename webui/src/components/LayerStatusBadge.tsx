@@ -1,8 +1,8 @@
-import React from 'react'
+import type { MarsDataset } from '../config/marsDataSources'
 
 interface LayerStatusBadgeProps {
   status: 'loading' | 'cached' | 'error' | 'idle'
-  dataset?: 'mola' | 'hirise' | 'ctx'
+  dataset?: MarsDataset
 }
 
 export default function LayerStatusBadge({ status, dataset }: LayerStatusBadgeProps) {
@@ -34,14 +34,16 @@ export default function LayerStatusBadge({ status, dataset }: LayerStatusBadgePr
     }
   }
 
-  const getDatasetIcon = () => {
+  const getDatasetLabel = () => {
     switch (dataset) {
       case 'mola':
-        return '🛰️'
+        return 'MOLA'
+      case 'mola_200m':
+        return 'MOLA200'
       case 'hirise':
-        return '🔭'
+        return 'HiRISE'
       case 'ctx':
-        return '📷'
+        return 'CTX'
       default:
         return ''
     }
@@ -55,9 +57,8 @@ export default function LayerStatusBadge({ status, dataset }: LayerStatusBadgePr
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${getStatusClasses()}`}
     >
-      {getDatasetIcon() && <span>{getDatasetIcon()}</span>}
+      {getDatasetLabel() && <span>{getDatasetLabel()}</span>}
       <span>{getStatusText()}</span>
     </span>
   )
 }
-

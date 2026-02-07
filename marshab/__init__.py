@@ -5,15 +5,15 @@ __author__ = "MarsHab Development Team"
 __description__ = "Geospatial analysis for Mars habitat construction site selection"
 
 # Export commonly used types and functions
+from marshab.config import get_config
 from marshab.models import (
+    AnalysisConfig,
     BoundingBox,
     SiteOrigin,
-    Waypoint,
     TerrainMetrics,
-    AnalysisConfig,
+    Waypoint,
 )
-from marshab.config import get_config
-from marshab.utils.logging import get_logger, configure_logging
+from marshab.utils.logging import configure_logging, get_logger
 
 __all__ = [
     "BoundingBox",

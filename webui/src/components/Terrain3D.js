@@ -1,9 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Plot from 'react-plotly.js';
+import Plotly from 'plotly.js';
 import { use3DTerrain } from '../hooks/use3DMapData';
 import { useSitesGeoJson, useWaypointsGeoJson } from '../hooks/useMapData';
-export default function Terrain3D({ roi, dataset = 'mola', showSites = false, showWaypoints = false }) {
+import { useCameraFollow } from '../hooks/useCameraFollow';
+export default function Terrain3D({ roi, dataset = 'mola', showSites = false, showWaypoints = false, enableRoverAnimation = false, roverPosition: externalRoverPosition = null, isAnimating = false, overlayType, overlayOptions = {} }) {
     const { terrainData, loading: terrainLoading, error: terrainError } = use3DTerrain(roi, dataset);
     const sitesGeoJson = useSitesGeoJson(showSites);
     const waypointsGeoJson = useWaypointsGeoJson(showWaypoints);
@@ -11,6 +13,11 @@ export default function Terrain3D({ roi, dataset = 'mola', showSites = false, sh
     const [horizontalScale, setHorizontalScale] = useState(1.0);
     const [colorScale, setColorScale] = useState('Terrain');
     const [enableContourLines, setEnableContourLines] = useState(false);
+    const plotRef = useRef(null);
+    // Use external rover position if provided, otherwise use internal state
+    const roverPosition = externalRoverPosition;
+    // Camera follow hook
+    useCameraFollow(roverPosition, enableRoverAnimation && isAnimating, plotRef);
     if (!roi) {
         return (_jsx("div", { className: "bg-gray-800 rounded-lg p-6 text-center", children: _jsx("p", { className: "text-gray-400", children: "Select a region of interest to view 3D terrain visualization" }) }));
     }
@@ -87,6 +94,38 @@ export default function Terrain3D({ roi, dataset = 'mola', showSites = false, sh
             }
         }
     }
+    // Add rover marker trace if animation is enabled and position is available
+    if (enableRoverAnimation && roverPosition) {
+        traces.push({
+            type: 'scatter3d',
+            mode: 'markers',
+            x: [roverPosition.lon],
+            y: [roverPosition.lat],
+            z: [roverPosition.elevation],
+            marker: {
+                size: 10,
+                color: '#ff0000',
+                symbol: 'circle',
+                line: { color: '#ffffff', width: 2 },
+            },
+            name: 'Rover',
+            showlegend: false,
+        });
+    }
+    // Update rover position using Plotly.restyle for performance
+    useEffect(() => {
+        if (roverPosition && plotRef.current && enableRoverAnimation && isAnimating) {
+            // Find rover trace index (should be the last trace)
+            const roverTraceIndex = traces.length - 1;
+            if (roverTraceIndex >= 0 && traces[roverTraceIndex]?.name === 'Rover') {
+                Plotly.restyle(plotRef.current, {
+                    x: [[roverPosition.lon]],
+                    y: [[roverPosition.lat]],
+                    z: [[roverPosition.elevation]],
+                }, [roverTraceIndex]);
+            }
+        }
+    }, [roverPosition, enableRoverAnimation, isAnimating, traces.length]);
     const layout = {
         title: '3D Terrain Visualization',
         scene: {
@@ -94,6 +133,10 @@ export default function Terrain3D({ roi, dataset = 'mola', showSites = false, sh
             yaxis: { title: 'Latitude ()' },
             zaxis: { title: 'Elevation (m)' },
             aspectratio: { x: 1, y: 1, z: 0.1 * verticalRelief },
+            dragmode: enableRoverAnimation && isAnimating ? false : 'orbit',
+            camera: {
+            // Camera will be controlled programmatically during animation
+            },
         },
         autosize: true,
         paper_bgcolor: '#1f2937',
@@ -105,5 +148,7 @@ export default function Terrain3D({ roi, dataset = 'mola', showSites = false, sh
         displayModeBar: true,
         displaylogo: false,
     };
-    return (_jsxs("div", { className: "bg-gray-800 rounded-lg p-6", children: [_jsxs("div", { className: "mb-4 grid grid-cols-2 md:grid-cols-4 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-300 mb-2", children: "Vertical Relief" }), _jsx("input", { type: "range", min: "0.1", max: "5.0", step: "0.1", value: verticalRelief, onChange: e => setVerticalRelief(parseFloat(e.target.value)), className: "w-full" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-300 mb-2", children: "Color Scale" }), _jsxs("select", { value: colorScale, onChange: e => setColorScale(e.target.value), className: "w-full bg-gray-700 text-white px-3 py-2 rounded-md text-sm", children: [_jsx("option", { children: "Terrain" }), _jsx("option", { children: "Viridis" }), _jsx("option", { children: "Plasma" }), _jsx("option", { children: "Earth" })] })] }), _jsxs("div", { className: "flex items-center", children: [_jsx("input", { type: "checkbox", checked: enableContourLines, onChange: e => setEnableContourLines(e.target.checked), id: "contour-toggle" }), _jsx("label", { htmlFor: "contour-toggle", className: "ml-2 text-sm text-gray-300", children: "Show Contours" })] })] }), _jsx("div", { className: "h-[600px] w-full rounded-md overflow-hidden border border-gray-700", children: _jsx(Plot, { data: traces, layout: layout, config: config, style: { width: '100%', height: '100%' }, useResizeHandler: true }) })] }));
+    return (_jsxs("div", { className: "bg-gray-800 rounded-lg p-6", children: [_jsxs("div", { className: "mb-4 grid grid-cols-2 md:grid-cols-4 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-300 mb-2", children: "Vertical Relief" }), _jsx("input", { type: "range", min: "0.1", max: "5.0", step: "0.1", value: verticalRelief, onChange: e => setVerticalRelief(parseFloat(e.target.value)), className: "w-full" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-300 mb-2", children: "Color Scale" }), _jsxs("select", { value: colorScale, onChange: e => setColorScale(e.target.value), className: "w-full bg-gray-700 text-white px-3 py-2 rounded-md text-sm", children: [_jsx("option", { children: "Terrain" }), _jsx("option", { children: "Viridis" }), _jsx("option", { children: "Plasma" }), _jsx("option", { children: "Earth" })] })] }), _jsxs("div", { className: "flex items-center", children: [_jsx("input", { type: "checkbox", checked: enableContourLines, onChange: e => setEnableContourLines(e.target.checked), id: "contour-toggle" }), _jsx("label", { htmlFor: "contour-toggle", className: "ml-2 text-sm text-gray-300", children: "Show Contours" })] })] }), _jsx("div", { className: "h-[600px] w-full rounded-md overflow-hidden border border-gray-700", children: _jsx(Plot, { data: traces, layout: layout, config: config, style: { width: '100%', height: '100%' }, useResizeHandler: true, onInitialized: (figure, graphDiv) => {
+                        plotRef.current = graphDiv;
+                    } }) })] }));
 }

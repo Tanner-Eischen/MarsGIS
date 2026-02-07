@@ -1,12 +1,13 @@
 """API routes for multi-resolution data fusion."""
 
-from typing import Dict, List, Optional, Literal
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
-import logging
+from typing import Literal, Optional
 
-from marshab.core.multi_resolution_fusion import MultiResolutionFusion, FusionParameters
+import numpy as np
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
 from marshab.core.data_manager import DataManager
+from marshab.core.multi_resolution_fusion import FusionParameters, MultiResolutionFusion
 from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
@@ -17,8 +18,8 @@ router = APIRouter(prefix="/fusion", tags=["fusion"])
 class FusionRequest(BaseModel):
     """Request model for multi-resolution data fusion."""
     roi: BoundingBox = Field(..., description="Region of interest bounding box")
-    datasets: List[Literal["mola", "hirise", "ctx"]] = Field(
-        ..., 
+    datasets: list[Literal["mola", "hirise", "ctx"]] = Field(
+        ...,
         description="List of datasets to fuse",
         min_items=1,
         max_items=3
@@ -62,23 +63,23 @@ class FusionRequest(BaseModel):
 class FusionResponse(BaseModel):
     """Response model for multi-resolution data fusion."""
     success: bool
-    fused_data: Dict = Field(..., description="Fused elevation data")
-    fusion_info: Dict = Field(..., description="Information about the fusion process")
-    quality_metrics: Dict = Field(..., description="Quality metrics for the fused dataset")
-    dataset_info: Dict = Field(..., description="Information about input datasets")
+    fused_data: dict = Field(..., description="Fused elevation data")
+    fusion_info: dict = Field(..., description="Information about the fusion process")
+    quality_metrics: dict = Field(..., description="Quality metrics for the fused dataset")
+    dataset_info: dict = Field(..., description="Information about input datasets")
 
 
 class DatasetInfoResponse(BaseModel):
     """Response model for dataset information."""
-    available_datasets: List[str] = Field(..., description="List of available datasets")
-    dataset_configs: Dict[str, Dict] = Field(..., description="Configuration for each dataset")
+    available_datasets: list[str] = Field(..., description="List of available datasets")
+    dataset_configs: dict[str, dict] = Field(..., description="Configuration for each dataset")
 
 
 class FusionMethodsResponse(BaseModel):
     """Response model for fusion methods information."""
-    blending_methods: List[str] = Field(..., description="Available blending methods")
-    upsampling_methods: List[str] = Field(..., description="Available upsampling methods")
-    downsampling_methods: List[str] = Field(..., description="Available downsampling methods")
+    blending_methods: list[str] = Field(..., description="Available blending methods")
+    upsampling_methods: list[str] = Field(..., description="Available upsampling methods")
+    downsampling_methods: list[str] = Field(..., description="Available downsampling methods")
 
 
 @router.get("/info", response_model=DatasetInfoResponse)
@@ -97,7 +98,7 @@ async def get_fusion_info():
                 noise_reduction=True
             )
         )
-        
+
         dataset_configs = {
             dataset_id: {
                 "name": config.name,
@@ -108,12 +109,12 @@ async def get_fusion_info():
             }
             for dataset_id, config in fusion_service.DATASET_CONFIGS.items()
         }
-        
+
         return DatasetInfoResponse(
             available_datasets=list(fusion_service.DATASET_CONFIGS.keys()),
             dataset_configs=dataset_configs
         )
-        
+
     except Exception as e:
         logger.error(f"Error getting fusion info: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting fusion info: {str(e)}")
@@ -136,7 +137,7 @@ async def fuse_datasets(request: FusionRequest):
         logger.info(f"Starting multi-resolution fusion for datasets: {request.datasets}")
         logger.info(f"ROI: {request.roi}")
         logger.info(f"Blending method: {request.blending_method}")
-        
+
         # Create fusion parameters
         fusion_params = FusionParameters(
             primary_dataset=request.primary_dataset,
@@ -147,17 +148,17 @@ async def fuse_datasets(request: FusionRequest):
             edge_preservation=request.edge_preservation,
             noise_reduction=request.noise_reduction
         )
-        
+
         # Initialize fusion service
         fusion_service = MultiResolutionFusion(fusion_params)
-        
+
         # Load datasets
         data_manager = DataManager()
-        
+
         for dataset_id in request.datasets:
             try:
                 logger.info(f"Loading dataset: {dataset_id}")
-                
+
                 # Load dataset using data manager
                 if dataset_id == "mola":
                     data = data_manager.get_mola_data(request.roi)
@@ -167,38 +168,38 @@ async def fuse_datasets(request: FusionRequest):
                     data = data_manager.get_ctx_data(request.roi)
                 else:
                     raise ValueError(f"Unknown dataset: {dataset_id}")
-                
+
                 if data is None:
                     logger.warning(f"No data available for dataset {dataset_id} in ROI")
                     continue
-                
+
                 # Add dataset to fusion service
                 fusion_service.add_dataset(dataset_id, data, request.roi)
                 logger.info(f"Successfully loaded dataset {dataset_id}")
-                
+
             except Exception as e:
                 logger.error(f"Error loading dataset {dataset_id}: {e}")
                 # Continue with other datasets if one fails
                 continue
-        
+
         # Check if any datasets were loaded
         if not fusion_service.datasets:
             raise HTTPException(
-                status_code=404, 
+                status_code=404,
                 detail="No datasets could be loaded for the specified ROI"
             )
-        
+
         # Perform fusion
         logger.info("Performing data fusion...")
         fused_dataset = fusion_service.fuse_datasets(request.target_resolution)
-        
+
         # Get quality metrics
         logger.info("Calculating quality metrics...")
         quality_metrics = fusion_service.get_fusion_quality_metrics()
-        
+
         # Get dataset information
         dataset_info = fusion_service.get_dataset_info()
-        
+
         # Prepare response data
         fused_data = {
             "elevation": fused_dataset.values.tolist(),
@@ -207,7 +208,7 @@ async def fuse_datasets(request: FusionRequest):
             "shape": fused_dataset.shape,
             "attrs": dict(fused_dataset.attrs)
         }
-        
+
         fusion_info = {
             "method": request.blending_method,
             "target_resolution": request.target_resolution or fusion_service.DATASET_CONFIGS[request.primary_dataset].resolution,
@@ -215,9 +216,9 @@ async def fuse_datasets(request: FusionRequest):
             "input_datasets": list(fusion_service.datasets.keys()),
             "fusion_timestamp": logger.name  # Add timestamp if needed
         }
-        
+
         logger.info("Multi-resolution fusion completed successfully")
-        
+
         return FusionResponse(
             success=True,
             fused_data=fused_data,
@@ -225,7 +226,7 @@ async def fuse_datasets(request: FusionRequest):
             quality_metrics=quality_metrics,
             dataset_info=dataset_info
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -238,15 +239,15 @@ async def compare_datasets(request: FusionRequest):
     """Compare multiple datasets without fusion (for analysis)."""
     try:
         logger.info(f"Comparing datasets: {request.datasets}")
-        
+
         # Load datasets
         data_manager = DataManager()
         datasets_data = {}
-        
+
         for dataset_id in request.datasets:
             try:
                 logger.info(f"Loading dataset for comparison: {dataset_id}")
-                
+
                 if dataset_id == "mola":
                     data = data_manager.get_mola_data(request.roi)
                 elif dataset_id == "hirise":
@@ -255,7 +256,7 @@ async def compare_datasets(request: FusionRequest):
                     data = data_manager.get_ctx_data(request.roi)
                 else:
                     continue
-                
+
                 if data is not None:
                     datasets_data[dataset_id] = {
                         "elevation": data.values.tolist(),
@@ -269,17 +270,17 @@ async def compare_datasets(request: FusionRequest):
                             "std": float(data.std())
                         }
                     }
-                    
+
             except Exception as e:
                 logger.error(f"Error loading dataset {dataset_id} for comparison: {e}")
                 continue
-        
+
         if not datasets_data:
             raise HTTPException(
-                status_code=404, 
+                status_code=404,
                 detail="No datasets could be loaded for comparison"
             )
-        
+
         # Calculate comparison metrics
         comparison_metrics = {}
         if len(datasets_data) >= 2:
@@ -288,11 +289,11 @@ async def compare_datasets(request: FusionRequest):
             for i in range(len(dataset_ids)):
                 for j in range(i + 1, len(dataset_ids)):
                     id1, id2 = dataset_ids[i], dataset_ids[j]
-                    
+
                     # Calculate differences (simplified)
                     data1 = np.array(datasets_data[id1]["elevation"])
                     data2 = np.array(datasets_data[id2]["elevation"])
-                    
+
                     if data1.shape == data2.shape:
                         diff = data1 - data2
                         comparison_metrics[f"{id1}_vs_{id2}"] = {
@@ -300,7 +301,7 @@ async def compare_datasets(request: FusionRequest):
                             "std_difference": float(np.std(diff)),
                             "max_difference": float(np.max(np.abs(diff)))
                         }
-        
+
         return FusionResponse(
             success=True,
             fused_data=datasets_data,  # Contains individual datasets
@@ -312,7 +313,7 @@ async def compare_datasets(request: FusionRequest):
             quality_metrics={"comparison_completed": True},
             dataset_info={"mode": "comparison"}
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -342,7 +343,7 @@ async def get_fusion_example():
             "edge_preservation": True,
             "noise_reduction": True
         },
-        "description": "This example fuses MOLA, CTX, and HiRISE data using weighted average blending with 100m target resolution",
+        "notes": "This example fuses MOLA, CTX, and HiRISE data using weighted average blending with 100m target resolution",
         "expected_output": {
             "fused_elevation_data": "Combined elevation data from all datasets",
             "quality_metrics": "Statistical metrics about the fusion quality",

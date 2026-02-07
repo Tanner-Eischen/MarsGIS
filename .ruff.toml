@@ -14,11 +14,14 @@ select = [
 ]
 ignore = [
     "E501",  # Line too long (handled by Black)
-    "W503",  # Line break before binary operator
+    "UP007", # Keep legacy Optional/Union annotations for now
+    "UP038", # Keep tuple form in isinstance checks
+    "B008",  # Typer's Option/Argument defaults are intentional
+    "B904",  # Existing exception style debt; defer chained-raise refactor
+    "N803",  # Scientific/ML convention: uppercase feature matrix names
+    "N806",  # Scientific/ML convention: uppercase temporary matrix vars
+    "B007",  # Existing loop variable style in tests/core
 ]
-
-[lint.isort]
-profile = "black"
 
 
 

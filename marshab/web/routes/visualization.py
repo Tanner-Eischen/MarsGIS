@@ -2,22 +2,20 @@
 
 import io
 import json
-from pathlib import Path
 import time
 
 import numpy as np
-import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from PIL import Image
 
+from marshab.analysis.solar_potential import SolarPotentialAnalyzer
 from marshab.config import get_config
+from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.core.data_manager import DataManager
 from marshab.core.overlay_cache import OverlayCache
-from marshab.core.analysis_pipeline import AnalysisPipeline
-from marshab.processing.terrain import TerrainAnalyzer
-from marshab.analysis.solar_potential import SolarPotentialAnalyzer
 from marshab.models import BoundingBox
+from marshab.processing.terrain import TerrainAnalyzer
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -28,19 +26,17 @@ router = APIRouter()
 @router.get("/visualization/sites/{analysis_id}")
 async def get_sites_file(analysis_id: str):
     """Get sites CSV file for visualization."""
-    start = time.time()
-    start = time.time()
     try:
         config = get_config()
         output_dir = config.paths.output_dir
-        
+
         # For now, use default sites.csv
         # In future, could support multiple analysis runs with IDs
         sites_file = output_dir / "sites.csv"
-        
+
         if not sites_file.exists():
             raise HTTPException(status_code=404, detail="Sites file not found. Run analysis first.")
-        
+
         return FileResponse(
             path=str(sites_file),
             filename="sites.csv",
@@ -57,13 +53,13 @@ async def get_waypoints_file(navigation_id: str):
     try:
         config = get_config()
         output_dir = config.paths.output_dir
-        
+
         # For now, use default waypoints.csv
         waypoints_file = output_dir / "waypoints.csv"
-        
+
         if not waypoints_file.exists():
             raise HTTPException(status_code=404, detail="Waypoints file not found. Plan navigation first.")
-        
+
         return FileResponse(
             path=str(waypoints_file),
             filename="waypoints.csv",
@@ -102,7 +98,7 @@ async def get_dem_image(
     buffer: float = Query(0.5, ge=0.0, le=5.0, description="Buffer factor to extend ROI (0.5 = 50% extension, 1.0 = 100% extension, 5.0 = 500% extension)"),
 ):
     """Get DEM as PNG image for visualization.
-    
+
     Returns a PNG image of the DEM elevation data, cropped to the specified ROI.
     """
     start = time.time()
@@ -126,7 +122,7 @@ async def get_dem_image(
         except Exception as e:
             logger.error("Invalid ROI format", roi=roi, error=str(e))
             raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
-        
+
         # Extend ROI bounds if buffer is specified
         if buffer > 0:
             delta_lat = (lat_max - lat_min) * buffer
@@ -139,13 +135,13 @@ async def get_dem_image(
             )
         else:
             extended_bbox = original_bbox
-        
+
         logger.info("Loading DEM data...", bbox=extended_bbox.model_dump(), dataset=dataset)
         # Load DEM with extended bounds (allow download if not cached)
         # Run in thread pool to avoid blocking async handler
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        
+
         data_manager = DataManager()
         loop = asyncio.get_event_loop()
         use_synthetic = False
@@ -168,7 +164,7 @@ async def get_dem_image(
         except Exception as e:
             logger.warning("DEM load failed, generating synthetic visualization for demo mode", error=str(e), bbox=extended_bbox.model_dump())
             use_synthetic = True
-        
+
         logger.info("Processing elevation data...")
         # Get elevation data (or synthesize if DEM unavailable)
         if not use_synthetic and dem is not None:
@@ -182,25 +178,25 @@ async def get_dem_image(
             xx, yy = np.meshgrid(x, y)
             elevation = (np.sin(3 * np.pi * xx) * np.cos(2 * np.pi * yy) + 1.0) * 1000.0
             elevation = elevation.astype(np.float32)
-        
+
         # Handle nodata values
         if not use_synthetic and dem is not None and hasattr(dem, 'attrs') and 'nodata' in dem.attrs:
             nodata = dem.attrs['nodata']
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
-        
+
         # Normalize elevation to 0-255 range for image
         valid_mask = np.isfinite(elevation)
         if not np.any(valid_mask):
             logger.error("No valid elevation data in ROI", roi=roi)
             raise HTTPException(status_code=400, detail="No valid elevation data in ROI")
-        
+
         valid_elevation = elevation[valid_mask]
         elev_min = float(np.nanmin(valid_elevation))
         elev_max = float(np.nanmax(valid_elevation))
-        
+
         logger.info("Elevation range", elev_min=elev_min, elev_max=elev_max)
-        
+
         if elev_max == elev_min:
             # Constant elevation, create uniform image
             normalized = np.ones_like(elevation, dtype=np.uint8) * 128
@@ -208,17 +204,17 @@ async def get_dem_image(
             # Normalize to 0-255
             normalized = ((elevation - elev_min) / (elev_max - elev_min) * 255).astype(np.uint8)
             normalized[~valid_mask] = 0  # Set invalid pixels to black
-        
+
         # Resize if needed - run in thread pool for large images
         if not use_synthetic and normalized.shape[0] != height or not use_synthetic and normalized.shape[1] != width:
             logger.info("Resizing image", from_shape=normalized.shape, to_size=(height, width))
             from PIL import Image as PILImage
-            
+
             def resize_image(arr, target_size):
                 img = PILImage.fromarray(arr, mode='L')
                 img = img.resize((target_size[1], target_size[0]), PILImage.Resampling.LANCZOS)
                 return np.array(img)
-            
+
             with ThreadPoolExecutor() as executor:
                 normalized = await loop.run_in_executor(
                     executor,
@@ -226,13 +222,13 @@ async def get_dem_image(
                     normalized,
                     (height, width)
                 )
-        
+
         logger.info("Applying colormap...")
         # Apply colormap - run in thread pool for large images
         def apply_colormap(arr, cmap_name, relief_val, sun_az, sun_alt):
             try:
-                import matplotlib.cm as cm
                 import matplotlib
+                import matplotlib.cm as cm
                 # Use the new API if available, fallback to deprecated get_cmap
                 try:
                     colormap_func = cm.get_cmap(cmap_name)
@@ -243,7 +239,7 @@ async def get_dem_image(
                     except (AttributeError, ValueError):
                         # Final fallback: use terrain colormap
                         colormap_func = cm.get_cmap('terrain')
-                
+
                 normalized_float = arr.astype(np.float32) / 255.0
                 colored = colormap_func(normalized_float)
                 rgb_array = (colored[:, :, :3] * 255).astype(np.uint8)
@@ -268,7 +264,7 @@ async def get_dem_image(
             except Exception as e:
                 logger.warning("Colormap failed, using grayscale", error=str(e))
                 return np.stack([arr, arr, arr], axis=2)
-        
+
         with ThreadPoolExecutor() as executor:
             rgb_array = await loop.run_in_executor(
                 executor,
@@ -279,7 +275,7 @@ async def get_dem_image(
                 sun_azimuth,
                 sun_altitude
             )
-        
+
         logger.info("Creating PNG image...")
         # Create PIL Image and convert to PNG bytes
         def create_png(rgb_data):
@@ -288,12 +284,12 @@ async def get_dem_image(
             img.save(img_bytes, format='PNG')
             img_bytes.seek(0)
             return img_bytes.getvalue()
-        
+
         with ThreadPoolExecutor() as executor:
             png_bytes = await loop.run_in_executor(executor, create_png, rgb_array)
-        
+
         logger.info("DEM image generated successfully", size_bytes=len(png_bytes))
-        
+
         # Get bounds for frontend - use actual DEM bounds when available
         bounds_dict = None
         if use_synthetic:
@@ -303,7 +299,7 @@ async def get_dem_image(
                 "bottom": float(extended_bbox.lat_min),
                 "top": float(extended_bbox.lat_max),
             }
-        
+
         # Try to get bounds from rio accessor first
         if not use_synthetic and hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
             try:
@@ -317,7 +313,7 @@ async def get_dem_image(
                 logger.debug("Using rio.bounds() for image bounds", bounds=bounds_dict)
             except Exception as e:
                 logger.warning("Failed to get bounds from rio accessor", error=str(e))
-        
+
         # If rio bounds failed, try to calculate from transform
         if not use_synthetic and bounds_dict is None and hasattr(dem, 'rio') and hasattr(dem.rio, 'transform'):
             try:
@@ -333,7 +329,7 @@ async def get_dem_image(
                 lon_tr, lat_tr = rasterio.transform.xy(transform, 0, width)
                 # Bottom-left corner (row=height, col=0)
                 lon_bl, lat_bl = rasterio.transform.xy(transform, height, 0)
-                
+
                 # Get min/max from all corners
                 lons = [lon_tl, lon_tr, lon_bl, lon_br]
                 lats = [lat_tl, lat_tr, lat_bl, lat_br]
@@ -346,7 +342,7 @@ async def get_dem_image(
                 logger.debug("Calculated bounds from transform", bounds=bounds_dict)
             except Exception as e:
                 logger.warning("Failed to calculate bounds from transform", error=str(e))
-        
+
         # If transform calculation failed, try using coordinate arrays
         if not use_synthetic and bounds_dict is None and hasattr(dem, 'coords'):
             try:
@@ -362,7 +358,7 @@ async def get_dem_image(
                     logger.debug("Calculated bounds from coordinate arrays", bounds=bounds_dict)
             except Exception as e:
                 logger.warning("Failed to calculate bounds from coordinates", error=str(e))
-        
+
         # Final fallback: use requested ROI (not ideal, but better than nothing)
         if bounds_dict is None:
             logger.warning("Using requested ROI bounds as fallback - DEM bounds calculation failed")
@@ -372,7 +368,7 @@ async def get_dem_image(
                 "bottom": float(extended_bbox.lat_min),
                 "top": float(extended_bbox.lat_max),
             }
-        
+
         logger.info(
             "Generated DEM image",
             size_bytes=len(png_bytes),
@@ -380,7 +376,7 @@ async def get_dem_image(
             elevation_range=(elev_min, elev_max),
             duration_s=round(time.time() - start, 3)
         )
-        
+
         # Return image with metadata in headers
         response = Response(content=png_bytes, media_type="image/png")
         response.headers["X-Bounds-Left"] = str(bounds_dict["left"])
@@ -390,9 +386,9 @@ async def get_dem_image(
         response.headers["X-Elevation-Min"] = str(elev_min)
         response.headers["X-Elevation-Max"] = str(elev_max)
         response.headers["Content-Length"] = str(len(png_bytes))
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -404,13 +400,14 @@ async def get_dem_image(
 async def get_sites_geojson():
     """Get sites as GeoJSON for map visualization."""
     try:
-        import pandas as pd
         import json
-        
+
+        import pandas as pd
+
         config = get_config()
         output_dir = config.paths.output_dir
         sites_file = output_dir / "sites.csv"
-        
+
         if not sites_file.exists():
             # Return empty GeoJSON instead of error for better UX
             logger.info("Sites file not found, returning empty GeoJSON", path=str(sites_file))
@@ -421,10 +418,10 @@ async def get_sites_geojson():
                 }),
                 media_type="application/json"
             )
-        
+
         # Read sites CSV
         sites_df = pd.read_csv(sites_file)
-        
+
         # Create GeoJSON FeatureCollection
         features = []
         for _, row in sites_df.iterrows():
@@ -443,7 +440,7 @@ async def get_sites_geojson():
                         polygon_coords = row["polygon_coords"]
                 except Exception as e:
                     logger.warning(f"Failed to parse polygon_coords for site {row['site_id']}", error=str(e))
-            
+
             # Create geometry based on available data
             if polygon_coords and len(polygon_coords) >= 4:  # At least 4 points for a polygon (including closing point)
                 geometry = {
@@ -454,7 +451,7 @@ async def get_sites_geojson():
                 # Fallback to point geometry
                 lon = float(row.get("lon", 0))
                 lat = float(row.get("lat", 0))
-                
+
                 # Validate coordinates
                 if not (-180 <= lon <= 360) or not (-90 <= lat <= 90):
                     logger.warning(
@@ -462,12 +459,12 @@ async def get_sites_geojson():
                     )
                     # Skip invalid sites
                     continue
-                
+
                 geometry = {
                     "type": "Point",
                     "coordinates": [lon, lat]  # GeoJSON format: [longitude, latitude]
                 }
-            
+
             feature = {
                 "type": "Feature",
                 "geometry": geometry,
@@ -482,12 +479,12 @@ async def get_sites_geojson():
                 }
             }
             features.append(feature)
-        
+
         geojson = {
             "type": "FeatureCollection",
             "features": features
         }
-        
+
         # Log sample coordinates for debugging
         if len(features) > 0:
             sample = features[0]
@@ -499,12 +496,12 @@ async def get_sites_geojson():
                 sample_id=sample.get("properties", {}).get("site_id"),
                 sample_geometry_type=sample.get("geometry", {}).get("type")
             )
-        
+
         return Response(
             content=json.dumps(geojson),
             media_type="application/json"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -516,9 +513,10 @@ async def get_sites_geojson():
 async def get_waypoints_geojson():
     """Get waypoints as GeoJSON LineString for path visualization."""
     try:
-        import pandas as pd
         import json
-        
+
+        import pandas as pd
+
         config = get_config()
         output_dir = config.paths.output_dir
         files = list(output_dir.glob("waypoints_*.csv"))
@@ -574,7 +572,7 @@ async def get_waypoints_geojson():
                 })
         geojson = {"type": "FeatureCollection", "features": features}
         return Response(content=json.dumps(geojson), media_type="application/json")
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -589,10 +587,9 @@ async def get_terrain_3d(
     max_points: int = Query(50000, ge=1000, le=200000, description="Maximum number of points for 3D mesh"),
 ):
     """Get DEM data as 3D mesh for Plotly.js visualization.
-    
+
     Returns elevation data as a JSON object with x, y, z arrays for 3D surface plotting.
     """
-    start = time.time()
     try:
         # Parse ROI
         try:
@@ -605,7 +602,7 @@ async def get_terrain_3d(
             )
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
-        
+
         # Load DEM (allow download if not cached)
         use_synthetic = False
         dem = None
@@ -615,16 +612,16 @@ async def get_terrain_3d(
         except Exception as e:
             logger.warning("DEM load failed for 3D terrain, using synthetic surface for demo mode", error=str(e))
             use_synthetic = True
-        
+
         # Get elevation data
         elevation = dem.values.astype(np.float32) if not use_synthetic else None
-        
+
         # Handle nodata values
         if not use_synthetic and hasattr(dem, 'attrs') and 'nodata' in dem.attrs:
             nodata = dem.attrs['nodata']
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
-        
+
         # Downsample if too large
         if not use_synthetic:
             height, width = elevation.shape
@@ -634,13 +631,13 @@ async def get_terrain_3d(
             side = int(np.sqrt(max_points))
             height, width = side, side
             total_points = height * width
-        
+
         downsample_factor = 1
         if not use_synthetic and total_points > max_points:
             downsample_factor = int(np.ceil(np.sqrt(total_points / max_points)))
             elevation = elevation[::downsample_factor, ::downsample_factor]
             height, width = elevation.shape
-        
+
         # Replace NaN values with minimum valid elevation (or 0 if all NaN)
         if not use_synthetic:
             valid_mask = np.isfinite(elevation)
@@ -655,13 +652,13 @@ async def get_terrain_3d(
             xx = np.linspace(0, 1, width)
             X, Y = np.meshgrid(xx, yy)
             elevation = (np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)) * 1500.0
-        
+
         # Create coordinate grids - use actual DEM bounds, not requested ROI
         lon_min_actual = lon_min
         lon_max_actual = lon_max
         lat_min_actual = lat_min
         lat_max_actual = lat_max
-        
+
         # Try to get actual bounds from DEM
         if not use_synthetic and hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
             try:
@@ -673,9 +670,9 @@ async def get_terrain_3d(
                 logger.debug("Using rio.bounds() for 3D terrain", bounds=(lon_min_actual, lon_max_actual, lat_min_actual, lat_max_actual))
             except Exception as e:
                 logger.warning("Failed to get bounds from rio accessor for 3D terrain", error=str(e))
-        
+
         # If rio bounds failed, try to calculate from transform
-        if not use_synthetic and (lon_min_actual == lon_min and lon_max_actual == lon_max and 
+        if not use_synthetic and (lon_min_actual == lon_min and lon_max_actual == lon_max and
             hasattr(dem, 'rio') and hasattr(dem.rio, 'transform')):
             try:
                 import rasterio.transform
@@ -686,7 +683,7 @@ async def get_terrain_3d(
                 lon_br, lat_br = rasterio.transform.xy(transform, height, width)
                 lon_tr, lat_tr = rasterio.transform.xy(transform, 0, width)
                 lon_bl, lat_bl = rasterio.transform.xy(transform, height, 0)
-                
+
                 lons = [lon_tl, lon_tr, lon_bl, lon_br]
                 lats = [lat_tl, lat_tr, lat_bl, lat_br]
                 lon_min_actual = float(min(lons))
@@ -696,9 +693,9 @@ async def get_terrain_3d(
                 logger.debug("Calculated 3D terrain bounds from transform", bounds=(lon_min_actual, lon_max_actual, lat_min_actual, lat_max_actual))
             except Exception as e:
                 logger.warning("Failed to calculate 3D terrain bounds from transform", error=str(e))
-        
+
         # If transform calculation failed, try using coordinate arrays
-        if not use_synthetic and (lon_min_actual == lon_min and lon_max_actual == lon_max and 
+        if not use_synthetic and (lon_min_actual == lon_min and lon_max_actual == lon_max and
             hasattr(dem, 'coords') and 'lon' in dem.coords and 'lat' in dem.coords):
             try:
                 lon_coords = dem.coords['lon'].values
@@ -710,14 +707,14 @@ async def get_terrain_3d(
                 logger.debug("Calculated 3D terrain bounds from coordinates", bounds=(lon_min_actual, lon_max_actual, lat_min_actual, lat_max_actual))
             except Exception as e:
                 logger.warning("Failed to calculate 3D terrain bounds from coordinates", error=str(e))
-        
+
         # Create coordinate arrays
         lons = np.linspace(lon_min_actual, lon_max_actual, width)
         lats = np.linspace(lat_max_actual, lat_min_actual, height)
-        
+
         # Create meshgrid
         lon_grid, lat_grid = np.meshgrid(lons, lats)
-        
+
         # Prepare response data
         response_data = {
             "x": lon_grid.tolist(),
@@ -734,12 +731,12 @@ async def get_terrain_3d(
                 "max": float(np.nanmax(elevation)),
             },
         }
-        
+
         return Response(
             content=json.dumps(response_data),
             media_type="application/json"
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -761,20 +758,20 @@ async def get_overlay(
     buffer: float = Query(0.5, ge=0.0, le=5.0, description="Buffer factor to extend ROI"),
 ):
     """Get geospatial overlay as PNG image for visualization.
-    
+
     Supports multiple overlay types: elevation, solar, hillshade, slope, aspect, roughness, tri.
     Images are cached for performance.
     """
     start = time.time()
     overlay_type = overlay_type.lower()
-    
+
     valid_types = ["elevation", "solar", "dust", "hillshade", "slope", "aspect", "roughness", "tri"]
     if overlay_type not in valid_types:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid overlay_type. Must be one of: {', '.join(valid_types)}"
         )
-    
+
     logger.info(
         "Overlay request",
         overlay_type=overlay_type,
@@ -783,7 +780,7 @@ async def get_overlay(
         width=width,
         height=height
     )
-    
+
     try:
         # Parse ROI
         try:
@@ -797,7 +794,7 @@ async def get_overlay(
         except Exception as e:
             logger.error("Invalid ROI format", roi=roi, error=str(e))
             raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
-        
+
         # Extend ROI bounds if buffer is specified
         if buffer > 0:
             delta_lat = (lat_max - lat_min) * buffer
@@ -810,13 +807,13 @@ async def get_overlay(
             )
         else:
             extended_bbox = original_bbox
-        
+
         # Check cache first
         overlay_cache = OverlayCache()
         cached_path = overlay_cache.get(
             overlay_type, dataset, extended_bbox, colormap, relief, sun_azimuth, sun_altitude, width, height
         )
-        
+
         if cached_path and cached_path.exists():
             logger.info("Cache hit", overlay_type=overlay_type, path=str(cached_path))
             png_bytes = cached_path.read_bytes()
@@ -826,7 +823,7 @@ async def get_overlay(
                 "bottom": float(extended_bbox.lat_min),
                 "top": float(extended_bbox.lat_max),
             }
-            
+
             response = Response(content=png_bytes, media_type="image/png")
             response.headers["X-Bounds-Left"] = str(bounds_dict["left"])
             response.headers["X-Bounds-Right"] = str(bounds_dict["right"])
@@ -835,17 +832,17 @@ async def get_overlay(
             response.headers["X-Overlay-Type"] = overlay_type
             response.headers["Content-Length"] = str(len(png_bytes))
             return response
-        
+
         # Generate overlay
         logger.info("Generating overlay", overlay_type=overlay_type)
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        
+
         data_manager = DataManager()
         loop = asyncio.get_event_loop()
         use_synthetic = False
         dem = None
-        
+
         # Load DEM
         try:
             with ThreadPoolExecutor() as executor:
@@ -863,7 +860,7 @@ async def get_overlay(
         except Exception as e:
             logger.warning("DEM load failed, using synthetic", error=str(e))
             use_synthetic = True
-        
+
         # Get cell size
         config = get_config()
         if dataset.lower() in config.data_sources:
@@ -872,7 +869,7 @@ async def get_overlay(
             cell_size_m = float(abs(dem.rio.res[0]))
         else:
             cell_size_m = 200.0
-        
+
         # Generate overlay based on type
         if overlay_type == "elevation":
             # Use existing DEM image logic
@@ -892,14 +889,12 @@ async def get_overlay(
             dust_cover_index = None
             if not use_synthetic:
                 try:
-                    from marshab.core.data_manager import DataManager
-                    dci_manager = DataManager()
                     # Note: DCI loading would need to be implemented in DataManager
                     # For now, we'll pass None and use global degradation factor
                     logger.info("DCI loading not yet implemented, using global dust factor")
                 except Exception as e:
                     logger.warning("Could not load DCI data", error=str(e))
-            
+
             png_bytes, bounds_dict = await _generate_solar_overlay(
                 dem if not use_synthetic else None,
                 extended_bbox,
@@ -948,19 +943,19 @@ async def get_overlay(
             )
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported overlay type: {overlay_type}")
-        
+
         # Cache the result
         overlay_cache.put(
             overlay_type, dataset, extended_bbox, png_bytes, colormap, relief, sun_azimuth, sun_altitude, width, height
         )
-        
+
         logger.info(
             "Generated overlay",
             overlay_type=overlay_type,
             size_bytes=len(png_bytes),
             duration_s=round(time.time() - start, 3)
         )
-        
+
         # Return image with metadata
         response = Response(content=png_bytes, media_type="image/png")
         response.headers["X-Bounds-Left"] = str(bounds_dict["left"])
@@ -972,9 +967,9 @@ async def get_overlay(
         if overlay_type == "elevation" and 'elev_min' in locals() and 'elev_max' in locals():
             response.headers["X-Elevation-Min"] = str(elev_min)
             response.headers["X-Elevation-Max"] = str(elev_max)
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -989,12 +984,12 @@ async def _generate_elevation_overlay(
     # This reuses the logic from get_dem_image endpoint
     # For now, we'll call get_dem_image internally or refactor
     # For simplicity, let's extract the core logic
-    
+
     import asyncio
     from concurrent.futures import ThreadPoolExecutor
-    
+
     loop = asyncio.get_event_loop()
-    
+
     if use_synthetic:
         synth_h = max(100, min(height, 600))
         synth_w = max(100, min(width, 800))
@@ -1009,38 +1004,38 @@ async def _generate_elevation_overlay(
             nodata = dem.attrs['nodata']
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
-    
+
     valid_mask = np.isfinite(elevation)
     if not np.any(valid_mask):
         raise HTTPException(status_code=400, detail="No valid elevation data in ROI")
-    
+
     valid_elevation = elevation[valid_mask]
     elev_min = float(np.nanmin(valid_elevation))
     elev_max = float(np.nanmax(valid_elevation))
-    
+
     if elev_max == elev_min:
         normalized = np.ones_like(elevation, dtype=np.uint8) * 128
     else:
         normalized = ((elevation - elev_min) / (elev_max - elev_min) * 255).astype(np.uint8)
         normalized[~valid_mask] = 0
-    
+
     # Resize if needed
     if not use_synthetic and (normalized.shape[0] != height or normalized.shape[1] != width):
         def resize_image(arr, target_size):
             img = Image.fromarray(arr, mode='L')
             img = img.resize((target_size[1], target_size[0]), Image.Resampling.LANCZOS)
             return np.array(img)
-        
+
         with ThreadPoolExecutor() as executor:
             normalized = await loop.run_in_executor(
                 executor, resize_image, normalized, (height, width)
             )
-    
+
     # Apply colormap
     def apply_colormap(arr, cmap_name, relief_val, sun_az, sun_alt):
         try:
-            import matplotlib.cm as cm
             import matplotlib
+            import matplotlib.cm as cm
             try:
                 colormap_func = cm.get_cmap(cmap_name)
             except (AttributeError, ValueError):
@@ -1048,11 +1043,11 @@ async def _generate_elevation_overlay(
                     colormap_func = matplotlib.colormaps.get_cmap(cmap_name)
                 except (AttributeError, ValueError):
                     colormap_func = cm.get_cmap('terrain')
-            
+
             normalized_float = arr.astype(np.float32) / 255.0
             colored = colormap_func(normalized_float)
             rgb_array = (colored[:, :, :3] * 255).astype(np.uint8)
-            
+
             if relief_val > 0.0:
                 dy, dx = np.gradient(normalized_float)
                 azimuth_rad = np.deg2rad(sun_az)
@@ -1071,22 +1066,22 @@ async def _generate_elevation_overlay(
         except Exception as e:
             logger.warning("Colormap failed, using grayscale", error=str(e))
             return np.stack([arr, arr, arr], axis=2)
-    
+
     with ThreadPoolExecutor() as executor:
         rgb_array = await loop.run_in_executor(
             executor, apply_colormap, normalized, colormap, relief, sun_azimuth, sun_altitude
         )
-    
+
     def create_png(rgb_data):
         img = Image.fromarray(rgb_data, mode='RGB')
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
         return img_bytes.getvalue()
-    
+
     with ThreadPoolExecutor() as executor:
         png_bytes = await loop.run_in_executor(executor, create_png, rgb_array)
-    
+
     # Get bounds
     if use_synthetic or not hasattr(dem, 'rio'):
         bounds_dict = {
@@ -1111,7 +1106,7 @@ async def _generate_elevation_overlay(
                 "bottom": float(bbox.lat_min),
                 "top": float(bbox.lat_max),
             }
-    
+
     return png_bytes, bounds_dict, elev_min, elev_max
 
 
@@ -1120,7 +1115,7 @@ async def _generate_solar_overlay(
 ):
     """Generate solar potential overlay."""
     from concurrent.futures import ThreadPoolExecutor
-    
+
     if use_synthetic:
         rows, cols = height, width
         y = np.linspace(0, 1, rows)
@@ -1152,38 +1147,38 @@ async def _generate_solar_overlay(
                 dem, results.metrics, sun_azimuth, sun_altitude, dust_cover_index
             )
             solar_potential = solar_result.solar_potential_map
-    
+
     # Normalize to 0-255
     valid_mask = np.isfinite(solar_potential)
     if not np.any(valid_mask):
         solar_potential = np.zeros_like(solar_potential)
         valid_mask = np.ones_like(solar_potential, dtype=bool)
-    
+
     valid_data = solar_potential[valid_mask]
     if len(valid_data) > 0 and np.nanmax(valid_data) > np.nanmin(valid_data):
-        normalized = ((solar_potential - np.nanmin(valid_data)) / 
+        normalized = ((solar_potential - np.nanmin(valid_data)) /
                      (np.nanmax(valid_data) - np.nanmin(valid_data)) * 255).astype(np.uint8)
     else:
         normalized = np.zeros_like(solar_potential, dtype=np.uint8)
     normalized[~valid_mask] = 0
-    
+
     # Resize if needed
     if normalized.shape[0] != height or normalized.shape[1] != width:
         def resize_image(arr, target_size):
             img = Image.fromarray(arr, mode='L')
             img = img.resize((target_size[1], target_size[0]), Image.Resampling.LANCZOS)
             return np.array(img)
-        
+
         with ThreadPoolExecutor() as executor:
             normalized = await loop.run_in_executor(
                 executor, resize_image, normalized, (height, width)
             )
-    
+
     # Apply colormap (use plasma or viridis for solar)
     def apply_colormap(arr, cmap_name):
         try:
-            import matplotlib.cm as cm
             import matplotlib
+            import matplotlib.cm as cm
             try:
                 colormap_func = cm.get_cmap(cmap_name)
             except (AttributeError, ValueError):
@@ -1191,7 +1186,7 @@ async def _generate_solar_overlay(
                     colormap_func = matplotlib.colormaps.get_cmap(cmap_name)
                 except (AttributeError, ValueError):
                     colormap_func = cm.get_cmap('plasma')
-            
+
             normalized_float = arr.astype(np.float32) / 255.0
             colored = colormap_func(normalized_float)
             rgb_array = (colored[:, :, :3] * 255).astype(np.uint8)
@@ -1199,29 +1194,29 @@ async def _generate_solar_overlay(
         except Exception as e:
             logger.warning("Colormap failed, using grayscale", error=str(e))
             return np.stack([arr, arr, arr], axis=2)
-    
+
     with ThreadPoolExecutor() as executor:
         rgb_array = await loop.run_in_executor(
             executor, apply_colormap, normalized, colormap if colormap != 'terrain' else 'plasma'
         )
-    
+
     def create_png(rgb_data):
         img = Image.fromarray(rgb_data, mode='RGB')
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
         return img_bytes.getvalue()
-    
+
     with ThreadPoolExecutor() as executor:
         png_bytes = await loop.run_in_executor(executor, create_png, rgb_array)
-    
+
     bounds_dict = {
         "left": float(bbox.lon_min),
         "right": float(bbox.lon_max),
         "bottom": float(bbox.lat_min),
         "top": float(bbox.lat_max),
     }
-    
+
     return png_bytes, bounds_dict
 
 
@@ -1230,7 +1225,7 @@ async def _generate_dust_overlay(
 ):
     """Generate TES Dust Cover Index overlay."""
     from concurrent.futures import ThreadPoolExecutor
-    
+
     if use_synthetic:
         # Generate synthetic dust cover pattern
         rows, cols = height, width
@@ -1247,9 +1242,9 @@ async def _generate_dust_overlay(
         y = np.linspace(bbox.lat_min, bbox.lat_max, rows)
         x = np.linspace(bbox.lon_min, bbox.lon_max, cols)
         xx, yy = np.meshgrid(x, y)
-        dust_cover = 0.85 + 0.1 * (np.sin(3 * np.pi * (xx - bbox.lon_min) / (bbox.lon_max - bbox.lon_min)) * 
+        dust_cover = 0.85 + 0.1 * (np.sin(3 * np.pi * (xx - bbox.lon_min) / (bbox.lon_max - bbox.lon_min)) *
                                    np.cos(2 * np.pi * (yy - bbox.lat_min) / (bbox.lat_max - bbox.lat_min)) + 1.0) / 2.0
-    
+
     # Normalize DCI to 0-255 (DCI range typically 0.85-1.0, lower = more dust)
     # Invert so higher values = more dust (for visualization)
     dust_normalized = 1.0 - dust_cover  # Higher dust = higher value
@@ -1257,32 +1252,32 @@ async def _generate_dust_overlay(
     if not np.any(valid_mask):
         dust_normalized = np.zeros_like(dust_normalized)
         valid_mask = np.ones_like(dust_normalized, dtype=bool)
-    
+
     valid_data = dust_normalized[valid_mask]
     if len(valid_data) > 0 and np.nanmax(valid_data) > np.nanmin(valid_data):
-        normalized = ((dust_normalized - np.nanmin(valid_data)) / 
+        normalized = ((dust_normalized - np.nanmin(valid_data)) /
                      (np.nanmax(valid_data) - np.nanmin(valid_data)) * 255).astype(np.uint8)
     else:
         normalized = np.zeros_like(dust_normalized, dtype=np.uint8)
     normalized[~valid_mask] = 0
-    
+
     # Resize if needed
     if normalized.shape[0] != height or normalized.shape[1] != width:
         def resize_image(arr, target_size):
             img = Image.fromarray(arr, mode='L')
             img = img.resize((target_size[1], target_size[0]), Image.Resampling.LANCZOS)
             return np.array(img)
-        
+
         with ThreadPoolExecutor() as executor:
             normalized = await loop.run_in_executor(
                 executor, resize_image, normalized, (height, width)
             )
-    
+
     # Apply colormap (use brown/earth tones for dust)
     def apply_colormap(arr, cmap_name):
         try:
-            import matplotlib.cm as cm
             import matplotlib
+            import matplotlib.cm as cm
             try:
                 colormap_func = cm.get_cmap(cmap_name)
             except (AttributeError, ValueError):
@@ -1290,7 +1285,7 @@ async def _generate_dust_overlay(
                     colormap_func = matplotlib.colormaps.get_cmap(cmap_name)
                 except (AttributeError, ValueError):
                     colormap_func = cm.get_cmap('YlOrBr')  # Yellow-Orange-Brown for dust
-            
+
             normalized_float = arr.astype(np.float32) / 255.0
             colored = colormap_func(normalized_float)
             rgb_array = (colored[:, :, :3] * 255).astype(np.uint8)
@@ -1298,29 +1293,29 @@ async def _generate_dust_overlay(
         except Exception as e:
             logger.warning("Colormap failed, using grayscale", error=str(e))
             return np.stack([arr, arr, arr], axis=2)
-    
+
     with ThreadPoolExecutor() as executor:
         rgb_array = await loop.run_in_executor(
             executor, apply_colormap, normalized, colormap if colormap != 'terrain' else 'YlOrBr'
         )
-    
+
     def create_png(rgb_data):
         img = Image.fromarray(rgb_data, mode='RGB')
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
         return img_bytes.getvalue()
-    
+
     with ThreadPoolExecutor() as executor:
         png_bytes = await loop.run_in_executor(executor, create_png, rgb_array)
-    
+
     bounds_dict = {
         "left": float(bbox.lon_min),
         "right": float(bbox.lon_max),
         "bottom": float(bbox.lat_min),
         "top": float(bbox.lat_max),
     }
-    
+
     return png_bytes, bounds_dict
 
 
@@ -1329,7 +1324,7 @@ async def _generate_hillshade_overlay(
 ):
     """Generate hillshade overlay."""
     from concurrent.futures import ThreadPoolExecutor
-    
+
     if use_synthetic:
         rows, cols = height, width
         y = np.linspace(0, 1, rows)
@@ -1342,49 +1337,49 @@ async def _generate_hillshade_overlay(
             nodata = dem.attrs['nodata']
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
-    
+
     # Calculate hillshade
     def calc_hillshade(elev_arr, cell_size, az, alt):
         analyzer = TerrainAnalyzer(cell_size_m=cell_size)
         return analyzer.calculate_hillshade(elev_arr, az, alt)
-    
+
     with ThreadPoolExecutor() as executor:
         hillshade = await loop.run_in_executor(
             executor, calc_hillshade, elevation, cell_size_m, sun_azimuth, sun_altitude
         )
-    
+
     # Resize if needed
     if hillshade.shape[0] != height or hillshade.shape[1] != width:
         def resize_image(arr, target_size):
             img = Image.fromarray(arr, mode='L')
             img = img.resize((target_size[1], target_size[0]), Image.Resampling.LANCZOS)
             return np.array(img)
-        
+
         with ThreadPoolExecutor() as executor:
             hillshade = await loop.run_in_executor(
                 executor, resize_image, hillshade, (height, width)
             )
-    
+
     # Convert to RGB (grayscale)
     rgb_array = np.stack([hillshade, hillshade, hillshade], axis=2)
-    
+
     def create_png(rgb_data):
         img = Image.fromarray(rgb_data, mode='RGB')
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
         return img_bytes.getvalue()
-    
+
     with ThreadPoolExecutor() as executor:
         png_bytes = await loop.run_in_executor(executor, create_png, rgb_array)
-    
+
     bounds_dict = {
         "left": float(bbox.lon_min),
         "right": float(bbox.lon_max),
         "bottom": float(bbox.lat_min),
         "top": float(bbox.lat_max),
     }
-    
+
     return png_bytes, bounds_dict
 
 
@@ -1393,7 +1388,7 @@ async def _generate_terrain_metric_overlay(
 ):
     """Generate overlay for terrain metrics (slope, aspect, roughness, tri)."""
     from concurrent.futures import ThreadPoolExecutor
-    
+
     if use_synthetic:
         rows, cols = height, width
         y = np.linspace(0, 1, rows)
@@ -1409,7 +1404,7 @@ async def _generate_terrain_metric_overlay(
         # Calculate terrain metrics
         analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
         metrics = analyzer.analyze(dem)
-        
+
         if metric_type == "slope":
             metric_data = metrics.slope
         elif metric_type == "aspect":
@@ -1422,44 +1417,44 @@ async def _generate_terrain_metric_overlay(
             metric_data = metrics.tri
         else:
             raise ValueError(f"Unknown metric type: {metric_type}")
-    
+
     # Normalize to 0-255
     valid_mask = np.isfinite(metric_data)
     if not np.any(valid_mask):
         metric_data = np.zeros_like(metric_data)
         valid_mask = np.ones_like(metric_data, dtype=bool)
-    
+
     valid_data = metric_data[valid_mask]
     if len(valid_data) > 0 and np.nanmax(valid_data) > np.nanmin(valid_data):
-        normalized = ((metric_data - np.nanmin(valid_data)) / 
+        normalized = ((metric_data - np.nanmin(valid_data)) /
                      (np.nanmax(valid_data) - np.nanmin(valid_data)) * 255).astype(np.uint8)
     else:
         normalized = np.zeros_like(metric_data, dtype=np.uint8)
     normalized[~valid_mask] = 0
-    
+
     # Resize if needed
     if normalized.shape[0] != height or normalized.shape[1] != width:
         def resize_image(arr, target_size):
             img = Image.fromarray(arr, mode='L')
             img = img.resize((target_size[1], target_size[0]), Image.Resampling.LANCZOS)
             return np.array(img)
-        
+
         with ThreadPoolExecutor() as executor:
             normalized = await loop.run_in_executor(
                 executor, resize_image, normalized, (height, width)
             )
-    
+
     # Apply colormap (use cyclic colormap for aspect)
     def apply_colormap(arr, cmap_name, is_aspect=False):
         try:
-            import matplotlib.cm as cm
             import matplotlib
+            import matplotlib.cm as cm
             try:
                 if is_aspect:
                     # Use cyclic colormap for aspect
                     try:
                         colormap_func = matplotlib.colormaps.get_cmap('hsv')
-                    except:
+                    except Exception:
                         colormap_func = cm.get_cmap('hsv')
                 else:
                     colormap_func = cm.get_cmap(cmap_name)
@@ -1468,7 +1463,7 @@ async def _generate_terrain_metric_overlay(
                     colormap_func = matplotlib.colormaps.get_cmap(cmap_name if not is_aspect else 'viridis')
                 except (AttributeError, ValueError):
                     colormap_func = cm.get_cmap('viridis')
-            
+
             normalized_float = arr.astype(np.float32) / 255.0
             colored = colormap_func(normalized_float)
             rgb_array = (colored[:, :, :3] * 255).astype(np.uint8)
@@ -1476,30 +1471,30 @@ async def _generate_terrain_metric_overlay(
         except Exception as e:
             logger.warning("Colormap failed, using grayscale", error=str(e))
             return np.stack([arr, arr, arr], axis=2)
-    
+
     is_aspect = metric_type == "aspect"
     cmap_to_use = 'hsv' if is_aspect else (colormap if colormap != 'terrain' else 'viridis')
-    
+
     with ThreadPoolExecutor() as executor:
         rgb_array = await loop.run_in_executor(
             executor, apply_colormap, normalized, cmap_to_use, is_aspect
         )
-    
+
     def create_png(rgb_data):
         img = Image.fromarray(rgb_data, mode='RGB')
         img_bytes = io.BytesIO()
         img.save(img_bytes, format='PNG')
         img_bytes.seek(0)
         return img_bytes.getvalue()
-    
+
     with ThreadPoolExecutor() as executor:
         png_bytes = await loop.run_in_executor(executor, create_png, rgb_array)
-    
+
     bounds_dict = {
         "left": float(bbox.lon_min),
         "right": float(bbox.lon_max),
         "bottom": float(bbox.lat_min),
         "top": float(bbox.lat_max),
     }
-    
+
     return png_bytes, bounds_dict

@@ -15,13 +15,13 @@ def client():
 
 class TestProjectsAPI:
     """Tests for project API endpoints."""
-    
+
     def test_list_projects(self, client):
         """Test GET /api/v1/projects."""
         response = client.get("/api/v1/projects")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
-    
+
     def test_create_project(self, client):
         """Test POST /api/v1/projects."""
         request_data = {
@@ -34,13 +34,13 @@ class TestProjectsAPI:
             "routes": [],
             "metadata": {}
         }
-        
+
         response = client.post("/api/v1/projects", json=request_data)
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Test Project"
         assert "id" in data
-    
+
     def test_get_project(self, client):
         """Test GET /api/v1/projects/{project_id}."""
         # First create a project
@@ -54,17 +54,17 @@ class TestProjectsAPI:
             "routes": [],
             "metadata": {}
         }
-        
+
         create_response = client.post("/api/v1/projects", json=request_data)
         project_id = create_response.json()["id"]
-        
+
         # Then get it
         response = client.get(f"/api/v1/projects/{project_id}")
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == project_id
         assert data["name"] == "Get Test Project"
-    
+
     def test_delete_project(self, client):
         """Test DELETE /api/v1/projects/{project_id}."""
         # First create a project
@@ -78,14 +78,14 @@ class TestProjectsAPI:
             "routes": [],
             "metadata": {}
         }
-        
+
         create_response = client.post("/api/v1/projects", json=request_data)
         project_id = create_response.json()["id"]
-        
+
         # Then delete it
         response = client.delete(f"/api/v1/projects/{project_id}")
         assert response.status_code == 200
-        
+
         # Verify it's gone
         get_response = client.get(f"/api/v1/projects/{project_id}")
         assert get_response.status_code == 404

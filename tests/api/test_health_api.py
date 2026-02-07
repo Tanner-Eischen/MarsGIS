@@ -15,14 +15,14 @@ def client():
 
 class TestHealthAPI:
     """Tests for health check endpoints."""
-    
+
     def test_health_live(self, client):
         """Test GET /api/v1/health/live."""
         response = client.get("/api/v1/health/live")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "alive"
-    
+
     def test_health_ready(self, client):
         """Test GET /api/v1/health/ready."""
         response = client.get("/api/v1/health/ready")

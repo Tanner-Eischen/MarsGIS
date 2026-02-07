@@ -2,9 +2,9 @@
 
 A production-grade geospatial analysis system for identifying optimal Mars habitat construction sites and generating autonomous rover navigation waypoints. The system processes multi-resolution Mars terrain data, applies multi-criteria decision making (MCDM) algorithms, and outputs actionable navigation commands in Mars coordinate systems.
 
-**Status:** Phase 6 Complete - Production Ready
+**Status:** Portfolio Week 3 Hardening
 
-⚠️ **Implementation Note**: The analysis pipeline and navigation engine are currently stub implementations that return empty results. The infrastructure (CLI, data management, Docker) is fully functional, but terrain analysis and path planning logic need to be implemented. See [Development](#development) section for details.
+**Implementation Note:** Portfolio mode is scoped to three flagship flows: site selection, route planning, and decision brief generation.
 
 ## Features
 
@@ -26,8 +26,10 @@ A production-grade geospatial analysis system for identifying optimal Mars habit
 - [Quick Start](#quick-start)
 - [Usage](#usage)
 - [Configuration](#configuration)
+- [Deployment](#deployment)
 - [API Reference](#api-reference)
 - [Development](#development)
+- [Known Limits](#known-limits)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -65,8 +67,11 @@ poetry run marshab --version
 # Build the Docker image
 docker-compose build
 
-# Verify installation
-docker-compose run marshab --version
+# Run CLI command in container
+docker run --rm marshab:latest marshab --help
+
+# Run API server in container
+docker run --rm -p 5000:5000 marshab:latest python -m marshab.web.server
 ```
 
 ## Quick Start
@@ -77,6 +82,50 @@ docker-compose run marshab --version
 2. **Start Frontend**: `cd webui && npm run dev`
 3. **Open Browser**: http://localhost:4000
 4. **Follow Demo**: See `DEMO_WORKFLOW.md` for complete step-by-step guide
+
+### Deterministic Demo Mode
+
+For repeatable portfolio outputs in synthetic fallback mode, set:
+
+```bash
+export MARSHAB_DEMO_SEED=42
+```
+
+This enforces deterministic synthetic terrain generation when real DEM data is unavailable.
+
+### Install Real DEM (Jezero)
+
+To use a real DEM tile instead of synthetic fallback for Jezero-area demos:
+
+```bash
+poetry run python scripts/setup_real_dem.py --force-download
+```
+
+This prepares `data/cache/mola_lat18_lon77.tif` for ROI ranges near
+`lat 18.x, lon 77.x` (for example `18.25,18.45,77.25,77.45`).
+
+### Run Portfolio Demo (Week 3)
+
+Run the fixed three-flow portfolio walkthrough and write reproducible artifacts:
+
+```bash
+poetry run python scripts/run_portfolio_demo.py
+```
+
+Outputs are written to `data/output/portfolio_demo`:
+- `sites_ranked.json`
+- `sites_overlay.geojson`
+- `route_waypoints.csv`
+- `decision_brief.json`
+- `demo_manifest.json`
+
+For API-based decision brief generation (rules-based, deterministic):
+
+```bash
+curl -X POST http://localhost:5000/api/v1/analysis/decision-brief \
+  -H "Content-Type: application/json" \
+  -d '{"roi":{"lat_min":40.0,"lat_max":40.3,"lon_min":180.0,"lon_max":180.3},"dataset":"mola","threshold":0.5}'
+```
 
 ### CLI (For Automation)
 
@@ -299,7 +348,34 @@ export MARSHAB_CONFIG_PATH=/path/to/config.yaml
 export MARSHAB_LOG_LEVEL=DEBUG
 export MARSHAB_DATA_DIR=/data/mars
 export MARSHAB_CACHE_ENABLED=true
+export MARSHAB_DEMO_SEED=42
 ```
+
+For cloud deployment (Render/Fly), run the backend with:
+
+```bash
+python -m marshab.web.server
+```
+
+## Deployment
+
+### Frontend (Vercel)
+
+- Build command: `npm run build` (in `webui/`)
+- Output directory: `webui/dist`
+- Config file: `webui/vercel.json`
+- Environment variables:
+  - `VITE_API_URL=https://<your-backend>/api/v1`
+  - `VITE_WS_URL=wss://<your-backend>`
+
+### Backend (Render/Fly Docker)
+
+- Container start command: `python -m marshab.web.server`
+- Render blueprint: `render.yaml`
+- `Dockerfile` entrypoint is command-flexible so the same image can run CLI and API commands.
+- CORS for deployed frontend:
+  - Set `MARSHAB_CORS_ORIGINS=https://<your-vercel-domain>`
+- If free-tier limits are tight, run cloud demo in synthetic mode and document local real-DEM setup.
 
 ## API Reference
 
@@ -546,6 +622,12 @@ docker-compose run marshab pytest
 # Run CLI in container
 docker-compose run marshab pipeline --roi "40,41,180,181"
 ```
+
+## Known Limits
+
+- Real DEM setup currently ships one curated Jezero-area tile (`data/cache/mola_lat18_lon77.tif`).
+- The Week 3 CI gate is intentionally smoke-focused while broader legacy lint/test debt is being reduced.
+- Frontend production bundle is currently large and should be further split for faster initial load.
 
 ## Troubleshooting
 

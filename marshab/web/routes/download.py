@@ -1,6 +1,7 @@
 """DEM download endpoints."""
 
-from pathlib import Path
+
+from time import time
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
@@ -39,7 +40,7 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
         # Validate ROI
         if len(request.roi) != 4:
             raise HTTPException(status_code=400, detail="ROI must have 4 values: [lat_min, lat_max, lon_min, lon_max]")
-        
+
         lat_min, lat_max, lon_min, lon_max = request.roi
         bbox = BoundingBox(
             lat_min=lat_min,
@@ -47,7 +48,7 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
             lon_min=lon_min,
             lon_max=lon_max,
         )
-        
+
         # Validate dataset
         valid_datasets = ["mola", "hirise", "ctx"]
         if request.dataset.lower() not in valid_datasets:
@@ -55,11 +56,11 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
                 status_code=400,
                 detail=f"Invalid dataset. Must be one of: {', '.join(valid_datasets)}",
             )
-        
+
         # Check if already cached
         data_manager = DataManager()
         dataset_lower = request.dataset.lower()
-        
+
         # Try to get cached path first
         cached_path = data_manager._get_cache_path(dataset_lower, bbox)
         if cached_path.exists() and not request.force:
@@ -70,13 +71,13 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
                 cached=True,
                 size_mb=round(size_mb, 2),
             )
-        
+
         # Download DEM
         logger.info("Downloading DEM", dataset=dataset_lower, roi=bbox.model_dump())
         dem_path = data_manager.download_dem(dataset_lower, bbox, force=request.force)
-        
+
         size_mb = dem_path.stat().st_size / (1024 * 1024) if dem_path.exists() else None
-        
+
         return DownloadResponse(
             status="success",
             path=str(dem_path),
@@ -89,26 +90,16 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
         details = getattr(e, 'details', {})
         if details.get('requires_manual_download'):
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=str(e),
             )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception("Unexpected error during download")
         raise HTTPException(status_code=500, detail=str(e))
-from typing import List
-from time import time
-from pydantic import BaseModel, Field
-from fastapi import HTTPException
-from marshab.core.data_manager import DataManager
-from marshab.models import BoundingBox
-from marshab.utils.logging import get_logger
-from marshab.exceptions import DataError
-
-logger = get_logger(__name__)
 
 class PrewarmRequest(BaseModel):
-    roi: List[float] = Field(..., description="[lat_min, lat_max, lon_min, lon_max]")
+    roi: list[float] = Field(..., description="[lat_min, lat_max, lon_min, lon_max]")
     tile_deg: float = Field(5.0, gt=0, description="Tile size in degrees")
     force: bool = Field(False, description="Force re-download even if cached")
 
@@ -118,7 +109,7 @@ class PrewarmResponse(BaseModel):
     processed_count: int
     total_duration_s: float
 
-def _tiles_from_roi(roi: List[float], tile_deg: float) -> List[BoundingBox]:
+def _tiles_from_roi(roi: list[float], tile_deg: float) -> list[BoundingBox]:
     if len(roi) != 4:
         raise HTTPException(status_code=400, detail={"error":"invalid_roi","hint":"ROI must be [lat_min,lat_max,lon_min,lon_max]"})
     lat_min, lat_max, lon_min, lon_max = roi
@@ -127,7 +118,7 @@ def _tiles_from_roi(roi: List[float], tile_deg: float) -> List[BoundingBox]:
     lon_min = max(0.0, lon_min)
     lon_max = min(360.0, lon_max)
 
-    tiles: List[BoundingBox] = []
+    tiles: list[BoundingBox] = []
     lat = lat_min
     while lat < lat_max:
         next_lat = min(lat + tile_deg, lat_max)
@@ -171,12 +162,13 @@ class PrewarmExamplesResponse(BaseModel):
 async def prewarm_example_rois():
     start = time()
     try:
-        from pathlib import Path as P
+        from pathlib import Path
+
         import yaml
-        cfg_path = P(__file__).parent.parent.parent / "config" / "example_rois.yaml"
+        cfg_path = Path(__file__).parent.parent.parent / "config" / "example_rois.yaml"
         if not cfg_path.exists():
             raise HTTPException(status_code=404, detail={"error":"examples_not_found","detail":str(cfg_path)})
-        with open(cfg_path, 'r') as f:
+        with open(cfg_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         examples = data.get("examples", {})
         dm = DataManager()
@@ -195,4 +187,3 @@ async def prewarm_example_rois():
     except Exception as e:
         logger.exception("Prewarm examples failed")
         raise HTTPException(status_code=500, detail={"error":"internal_error","detail":str(e)})
-

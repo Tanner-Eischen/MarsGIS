@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiFetch } from '../lib/apiBase'
 
 interface SaveProjectModalProps {
   roi: { lat_min: number; lat_max: number; lon_min: number; lon_max: number }
@@ -38,7 +39,7 @@ export default function SaveProjectModal({
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/projects', {
+      const response = await apiFetch('/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(projectData)

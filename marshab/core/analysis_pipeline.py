@@ -1,12 +1,14 @@
 """Analysis pipeline for terrain analysis and site selection."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, Literal, Optional, Callable
+from typing import Literal, Optional
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from scipy import ndimage
+
 try:
     from skimage import measure as sk_measure
 except ImportError:
@@ -16,10 +18,10 @@ from marshab.config import get_config
 from marshab.config.criteria_config import DEFAULT_CRITERIA
 from marshab.core.data_manager import DataManager
 from marshab.exceptions import AnalysisError
+from marshab.models import BoundingBox, SiteCandidate, TerrainMetrics
 from marshab.processing.criteria import CriteriaExtractor
 from marshab.processing.mcdm import MCDMEvaluator
 from marshab.processing.terrain import TerrainAnalyzer
-from marshab.models import BoundingBox, SiteCandidate, TerrainMetrics
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -36,7 +38,7 @@ class AnalysisResults:
         dem: Optional[xr.DataArray] = None,
         metrics: Optional[TerrainMetrics] = None,
         suitability: Optional[np.ndarray] = None,
-        criteria: Optional[Dict] = None,
+        criteria: Optional[dict] = None,
     ):
         """Initialize analysis results.
 
@@ -93,7 +95,7 @@ class AnalysisPipeline:
         roi: BoundingBox,
         dataset: Literal["mola", "hirise", "ctx"] = "mola",
         threshold: float = 0.7,
-        criteria_weights: Optional[Dict[str, float]] = None,
+        criteria_weights: Optional[dict[str, float]] = None,
         mcdm_method: Literal["weighted_sum", "topsis"] = "weighted_sum",
         progress_callback: Optional[Callable[[str, float, str], None]] = None
     ) -> AnalysisResults:
@@ -122,7 +124,7 @@ class AnalysisPipeline:
 
         try:
             config = get_config()
-            
+
             # 1. Load DEM for ROI
             if progress_callback:
                 progress_callback("dem_loading", 0.0, "Loading DEM data...")
@@ -130,7 +132,7 @@ class AnalysisPipeline:
             dem = self.data_manager.get_dem_for_roi(roi, dataset, download=True, clip=True)
             if progress_callback:
                 progress_callback("dem_loading", 0.2, "DEM loaded successfully")
-            
+
             # Extract cell size from DEM (use resolution from config if available, else estimate from bounds)
             if dataset in config.data_sources:
                 cell_size_m = config.data_sources[dataset].resolution_m
@@ -147,9 +149,9 @@ class AnalysisPipeline:
                     # Final fallback: use default or estimate from ROI
                     width_m = (roi.lon_max - roi.lon_min) * 111000 * np.cos(np.radians(roi.lat_min))
                     cell_size_m = width_m / dem.shape[1] if dem.shape[1] > 0 else 200.0
-            
+
             logger.info("DEM loaded", shape=dem.shape, cell_size_m=cell_size_m)
-            
+
             # 2. Terrain analysis
             if progress_callback:
                 progress_callback("terrain_metrics", 0.2, "Analyzing terrain metrics...")
@@ -158,7 +160,7 @@ class AnalysisPipeline:
             metrics = terrain_analyzer.analyze(dem)
             if progress_callback:
                 progress_callback("terrain_metrics", 0.5, "Terrain metrics calculated")
-            
+
             # 3. Extract criteria
             if progress_callback:
                 progress_callback("criteria_extraction", 0.5, "Extracting criteria...")
@@ -167,16 +169,16 @@ class AnalysisPipeline:
             criteria = extractor.extract_all()
             if progress_callback:
                 progress_callback("criteria_extraction", 0.7, "Criteria extracted")
-            
+
             # 4. Configure weights
             criteria_config = DEFAULT_CRITERIA
-            
+
             if criteria_weights:
                 # Update weights with custom values
                 for name, weight in criteria_weights.items():
                     if name in criteria_config.criteria:
                         criteria_config.criteria[name].weight = weight
-            
+
             # Always normalize weights to sum to 1.0 to handle floating point precision issues
             total = sum(c.weight for c in criteria_config.criteria.values())
             if total > 0:
@@ -184,24 +186,24 @@ class AnalysisPipeline:
                     criterion.weight = criterion.weight / total
             else:
                 raise ValueError("Total weight cannot be zero - no criteria have weights")
-            
+
             # Filter weights and beneficial to only include criteria that were actually extracted
             # This ensures weights sum correctly even if some criteria are missing
             weights = {name: c.weight for name, c in criteria_config.criteria.items() if name in criteria}
             beneficial = {name: c.beneficial for name, c in criteria_config.criteria.items() if name in criteria}
-            
+
             # Re-normalize weights to sum to 1.0 for the actually extracted criteria
             total_weight = sum(weights.values())
             if total_weight > 0:
                 weights = {name: w / total_weight for name, w in weights.items()}
             else:
                 raise ValueError("No valid criteria weights found - all criteria may have zero weight")
-            
+
             # Validate weights sum to 1.0 (with tolerance for floating point)
             total_weight = sum(weights.values())
             if not 0.99 <= total_weight <= 1.01:
                 raise ValueError(f"Weights must sum to 1.0, got {total_weight}")
-            
+
             # 5. MCDM evaluation
             if progress_callback:
                 progress_callback("mcdm_evaluation", 0.7, "Evaluating suitability...")
@@ -214,11 +216,11 @@ class AnalysisPipeline:
             )
             if progress_callback:
                 progress_callback("mcdm_evaluation", 0.9, "Suitability evaluation complete")
-            
+
             # 6. Identify candidate sites
             logger.info("Identifying candidate sites")
             suitable_mask = suitability >= threshold
-            
+
             # Safe logging
             try:
                 mean_suit = float(np.nanmean(suitability)) if suitability.size > 0 else 0.0
@@ -234,12 +236,12 @@ class AnalysisPipeline:
                 )
             except Exception as e:
                 logger.warning("Failed to log MCDM evaluation stats", error=str(e))
-            
+
             # 7. Extract and rank sites
             if progress_callback:
                 progress_callback("site_extraction", 0.9, "Extracting candidate sites...")
             logger.info("Extracting candidate sites")
-            
+
             # Find connected regions above threshold
             try:
                 labeled_array, num_features = ndimage.label(suitable_mask)
@@ -250,7 +252,7 @@ class AnalysisPipeline:
                     top_site_id=0,
                     top_site_score=0.0,
                 )
-            
+
             if num_features == 0:
                 logger.warning("No suitable sites found above threshold", threshold=threshold)
                 return AnalysisResults(
@@ -258,37 +260,37 @@ class AnalysisPipeline:
                     top_site_id=0,
                     top_site_score=0.0,
                 )
-            
+
             # Calculate properties for each region
             sites: list[SiteCandidate] = []
             cell_area_km2 = (cell_size_m ** 2) / 1e6  # Convert m² to km²
-            
+
             for site_id in range(1, num_features + 1):
                 region_mask = labeled_array == site_id
                 region_size = np.sum(region_mask)
-                
+
                 # Skip empty regions
                 if region_size == 0:
                     continue
-                
+
                 area_km2 = region_size * cell_area_km2
-                
+
                 # Check minimum area threshold
                 if area_km2 < config.analysis.min_site_area_km2:
                     continue
-                
+
                 # Extract region data
                 region_slope = metrics.slope[region_mask]
                 region_roughness = metrics.roughness[region_mask]
                 region_elevation = metrics.elevation[region_mask]
                 region_suitability = suitability[region_mask]
-                
+
                 # Calculate mean properties for this region (handle empty arrays)
                 mean_slope = float(np.nanmean(region_slope)) if region_slope.size > 0 else 0.0
                 mean_roughness = float(np.nanmean(region_roughness)) if region_roughness.size > 0 else 0.0
                 mean_elevation = float(np.nanmean(region_elevation)) if region_elevation.size > 0 else 0.0
                 mean_suitability = float(np.nanmean(region_suitability)) if region_suitability.size > 0 else 0.0
-                
+
                 # Find centroid (in pixel coordinates)
                 try:
                     centroid_y, centroid_x = ndimage.center_of_mass(region_mask)
@@ -305,7 +307,7 @@ class AnalysisPipeline:
                 except (ValueError, RuntimeError) as e:
                     logger.warning(f"Failed to calculate centroid for site {site_id}, skipping", error=str(e))
                     continue
-                
+
                 # Convert pixel coordinates to lat/lon
                 try:
                     if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
@@ -319,7 +321,7 @@ class AnalysisPipeline:
                 except (ValueError, ZeroDivisionError) as e:
                     logger.warning(f"Failed to convert centroid to lat/lon for site {site_id}, skipping", error=str(e))
                     continue
-                
+
                 # Extract polygon boundary from region_mask
                 polygon_coords = None
                 try:
@@ -348,14 +350,14 @@ class AnalysisPipeline:
                                 lon_max = roi.lon_max
                                 lat_max = roi.lat_max
                                 lat_min = roi.lat_min
-                            
+
                             # Convert contour coordinates (y, x) to (lon, lat)
                             polygon_coords = []
                             for y_px, x_px in largest_contour:
                                 lon_px = float(lon_min + (x_px / dem.shape[1]) * (lon_max - lon_min))
                                 lat_px = float(lat_max - (y_px / dem.shape[0]) * (lat_max - lat_min))
                                 polygon_coords.append([lon_px, lat_px])
-                            
+
                             # Ensure polygon is closed (first point == last point)
                             if len(polygon_coords) > 0 and polygon_coords[0] != polygon_coords[-1]:
                                 polygon_coords.append(polygon_coords[0])
@@ -395,7 +397,7 @@ class AnalysisPipeline:
                             polygon_coords.append(polygon_coords[0])
                 except Exception as e:
                     logger.warning(f"Failed to extract polygon for site {site_id}, using point geometry", error=str(e))
-                
+
                 # Create site with temporary rank (will be updated after sorting)
                 site = SiteCandidate(
                     site_id=site_id,
@@ -411,7 +413,7 @@ class AnalysisPipeline:
                     polygon_coords=polygon_coords,
                 )
                 sites.append(site)
-            
+
             # Sort by suitability score (descending) and assign ranks
             sites.sort(key=lambda s: s.suitability_score, reverse=True)
             for rank, site in enumerate(sites, start=1):
@@ -419,18 +421,18 @@ class AnalysisPipeline:
                 site_dict = site.model_dump()
                 site_dict['rank'] = rank
                 sites[rank - 1] = SiteCandidate(**site_dict)
-            
+
             # Get top site
             top_site_id = sites[0].site_id if sites else 0
             top_site_score = sites[0].suitability_score if sites else 0.0
-            
+
             logger.info(
                 "Site extraction complete",
                 num_sites=len(sites),
                 top_site_id=top_site_id,
                 top_site_score=top_site_score,
             )
-            
+
             if progress_callback:
                 progress_callback("site_extraction", 1.0, f"Analysis complete: {len(sites)} sites found")
 
@@ -449,19 +451,19 @@ class AnalysisPipeline:
                 "Analysis pipeline failed",
                 details={"roi": roi.model_dump(), "error": str(e)},
             )
-    
+
     def save_results(self, results: AnalysisResults, output_dir: Path) -> None:
         """Save analysis results for later use in navigation.
-        
+
         Args:
             results: AnalysisResults object with all analysis data
             output_dir: Output directory
         """
-        import pickle
         import json
-        
+        import pickle
+
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Save complete results as pickle
         results_file = output_dir / "analysis_results.pkl"
         with open(results_file, 'wb') as f:
@@ -472,16 +474,16 @@ class AnalysisPipeline:
                 'suitability': results.suitability,
                 'criteria': results.criteria
             }, f)
-        
+
         logger.info(f"Saved analysis results pickle to {results_file}")
-        
+
         # Save sites as GeoJSON
         if results.sites:
             sites_geojson = {
                 "type": "FeatureCollection",
                 "features": []
             }
-            
+
             for site in results.sites:
                 feature = {
                     "type": "Feature",
@@ -495,7 +497,7 @@ class AnalysisPipeline:
                         "rank": site.rank
                     }
                 }
-                
+
                 if site.polygon_coords:
                     feature["geometry"] = {
                         "type": "Polygon",
@@ -506,15 +508,15 @@ class AnalysisPipeline:
                         "type": "Point",
                         "coordinates": [site.lon, site.lat]
                     }
-                
+
                 sites_geojson["features"].append(feature)
-            
+
             sites_file = output_dir / "sites.geojson"
             with open(sites_file, 'w') as f:
                 json.dump(sites_geojson, f, indent=2)
-            
+
             logger.info(f"Saved sites GeoJSON to {sites_file}")
-        
+
         # Save CSV file with sites data
         sites_csv_file = output_dir / "sites.csv"
         import pandas as pd

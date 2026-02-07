@@ -1,15 +1,13 @@
 """Project management endpoints."""
 
-from pathlib import Path
-from typing import List, Optional, Dict
+from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from marshab.core.projects import ProjectManager, Project, ProjectSummary
-from marshab.models import BoundingBox
+from marshab.core.projects import Project, ProjectManager
 from marshab.utils.logging import get_logger
-from datetime import datetime
 
 logger = get_logger(__name__)
 
@@ -23,12 +21,12 @@ class ProjectCreateRequest(BaseModel):
     """Request to create a project."""
     name: str = Field(..., description="Project name")
     description: str = Field("", description="Project description")
-    roi: Dict[str, float] = Field(..., description="ROI bounding box")
+    roi: dict[str, float] = Field(..., description="ROI bounding box")
     dataset: str = Field(..., description="Dataset name")
     preset_id: Optional[str] = Field(None, description="Preset ID used")
-    selected_sites: List[int] = Field(default_factory=list, description="Selected site IDs")
-    routes: List[Dict] = Field(default_factory=list, description="Saved routes")
-    metadata: Dict = Field(default_factory=dict, description="Additional metadata")
+    selected_sites: list[int] = Field(default_factory=list, description="Selected site IDs")
+    routes: list[dict] = Field(default_factory=list, description="Saved routes")
+    metadata: dict = Field(default_factory=dict, description="Additional metadata")
 
 
 class ProjectResponse(BaseModel):
@@ -37,12 +35,12 @@ class ProjectResponse(BaseModel):
     name: str
     description: str
     created_at: str
-    roi: Dict[str, float]
+    roi: dict[str, float]
     dataset: str
     preset_id: Optional[str]
-    selected_sites: List[int]
-    routes: List[Dict]
-    metadata: Dict
+    selected_sites: list[int]
+    routes: list[dict]
+    metadata: dict
 
 
 class ProjectSummaryResponse(BaseModel):
@@ -53,7 +51,7 @@ class ProjectSummaryResponse(BaseModel):
     description: str
 
 
-@router.get("", response_model=List[ProjectSummaryResponse])
+@router.get("", response_model=list[ProjectSummaryResponse])
 async def list_projects():
     """List all projects."""
     try:
@@ -78,7 +76,7 @@ async def create_project(request: ProjectCreateRequest):
     try:
         # Generate project ID
         project_id = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         project = Project(
             id=project_id,
             name=request.name,
@@ -91,9 +89,9 @@ async def create_project(request: ProjectCreateRequest):
             routes=request.routes,
             metadata=request.metadata
         )
-        
+
         project_manager.save_project(project)
-        
+
         return ProjectResponse(
             id=project.id,
             name=project.name,

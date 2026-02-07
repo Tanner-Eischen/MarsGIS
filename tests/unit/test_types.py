@@ -4,11 +4,11 @@ import pytest
 from pydantic import ValidationError
 
 from marshab.types import (
+    AnalysisConfig,
     BoundingBox,
+    CriteriaWeights,
     SiteOrigin,
     Waypoint,
-    CriteriaWeights,
-    AnalysisConfig,
 )
 
 
@@ -106,10 +106,10 @@ class TestCriteriaWeights:
         )
         # Test that total is approximately 1.0 (already normalized)
         assert weights.total() == pytest.approx(1.0)
-        
+
         # Test normalization of unnormalized weights (if we had a method)
         # For now, just verify the weights are valid
-        assert all(0 <= w <= 1 for w in [weights.slope, weights.roughness, weights.elevation, 
+        assert all(0 <= w <= 1 for w in [weights.slope, weights.roughness, weights.elevation,
                                          weights.solar_exposure, weights.resources])
 
     def test_to_dict(self):

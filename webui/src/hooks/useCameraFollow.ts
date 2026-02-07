@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import Plotly from 'plotly.js'
 import { RoverPosition } from './useRoverAnimation'
 
@@ -20,7 +20,7 @@ const DEFAULT_CONFIG: CameraConfig = {
 export function useCameraFollow(
   roverPosition: RoverPosition | null,
   isAnimating: boolean,
-  plotRef: React.RefObject<Plotly.PlotlyHTMLElement>,
+  plotRef: RefObject<Plotly.PlotlyHTMLElement | null>,
   config: Partial<CameraConfig> = {}
 ) {
   const cameraConfig = { ...DEFAULT_CONFIG, ...config }
@@ -60,12 +60,14 @@ export function useCameraFollow(
 
     // Update camera using Plotly.relayout
     Plotly.relayout(plotRef.current, {
-      'scene.camera': {
-        eye: { x: cameraX, y: cameraY, z: cameraZ },
-        center: { x: targetX, y: targetY, z: targetZ },
-        up: { x: 0, y: 0, z: 1 },
+      scene: {
+        camera: {
+          eye: { x: cameraX, y: cameraY, z: cameraZ },
+          center: { x: targetX, y: targetY, z: targetZ },
+          up: { x: 0, y: 0, z: 1 },
+        },
       },
-    })
+    } as any)
   }, [roverPosition, isAnimating, plotRef, cameraConfig])
 }
 

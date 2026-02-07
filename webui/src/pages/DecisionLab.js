@@ -7,6 +7,7 @@ import ExplainabilityPanel from '../components/ExplainabilityPanel';
 import TerrainMap from '../components/TerrainMap';
 import SaveProjectModal from '../components/SaveProjectModal';
 import ExamplesDrawer from '../components/ExamplesDrawer';
+import { apiFetch } from '../lib/apiBase';
 export default function DecisionLab() {
     const [roi, setROI] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 });
     const [dataset, setDataset] = useState('mola');
@@ -22,7 +23,7 @@ export default function DecisionLab() {
     // Fetch presets on mount
     const [presets, setPresets] = useState([]);
     useEffect(() => {
-        fetch('http://localhost:5000/api/v1/analysis/presets')
+        apiFetch('/analysis/presets')
             .then(res => res.json())
             .then(data => setPresets(data.site_presets || []))
             .catch(err => console.error('Failed to load presets:', err));
@@ -40,7 +41,7 @@ export default function DecisionLab() {
                 custom_weights: Object.keys(customWeights).length > 0 ? customWeights : null,
                 threshold: 0.6
             };
-            const response = await fetch('http://localhost:5000/api/v1/analysis/site-scores', {
+            const response = await apiFetch('/analysis/site-scores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(request)
@@ -65,7 +66,7 @@ export default function DecisionLab() {
     };
     return (_jsxs("div", { className: "flex flex-col bg-gray-900 text-gray-100", style: { height: 'calc(100vh - 8rem)' }, children: [_jsx("div", { className: "bg-gray-800 border-b border-gray-700 p-4 mb-4", children: _jsxs("div", { className: "flex justify-between items-center", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-bold", children: "Mars Landing Site Decision Lab" }), _jsx("p", { className: "text-gray-400 text-sm", children: "Explore landing sites using preset criteria or customize your own" })] }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { onClick: () => setShowExamples(true), className: "bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold text-sm", children: "Load Example" }), _jsxs("label", { className: "flex items-center gap-2 bg-gray-700 px-4 py-2 rounded cursor-pointer", children: [_jsx("input", { type: "checkbox", checked: explainMap, onChange: (e) => setExplainMap(e.target.checked), className: "w-4 h-4" }), _jsx("span", { className: "text-sm", children: "Explain this map" })] })] })] }) }), _jsxs("div", { className: "flex-1 flex overflow-hidden", children: [_jsxs("div", { className: "w-96 bg-gray-800 border-r border-gray-700 overflow-y-auto", children: [_jsxs("div", { className: "p-4 border-b border-gray-700", children: [_jsx("h3", { className: "font-semibold mb-2", children: "Region of Interest" }), _jsxs("div", { className: "space-y-2 text-sm", children: [_jsxs("div", { className: "grid grid-cols-2 gap-2", children: [_jsx("input", { type: "number", placeholder: "Lat Min", value: roi?.lat_min || '', className: "bg-gray-700 p-2 rounded text-white", onChange: (e) => setROI(prev => ({ ...prev, lat_min: parseFloat(e.target.value) })) }), _jsx("input", { type: "number", placeholder: "Lat Max", value: roi?.lat_max || '', className: "bg-gray-700 p-2 rounded text-white", onChange: (e) => setROI(prev => ({ ...prev, lat_max: parseFloat(e.target.value) })) }), _jsx("input", { type: "number", placeholder: "Lon Min", value: roi?.lon_min || '', className: "bg-gray-700 p-2 rounded text-white", onChange: (e) => setROI(prev => ({ ...prev, lon_min: parseFloat(e.target.value) })) }), _jsx("input", { type: "number", placeholder: "Lon Max", value: roi?.lon_max || '', className: "bg-gray-700 p-2 rounded text-white", onChange: (e) => setROI(prev => ({ ...prev, lon_max: parseFloat(e.target.value) })) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-xs text-gray-400 mb-1", children: "Dataset" }), _jsxs("select", { value: dataset, onChange: (e) => setDataset(e.target.value), className: "w-full bg-gray-700 p-2 rounded text-white text-sm", children: [_jsx("option", { value: "mola", children: "MOLA" }), _jsx("option", { value: "hirise", children: "HiRISE" }), _jsx("option", { value: "ctx", children: "CTX" })] })] })] })] }), _jsx(PresetsSelector, { presets: presets, selected: selectedPreset, onSelect: setSelectedPreset }), _jsxs("div", { className: "p-4 border-b border-gray-700", children: [_jsxs("button", { onClick: () => setShowAdvanced(!showAdvanced), className: "text-sm text-blue-400 hover:text-blue-300 flex items-center gap-2", children: [_jsx("span", { children: showAdvanced ? '▼' : '▶' }), _jsx("span", { children: "Advanced Weights" })] }), showAdvanced && (_jsx(AdvancedWeightsPanel, { weights: customWeights, onChange: setCustomWeights, presetWeights: presets.find(p => p.id === selectedPreset)?.weights || {} }))] }), _jsxs("div", { className: "p-4 space-y-2", children: [_jsx("button", { onClick: runAnalysis, disabled: !roi || loading, className: "w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed p-3 rounded font-semibold", children: loading ? 'Analyzing...' : 'Run Analysis' }), sites.length > 0 && (_jsxs(_Fragment, { children: [_jsx("button", { onClick: () => setShowSaveModal(true), className: "w-full bg-green-600 hover:bg-green-700 p-3 rounded font-semibold", children: "Save as Project" }), _jsxs("div", { className: "flex gap-2", children: [_jsx("button", { onClick: async () => {
                                                             try {
-                                                                const response = await fetch('http://localhost:5000/api/v1/export/suitability-geotiff', {
+                                                                const response = await apiFetch('/export/suitability-geotiff', {
                                                                     method: 'POST',
                                                                     headers: { 'Content-Type': 'application/json' },
                                                                     body: JSON.stringify({
@@ -93,7 +94,7 @@ export default function DecisionLab() {
                                                             }
                                                         }, className: "flex-1 bg-purple-600 hover:bg-purple-700 p-2 rounded text-sm font-semibold", children: "Export GeoTIFF" }), _jsx("button", { onClick: async () => {
                                                             try {
-                                                                const response = await fetch('http://localhost:5000/api/v1/export/report', {
+                                                                const response = await apiFetch('/export/report', {
                                                                     method: 'POST',
                                                                     headers: { 'Content-Type': 'application/json' },
                                                                     body: JSON.stringify({ format: 'markdown' })

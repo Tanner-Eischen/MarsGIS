@@ -4,16 +4,16 @@ Machine Learning Site Recommendation API Routes
 FastAPI endpoints for ML-powered Mars habitat site recommendation engine.
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
+from typing import Any
+
 import numpy as np
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel, Field
 
 from marshab.core.ml_site_recommendation import (
-    MLSiteRecommendationEngine, SiteRecommendation, SiteFeatures
+    MLSiteRecommendationEngine,
 )
-from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -25,55 +25,55 @@ ml_engine = MLSiteRecommendationEngine()
 
 class TrainingDataRequest(BaseModel):
     """Request model for ML model training"""
-    historical_sites: List[Dict[str, Any]] = Field(..., description="Historical Mars mission sites with outcomes")
+    historical_sites: list[dict[str, Any]] = Field(..., description="Historical Mars mission sites with outcomes")
     mission_type: str = Field(default="research_base", description="Mission type for training")
-    
+
 class TrainingDataResponse(BaseModel):
     """Response model for ML model training"""
     success: bool
     message: str
-    training_metrics: Dict[str, Any]
-    model_performance: Dict[str, Any]
-    
+    training_metrics: dict[str, Any]
+    model_performance: dict[str, Any]
+
 class SiteRecommendationRequest(BaseModel):
     """Request model for site recommendations"""
-    candidate_sites: List[Dict[str, Any]] = Field(..., description="Candidate sites for recommendation")
+    candidate_sites: list[dict[str, Any]] = Field(..., description="Candidate sites for recommendation")
     mission_type: str = Field(default="research_base", description="Type of mission")
     top_n: int = Field(default=5, ge=1, le=20, description="Number of recommendations to return")
     use_predefined_weights: bool = Field(default=True, description="Use predefined mission weights")
-    
+
 class SiteRecommendationResponse(BaseModel):
     """Response model for site recommendations"""
     success: bool
-    recommendations: List[Dict[str, Any]]
+    recommendations: list[dict[str, Any]]
     mission_type: str
     total_candidates: int
     recommendation_count: int
     processing_time: float
     model_confidence: float
-    
+
 class ModelInsightsResponse(BaseModel):
     """Response model for model insights"""
     success: bool
     model_status: str
-    performance_metrics: Dict[str, Any]
-    feature_importance: Dict[str, str]
-    clustering_info: Dict[str, Any]
-    training_info: Dict[str, Any]
-    
+    performance_metrics: dict[str, Any]
+    feature_importance: dict[str, str]
+    clustering_info: dict[str, Any]
+    training_info: dict[str, Any]
+
 class BatchRecommendationRequest(BaseModel):
     """Request model for batch site recommendations"""
-    regions: List[Dict[str, Any]] = Field(..., description="Regions to analyze")
-    mission_types: List[str] = Field(default=["research_base"], description="Mission types to consider")
+    regions: list[dict[str, Any]] = Field(..., description="Regions to analyze")
+    mission_types: list[str] = Field(default=["research_base"], description="Mission types to consider")
     analysis_depth: str = Field(default="standard", description="Analysis depth: quick, standard, comprehensive")
-    
+
 class BatchRecommendationResponse(BaseModel):
     """Response model for batch recommendations"""
     success: bool
-    regional_recommendations: Dict[str, List[Dict[str, Any]]]
-    analysis_summary: Dict[str, Any]
+    regional_recommendations: dict[str, list[dict[str, Any]]]
+    analysis_summary: dict[str, Any]
     processing_time: float
-    
+
 # Predefined training data for demonstration
 SAMPLE_TRAINING_DATA = [
     {
@@ -178,26 +178,22 @@ SAMPLE_TRAINING_DATA = [
 async def train_ml_models(request: TrainingDataRequest):
     """
     Train ML models using historical Mars mission data
-    
+
     This endpoint trains the machine learning models using historical
     Mars mission site data and their success outcomes.
     """
     try:
-        start_time = datetime.now()
-        
         # Use provided training data or sample data
         training_sites = request.historical_sites if request.historical_sites else SAMPLE_TRAINING_DATA
-        
+
         logger.info(f"Training ML models with {len(training_sites)} historical sites")
-        
+
         # Prepare training data
         ml_engine.prepare_training_data(training_sites)
-        
+
         # Train models
         training_metrics = ml_engine.train_models()
-        
-        processing_time = (datetime.now() - start_time).total_seconds()
-        
+
         return TrainingDataResponse(
             success=True,
             message=f"ML models trained successfully with {len(training_sites)} samples",
@@ -209,7 +205,7 @@ async def train_ml_models(request: TrainingDataRequest):
                 "training_samples": training_metrics.get("training_samples", 0)
             }
         )
-        
+
     except Exception as e:
         logger.error(f"ML training failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"ML training failed: {str(e)}")
@@ -218,35 +214,35 @@ async def train_ml_models(request: TrainingDataRequest):
 async def get_site_recommendations(request: SiteRecommendationRequest):
     """
     Get ML-powered site recommendations for Mars habitat placement
-    
+
     This endpoint uses trained machine learning models to recommend
     the most suitable sites for Mars habitat placement based on
     terrain characteristics and mission requirements.
     """
     try:
         start_time = datetime.now()
-        
+
         # Check if models are trained
         if not ml_engine.is_trained:
             logger.info("Models not trained, using sample training data")
             # Auto-train with sample data
             ml_engine.prepare_training_data(SAMPLE_TRAINING_DATA)
             ml_engine.train_models()
-        
+
         logger.info(f"Generating recommendations for {len(request.candidate_sites)} candidate sites")
         logger.info(f"Mission type: {request.mission_type}, Top N: {request.top_n}")
-        
+
         # Generate recommendations
         recommendations = ml_engine.recommend_sites(
             candidate_sites=request.candidate_sites,
             mission_type=request.mission_type,
             top_n=request.top_n
         )
-        
+
         # Convert recommendations to serializable format
         serializable_recommendations = []
         total_confidence = 0.0
-        
+
         for rec in recommendations:
             rec_dict = {
                 "site_id": rec.site_id,
@@ -262,10 +258,10 @@ async def get_site_recommendations(request: SiteRecommendationRequest):
             }
             serializable_recommendations.append(rec_dict)
             total_confidence += rec.confidence
-        
+
         avg_confidence = total_confidence / len(recommendations) if recommendations else 0.0
         processing_time = (datetime.now() - start_time).total_seconds()
-        
+
         return SiteRecommendationResponse(
             success=True,
             recommendations=serializable_recommendations,
@@ -275,7 +271,7 @@ async def get_site_recommendations(request: SiteRecommendationRequest):
             processing_time=processing_time,
             model_confidence=round(avg_confidence, 3)
         )
-        
+
     except Exception as e:
         logger.error(f"Site recommendation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Site recommendation failed: {str(e)}")
@@ -284,7 +280,7 @@ async def get_site_recommendations(request: SiteRecommendationRequest):
 async def get_model_insights():
     """
     Get insights about the trained ML models
-    
+
     This endpoint provides detailed information about the
     trained machine learning models, including performance
     metrics and feature importance analysis.
@@ -300,9 +296,9 @@ async def get_model_insights():
                 clustering_info={},
                 training_info={}
             )
-        
+
         insights = ml_engine.get_model_insights()
-        
+
         # Format feature importance as percentages
         feature_importance = {}
         importance_data = insights.get('feature_importance', {})
@@ -311,7 +307,7 @@ async def get_model_insights():
             for feature, importance in importance_data.items():
                 percentage = (importance / total_importance) * 100 if total_importance > 0 else 0
                 feature_importance[feature] = f"{percentage:.1f}%"
-        
+
         return ModelInsightsResponse(
             success=True,
             model_status="trained",
@@ -320,7 +316,7 @@ async def get_model_insights():
             clustering_info=insights.get('clustering_info', {}),
             training_info=insights.get('training_info', {})
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to get model insights: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get model insights: {str(e)}")
@@ -329,22 +325,22 @@ async def get_model_insights():
 async def batch_site_analysis(request: BatchRecommendationRequest, background_tasks: BackgroundTasks):
     """
     Perform batch analysis across multiple regions
-    
+
     This endpoint performs comprehensive ML analysis across multiple
     regions to identify optimal habitat placement opportunities.
     """
     try:
         start_time = datetime.now()
-        
+
         logger.info(f"Starting batch analysis for {len(request.regions)} regions")
         logger.info(f"Mission types: {request.mission_types}")
         logger.info(f"Analysis depth: {request.analysis_depth}")
-        
+
         # Ensure models are trained
         if not ml_engine.is_trained:
             ml_engine.prepare_training_data(SAMPLE_TRAINING_DATA)
             ml_engine.train_models()
-        
+
         regional_recommendations = {}
         analysis_summary = {
             "total_regions_analyzed": len(request.regions),
@@ -353,13 +349,13 @@ async def batch_site_analysis(request: BatchRecommendationRequest, background_ta
             "optimal_sites_found": 0,
             "high_confidence_sites": 0
         }
-        
+
         for region in request.regions:
             region_name = region.get("name", "Unknown Region")
-            
+
             # Generate candidate sites for this region (simplified)
             candidate_sites = _generate_region_candidates(region)
-            
+
             region_recs = []
             for mission_type in request.mission_types:
                 recommendations = ml_engine.recommend_sites(
@@ -367,7 +363,7 @@ async def batch_site_analysis(request: BatchRecommendationRequest, background_ta
                     mission_type=mission_type,
                     top_n=3  # Top 3 per mission type
                 )
-                
+
                 for rec in recommendations:
                     rec_data = {
                         "mission_type": mission_type,
@@ -379,24 +375,24 @@ async def batch_site_analysis(request: BatchRecommendationRequest, background_ta
                         "suitability_category": _get_suitability_category(rec.overall_score)
                     }
                     region_recs.append(rec_data)
-            
+
             # Sort by score and take top recommendations
             region_recs.sort(key=lambda x: x["overall_score"], reverse=True)
             regional_recommendations[region_name] = region_recs[:5]
-            
+
             # Update summary statistics
             analysis_summary["optimal_sites_found"] += len(region_recs)
             analysis_summary["high_confidence_sites"] += sum(1 for rec in region_recs if rec["confidence"] > 0.8)
-        
+
         processing_time = (datetime.now() - start_time).total_seconds()
-        
+
         return BatchRecommendationResponse(
             success=True,
             regional_recommendations=regional_recommendations,
             analysis_summary=analysis_summary,
             processing_time=processing_time
         )
-        
+
     except Exception as e:
         logger.error(f"Batch analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Batch analysis failed: {str(e)}")
@@ -412,27 +408,27 @@ def _get_suitability_category(score: float) -> str:
     else:
         return "Poor"
 
-def _generate_region_candidates(region: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _generate_region_candidates(region: dict[str, Any]) -> list[dict[str, Any]]:
     """Generate candidate sites for a region (simplified)"""
     # This would typically use actual terrain data from the region
     # For now, generate synthetic candidates based on region bounds
-    
+
     bounds = region.get("bounds", {})
     lat_min = bounds.get("lat_min", -10)
     lat_max = bounds.get("lat_max", 10)
     lon_min = bounds.get("lon_min", 0)
     lon_max = bounds.get("lon_max", 20)
-    
+
     candidates = []
     for i in range(9):  # 3x3 grid
         lat = lat_min + (lat_max - lat_min) * (i // 3) / 2
         lon = lon_min + (lon_max - lon_min) * (i % 3) / 2
-        
+
         # Generate varied terrain characteristics
         base_elevation = np.random.uniform(-4000, 2000)
         base_slope = np.random.uniform(1, 15)
         base_roughness = np.random.uniform(0.1, 1.0)
-        
+
         candidate = {
             "coordinates": (lat, lon),
             "elevation": base_elevation,
@@ -445,7 +441,7 @@ def _generate_region_candidates(region: Dict[str, Any]) -> List[Dict[str, Any]]:
             "elevation_std": np.random.uniform(20, 150)
         }
         candidates.append(candidate)
-    
+
     return candidates
 
 @router.get("/health")
@@ -458,8 +454,8 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 class DestinationAwareRecommendationRequest(BaseModel):
-    destination_coordinates: Tuple[float, float] = Field(..., description="Destination site coordinates [lat, lon]")
-    candidate_sites: List[Dict[str, Any]] = Field(..., description="Candidate landing sites")
+    destination_coordinates: tuple[float, float] = Field(..., description="Destination site coordinates [lat, lon]")
+    candidate_sites: list[dict[str, Any]] = Field(..., description="Candidate landing sites")
     mission_type: str = Field(default="research_base", description="Type of mission")
     top_n: int = Field(default=5, ge=1, le=20, description="Number of recommendations to return")
 

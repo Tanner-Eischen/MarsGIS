@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from marshab.core.ai_query_service import ai_query_service, QueryResult
+from marshab.core.ai_query_service import ai_query_service
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -15,14 +15,14 @@ router = APIRouter()
 
 class AIQueryRequest(BaseModel):
     """Request model for AI query processing."""
-    
+
     query: str = Field(..., description="Natural language query about Mars site selection")
     include_explanation: bool = Field(True, description="Include explanation in response")
 
 
 class AIQueryResponse(BaseModel):
     """Response model for AI query processing."""
-    
+
     success: bool
     query: str
     criteria_weights: Optional[dict[str, float]] = Field(None, description="Extracted criteria weights")
@@ -36,10 +36,10 @@ class AIQueryResponse(BaseModel):
 @router.post("/ai-query", response_model=AIQueryResponse)
 async def process_ai_query(request: AIQueryRequest):
     """Process a natural language query about Mars site selection.
-    
+
     This endpoint uses AI to extract search parameters from natural language queries
     like "Find me a flat site near water ice deposits with good solar exposure".
-    
+
     Examples:
     - "Find flat areas near Olympus Mons with good sunlight"
     - "I need a smooth site in Gale Crater for rover landing"
@@ -49,12 +49,12 @@ async def process_ai_query(request: AIQueryRequest):
     try:
         if not request.query or len(request.query.strip()) < 3:
             raise HTTPException(status_code=400, detail="Query must be at least 3 characters long")
-        
+
         logger.info("Processing AI query", query=request.query)
-        
+
         # Process the query
         result = ai_query_service.process_query(request.query)
-        
+
         if not result.success:
             # Heuristic fallback for demo/stable behavior
             keywords = request.query.lower()
@@ -81,7 +81,7 @@ async def process_ai_query(request: AIQueryRequest):
                 confidence=0.65,
                 message="Processed with heuristic defaults"
             )
-        
+
         # Build response
         response = AIQueryResponse(
             success=True,
@@ -93,15 +93,15 @@ async def process_ai_query(request: AIQueryRequest):
             confidence=result.confidence,
             message=f"Successfully processed query with {result.confidence:.0%} confidence"
         )
-        
-        logger.info("AI query processed successfully", 
+
+        logger.info("AI query processed successfully",
                    confidence=result.confidence,
                    has_criteria=bool(result.criteria_weights),
                    has_roi=bool(result.roi),
                    has_dataset=bool(result.dataset))
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -154,7 +154,7 @@ async def get_ai_query_examples():
             "description": "Finds suitable construction sites in the massive canyon system"
         }
     ]
-    
+
     return {
         "examples": examples,
         "message": "Try these example queries or create your own natural language search"
@@ -167,7 +167,7 @@ async def get_ai_query_capabilities():
     return {
         "supported_criteria": {
             "slope": "Terrain steepness and flatness",
-            "roughness": "Surface texture and smoothness", 
+            "roughness": "Surface texture and smoothness",
             "elevation": "Height above reference datum",
             "solar_exposure": "Sunlight availability and exposure",
             "resources": "Water ice and mineral deposits"
@@ -178,7 +178,7 @@ async def get_ai_query_capabilities():
         },
         "supported_datasets": {
             "mola": "Global overview, coarse resolution (463m)",
-            "hirise": "Detailed analysis, high resolution (1m)", 
+            "hirise": "Detailed analysis, high resolution (1m)",
             "ctx": "Regional context, medium resolution (18m)"
         },
         "features": {

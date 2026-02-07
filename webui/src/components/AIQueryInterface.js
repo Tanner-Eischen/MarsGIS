@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useCallback } from 'react';
 import { Send, Brain, Settings, Info, AlertCircle, CheckCircle } from 'lucide-react';
+import { apiFetch } from '../lib/apiBase';
 const EXAMPLE_QUERIES = [
     "Find me a flat site near water ice deposits with good solar exposure",
     "I need a smooth landing area in the northern hemisphere with low elevation",
@@ -29,8 +30,7 @@ export default function AIQueryInterface({ onQueryProcessed, className = '' }) {
                     constraints: ['martian_environment', 'technical_feasibility']
                 }
             };
-            const BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api/v1';
-            const response = await fetch(`${BASE}/ai-query`, {
+            const response = await apiFetch('/ai-query', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

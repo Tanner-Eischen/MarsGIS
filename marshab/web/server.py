@@ -1,8 +1,8 @@
 """Server entry point for MarsHab web API."""
 
-import uvicorn
+import os
 
-from marshab.web.api import app
+import uvicorn
 
 
 def main():
@@ -15,18 +15,20 @@ def main():
     print("=" * 60)
     print("Starting MarsHab Web API Server")
     print("=" * 60)
-    print("Server will be available at: http://localhost:5000")
-    print("API docs available at: http://localhost:5000/docs")
+    host = os.getenv("MARSHAB_WEB_HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", os.getenv("MARSHAB_WEB_PORT", "5000")))
+    reload_enabled = os.getenv("MARSHAB_WEB_RELOAD", "false").lower() in ("1", "true", "yes")
+    print(f"Server will be available at: http://{host}:{port}")
+    print(f"API docs available at: http://{host}:{port}/docs")
     print("=" * 60)
     uvicorn.run(
         "marshab.web.api:app",  # Use import string for reload support
-        host="0.0.0.0",
-        port=5000,
-        reload=True,  # Enable auto-reload in development
+        host=host,
+        port=port,
+        reload=reload_enabled,
         log_level="info",
     )
 
 
 if __name__ == "__main__":
     main()
-

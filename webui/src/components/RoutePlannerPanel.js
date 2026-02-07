@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../lib/apiBase';
 export default function RoutePlannerPanel({ sites, analysisDir, onPlanRoute, loading }) {
     const [startSiteId, setStartSiteId] = useState(sites[0]?.site_id || 1);
     const [endSiteId, setEndSiteId] = useState(sites[1]?.site_id || 2);
@@ -9,7 +10,7 @@ export default function RoutePlannerPanel({ sites, analysisDir, onPlanRoute, loa
     const [sunAzimuth, setSunAzimuth] = useState(315);
     const [sunAltitude, setSunAltitude] = useState(45);
     useEffect(() => {
-        fetch('http://localhost:5000/api/v1/analysis/presets?scope=route')
+        apiFetch('/analysis/presets?scope=route')
             .then(res => res.json())
             .then(data => {
             const routePresets = data.route_presets || [];

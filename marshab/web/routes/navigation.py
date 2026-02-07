@@ -3,7 +3,7 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -35,7 +35,7 @@ class NavigationRequest(BaseModel):
 
 class NavigationResponse(BaseModel):
     """Response with navigation waypoints."""
-    waypoints: List[dict]
+    waypoints: list[dict]
     num_waypoints: int
     total_distance_m: float
     site_id: int
@@ -45,9 +45,9 @@ class NavigationResponse(BaseModel):
 @router.post("/plan-route", response_model=NavigationResponse)
 async def plan_route(request: NavigationRequest):
     """Plan navigation route to target site.
-    
+
     Returns waypoints in SITE frame (North, East, Down).
-    
+
     Note: Pathfinding can take 30-60 seconds for large DEMs.
     """
     try:
@@ -57,19 +57,19 @@ async def plan_route(request: NavigationRequest):
             start_lat=request.start_lat,
             start_lon=request.start_lon
         )
-        
+
         # Use provided task_id or generate new one
         task_id = request.task_id or generate_task_id()
-        
+
         # Create progress tracker (queue will be created when WebSocket connects)
         progress_tracker = ProgressTracker(task_id)
-        
+
         # Progress callback wrapper (will be called from thread pool)
         def progress_callback(stage: str, progress: float, message: str):
             progress_tracker.update(stage, progress, message)
-        
+
         engine = NavigationEngine()
-        
+
         # Run CPU-bound pathfinding in thread pool to avoid blocking event loop
         loop = asyncio.get_event_loop()
         try:
@@ -94,19 +94,27 @@ async def plan_route(request: NavigationRequest):
                 status_code=504,
                 detail="Navigation planning timed out. The DEM may be too large or the path is too complex. Try a smaller ROI or different start/goal positions."
             )
-        
+
+        # Persist route artifacts for export and map overlay endpoints.
+        analysis_dir = Path(request.analysis_dir)
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+        site_waypoints_file = analysis_dir / f"waypoints_site_{request.site_id}.csv"
+        default_waypoints_file = analysis_dir / "waypoints.csv"
+        waypoints_df.to_csv(site_waypoints_file, index=False)
+        waypoints_df.to_csv(default_waypoints_file, index=False)
+
         if len(waypoints_df) > 0:
             last = waypoints_df.iloc[-1]
             total_distance = float((last['x_meters']**2 + last['y_meters']**2)**0.5)
         else:
             total_distance = 0.0
-        
+
         logger.info(
             "Navigation planning completed",
             num_waypoints=len(waypoints_df),
             total_distance_m=total_distance
         )
-        
+
         return NavigationResponse(
             waypoints=waypoints_df.to_dict('records'),
             num_waypoints=len(waypoints_df),
@@ -114,7 +122,7 @@ async def plan_route(request: NavigationRequest):
             site_id=request.site_id,
             task_id=task_id
         )
-        
+
     except HTTPException:
         raise
     except NavigationError as e:
@@ -139,21 +147,21 @@ async def get_waypoints_geojson(
     """Get waypoints as GeoJSON for visualization."""
     try:
         import pandas as pd
-        
+
         waypoints_file = Path(analysis_dir) / f"waypoints_site_{site_id}.csv"
-        
+
         if not waypoints_file.exists():
             raise HTTPException(
                 status_code=404,
                 detail=f"Waypoints not found for site {site_id}"
             )
-        
+
         waypoints_df = pd.read_csv(waypoints_file)
-        
+
         # Convert to GeoJSON
         features = []
         coordinates = []
-        
+
         for _, row in waypoints_df.iterrows():
             # Point feature for each waypoint
             features.append({
@@ -170,7 +178,7 @@ async def get_waypoints_geojson(
                 }
             })
             coordinates.append([row.get('lon', row.get('longitude')), row.get('lat', row.get('latitude'))])
-        
+
         # Add LineString for path
         if len(coordinates) > 1:
             features.append({
@@ -184,12 +192,12 @@ async def get_waypoints_geojson(
                     "site_id": site_id
                 }
             })
-        
+
         return {
             "type": "FeatureCollection",
             "features": features
         }
-        
+
     except Exception as e:
         logger.error("Failed to generate waypoints GeoJSON", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
@@ -200,7 +208,7 @@ async def get_waypoints_geojson(
 
 class RouteSummary(BaseModel):
     strategy: PathfindingStrategy
-    waypoints: List[dict]
+    waypoints: list[dict]
     num_waypoints: int
     total_distance_m: float
     relative_cost_percent: float
@@ -211,14 +219,14 @@ class MultiRouteRequest(BaseModel):
     analysis_dir: str
     start_lat: float
     start_lon: float
-    strategies: List[PathfindingStrategy] = Field(default_factory=lambda: [PathfindingStrategy.BALANCED, PathfindingStrategy.DIRECT])
+    strategies: list[PathfindingStrategy] = Field(default_factory=lambda: [PathfindingStrategy.BALANCED, PathfindingStrategy.DIRECT])
     max_waypoint_spacing_m: float = Field(100.0, gt=0)
     max_slope_deg: float = Field(25.0, gt=0, le=90)
     task_id: Optional[str] = None
 
 
 class MultiRouteResponse(BaseModel):
-    routes: List[RouteSummary]
+    routes: list[RouteSummary]
     site_id: int
     task_id: str
 
@@ -237,17 +245,12 @@ async def plan_routes(request: MultiRouteRequest):
         cost_engine = RouteCostEngine()
         config = get_config()
         output_dir = config.paths.output_dir
-        colors = {
-            PathfindingStrategy.SAFEST: "#00ff00",
-            PathfindingStrategy.BALANCED: "#1e90ff",
-            PathfindingStrategy.DIRECT: "#ffa500",
-        }
         for strat in request.strategies:
             try:
                 df = await asyncio.wait_for(
                     loop.run_in_executor(
                         _executor,
-                        lambda: engine.plan_to_site(
+                        lambda current_strategy=strat: engine.plan_to_site(
                             site_id=request.site_id,
                             analysis_dir=Path(request.analysis_dir),
                             start_lat=request.start_lat,
@@ -255,7 +258,7 @@ async def plan_routes(request: MultiRouteRequest):
                             max_waypoint_spacing_m=request.max_waypoint_spacing_m,
                             max_slope_deg=request.max_slope_deg,
                             progress_callback=progress_callback,
-                            strategy=strat,
+                            strategy=current_strategy,
                         )
                     ),
                     timeout=180.0,

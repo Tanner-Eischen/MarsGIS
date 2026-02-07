@@ -1,12 +1,9 @@
 """Unit tests for data manager service."""
 
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
 from marshab.core.data_manager import DataManager
-from marshab.types import BoundingBox
 from marshab.exceptions import DataError
 
 

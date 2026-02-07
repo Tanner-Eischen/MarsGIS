@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/apiBase'
 
 interface Site {
   site_id: number
@@ -44,7 +45,7 @@ export default function RoutePlannerPanel({
   const [sunAltitude, setSunAltitude] = useState(45)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/v1/analysis/presets?scope=route')
+    apiFetch('/analysis/presets?scope=route')
       .then(res => res.json())
       .then(data => {
         const routePresets = data.route_presets || []

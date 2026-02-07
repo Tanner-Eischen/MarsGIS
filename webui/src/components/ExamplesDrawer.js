@@ -1,11 +1,12 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../lib/apiBase';
 export default function ExamplesDrawer({ onSelectExample, isOpen, onClose }) {
     const [examples, setExamples] = useState([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
         if (isOpen) {
-            fetch('http://localhost:5000/api/v1/examples/rois')
+            apiFetch('/examples/rois')
                 .then(res => res.json())
                 .then(data => {
                 setExamples(data);

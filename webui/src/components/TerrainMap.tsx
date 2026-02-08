@@ -1,9 +1,9 @@
-import { MapContainer, ImageOverlay, GeoJSON, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, ImageOverlay, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
-import { useEffect, useRef } from 'react';
-import { API_BASE } from '../lib/apiBase';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiUrl } from '../lib/apiBase';
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -13,7 +13,128 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-const MARS_BASEMAP_URL = `${API_BASE}/visualization/basemap/{z}/{x}/{y}.png`;
+interface ElevationSample {
+  dataset: string
+  lat: number
+  lon: number
+  lon_360: number
+  elevation_m: number
+  pixel_row: number
+  pixel_col: number
+  grid_shape: [number, number]
+  window_deg: number
+  elevation_min_m: number
+  elevation_max_m: number
+}
+
+interface ViewportSample {
+  roi: {
+    lat_min: number
+    lat_max: number
+    lon_min: number
+    lon_max: number
+  }
+  width: number
+  height: number
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const normalizeLon360 = (lon: number) => {
+  let normalized = lon
+  while (normalized < 0) normalized += 360
+  while (normalized >= 360) normalized -= 360
+  return normalized
+}
+
+const boundsToViewportSample = (map: L.Map): ViewportSample => {
+  const bounds = map.getBounds()
+  const size = map.getSize()
+  const zoom = map.getZoom()
+
+  const south = clamp(bounds.getSouth(), -90, 90)
+  const north = clamp(bounds.getNorth(), -90, 90)
+  const west = normalizeLon360(bounds.getWest())
+  const east = normalizeLon360(bounds.getEast())
+  const lonMin = west
+  const lonMax = east > west ? east : clamp(west + 0.01, 0, 360)
+
+  const scale = clamp(1 + (zoom - 5) * 0.4, 1, 4)
+  const width = Math.round(clamp(size.x * scale, 800, 4000))
+  const height = Math.round(clamp(size.y * scale, 600, 4000))
+
+  return {
+    roi: {
+      lat_min: south,
+      lat_max: north,
+      lon_min: lonMin,
+      lon_max: lonMax,
+    },
+    width,
+    height,
+  }
+}
+
+function ViewportTracker({
+  onViewportChange,
+}: {
+  onViewportChange: (sample: ViewportSample) => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    const emitViewport = () => {
+      onViewportChange(boundsToViewportSample(map))
+    }
+
+    emitViewport()
+    map.on('moveend zoomend resize', emitViewport)
+    return () => {
+      map.off('moveend zoomend resize', emitViewport)
+    }
+  }, [map, onViewportChange])
+
+  return null
+}
+
+function ElevationProbe({
+  dataset,
+  onPending,
+  onResult,
+  onError,
+}: {
+  dataset: string
+  onPending: () => void
+  onResult: (sample: ElevationSample) => void
+  onError: (message: string) => void
+}) {
+  useMapEvents({
+    click: async (event) => {
+      const lat = event.latlng.lat
+      const lon = event.latlng.lng
+      const params = new URLSearchParams({
+        dataset,
+        lat: String(lat),
+        lon: String(lon),
+      })
+      onPending()
+      try {
+        const response = await fetch(apiUrl(`/visualization/elevation-at?${params.toString()}`))
+        if (!response.ok) {
+          const detail = await response.text()
+          throw new Error(`Elevation sample failed: ${response.status} ${detail}`)
+        }
+        const data: ElevationSample = await response.json()
+        onResult(data)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown elevation sampling error'
+        onError(message)
+      }
+    },
+  })
+
+  return null
+}
 
 function FitBounds({ bounds, fitKey }) {
   const map = useMap();
@@ -153,15 +274,40 @@ export default function TerrainMap({
   overlayOptions = {}
 }: TerrainMapProps) {
   const activeOverlayType = overlayType || 'elevation';
+  const [probeLoading, setProbeLoading] = useState(false)
+  const [probeError, setProbeError] = useState<string | null>(null)
+  const [probeSample, setProbeSample] = useState<ElevationSample | null>(null)
+  const [viewportSample, setViewportSample] = useState<ViewportSample | null>(null)
 
-  const overlayImage = useOverlayImage(roi, dataset, activeOverlayType, {
+  const handleViewportChange = useCallback((next: ViewportSample) => {
+    setViewportSample((prev) => {
+      if (
+        prev &&
+        Math.abs(prev.roi.lat_min - next.roi.lat_min) < 0.0001 &&
+        Math.abs(prev.roi.lat_max - next.roi.lat_max) < 0.0001 &&
+        Math.abs(prev.roi.lon_min - next.roi.lon_min) < 0.0001 &&
+        Math.abs(prev.roi.lon_max - next.roi.lon_max) < 0.0001 &&
+        prev.width === next.width &&
+        prev.height === next.height
+      ) {
+        return prev
+      }
+      return next
+    })
+  }, [])
+
+  const renderRoi = viewportSample?.roi ?? roi
+  const renderWidth = overlayOptions.width ?? viewportSample?.width ?? 1400
+  const renderHeight = overlayOptions.height ?? viewportSample?.height ?? 900
+
+  const overlayImage = useOverlayImage(renderRoi, dataset, activeOverlayType, {
     colormap: overlayOptions.colormap || 'terrain',
     relief: overlayOptions.relief ?? relief,
     sunAzimuth: overlayOptions.sunAzimuth || 315,
     sunAltitude: overlayOptions.sunAltitude || 45,
-    width: overlayOptions.width || 1200,
-    height: overlayOptions.height || 800,
-    buffer: overlayOptions.buffer || 0.25,
+    width: renderWidth,
+    height: renderHeight,
+    buffer: overlayOptions.buffer ?? 0.05,
     marsSol: overlayOptions.marsSol,
     season: overlayOptions.season,
     dustStormPeriod: overlayOptions.dustStormPeriod
@@ -195,12 +341,22 @@ export default function TerrainMap({
         className="bg-black"
         scrollWheelZoom={true}
       >
-        <TileLayer
-          url={MARS_BASEMAP_URL}
-          attribution='&copy; USGS / OpenPlanetary'
-          maxNativeZoom={5}
-          maxZoom={12}
-          noWrap={true}
+        <ViewportTracker onViewportChange={handleViewportChange} />
+        <ElevationProbe
+          dataset={dataset}
+          onPending={() => {
+            setProbeLoading(true)
+            setProbeError(null)
+          }}
+          onResult={(sample) => {
+            setProbeLoading(false)
+            setProbeError(null)
+            setProbeSample(sample)
+          }}
+          onError={(message) => {
+            setProbeLoading(false)
+            setProbeError(message)
+          }}
         />
 
         {displayImageUrl && displayBounds && (
@@ -230,6 +386,21 @@ export default function TerrainMap({
           Map data error: {displayError}
         </div>
       )}
+
+      <div className="pointer-events-none absolute bottom-3 right-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+        <div className="font-bold mb-1">DEM Probe (click map)</div>
+        {probeLoading && <div>Sampling elevation...</div>}
+        {!probeLoading && probeSample && (
+          <>
+            <div>LAT: {probeSample.lat.toFixed(4)}</div>
+            <div>LON: {probeSample.lon_360.toFixed(4)}</div>
+            <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
+            <div>DATASET: {probeSample.dataset.toUpperCase()}</div>
+          </>
+        )}
+        {!probeLoading && !probeSample && <div>No sample yet</div>}
+        {probeError && <div className="text-red-300 mt-1">Error: {probeError}</div>}
+      </div>
     </div>
   );
 }

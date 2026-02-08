@@ -172,6 +172,8 @@ export function useOverlayImage(
     error: null,
   })
   const imageUrlRef = useRef<string | null>(null)
+  const lastRequestKeyRef = useRef<string | null>(null)
+  const lastRequestAtRef = useRef<number>(0)
 
   useEffect(() => {
     return () => {
@@ -221,6 +223,15 @@ export function useOverlayImage(
         if (marsSol !== undefined) params.append('mars_sol', String(marsSol))
         if (season) params.append('season', season)
         if (dustStormPeriod) params.append('dust_storm_period', dustStormPeriod)
+
+        const requestKey = params.toString()
+        const now = Date.now()
+        if (lastRequestKeyRef.current === requestKey && now - lastRequestAtRef.current < 750) {
+          setOverlayImage((prev) => ({ ...prev, loading: false }))
+          return
+        }
+        lastRequestKeyRef.current = requestKey
+        lastRequestAtRef.current = now
 
         const url = apiUrl(`/visualization/overlay?${params.toString()}`)
         const response = await fetch(url, { signal: controller.signal })

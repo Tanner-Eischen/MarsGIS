@@ -4,7 +4,7 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: python -m marshab.web.server
+    dockerCommand: conda run --no-capture-output -n marshab python -m marshab.web.server
     healthCheckPath: /api/v1/health/live
     envVars:
       - key: MARSHAB_DEMO_SEED

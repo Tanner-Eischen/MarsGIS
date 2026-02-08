@@ -136,7 +136,17 @@ export default function AnalysisDashboard() {
               </div>
             }
           >
-            <Terrain3D />
+            <Terrain3D
+              roi={roi}
+              dataset={dataset}
+              overlayType={overlayType}
+              overlayOptions={{
+                colormap,
+                relief,
+                sunAzimuth,
+                sunAltitude,
+              }}
+            />
           </Suspense>
         ) : (
           <TerrainMap

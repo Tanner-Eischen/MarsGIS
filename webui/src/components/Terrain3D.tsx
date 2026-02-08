@@ -3,11 +3,22 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js/dist/plotly.min.js';
 import type { PlotlyHTMLElement } from 'plotly.js';
 import { use3DTerrain } from '../hooks/use3DMapData';
-import { useSitesGeoJson, useWaypointsGeoJson } from '../hooks/useMapData';
+import { useWaypointsGeoJson } from '../hooks/useMapData';
 import { RoverPosition } from '../hooks/useRoverAnimation';
 import { useCameraFollow } from '../hooks/useCameraFollow';
 
 const Plot = createPlotlyComponent(Plotly as any);
+
+const toPlotlyColorScale = (colormap?: string, overlayType?: string) => {
+  const source = (colormap || '').toLowerCase();
+  if (source === 'terrain') return 'Terrain';
+  if (source === 'viridis') return 'Viridis';
+  if (source === 'plasma') return 'Plasma';
+  if (source === 'magma') return 'Magma';
+  if (source === 'cividis') return 'Cividis';
+  if (overlayType === 'solar') return 'Plasma';
+  return 'Terrain';
+};
 
 interface Terrain3DProps {
   roi?: { lat_min: number; lat_max: number; lon_min: number; lon_max: number };
@@ -17,7 +28,7 @@ interface Terrain3DProps {
   enableRoverAnimation?: boolean;
   roverPosition?: RoverPosition | null;
   isAnimating?: boolean;
-  overlayType?: 'elevation' | 'solar' | 'dust' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri';
+  overlayType?: 'elevation' | 'solar' | 'dust' | 'hillshade' | 'slope' | 'aspect' | 'roughness' | 'tri' | 'viewshed' | 'comms_risk';
   overlayOptions?: {
     colormap?: string;
     relief?: number;
@@ -43,13 +54,11 @@ export default function Terrain3D({
   overlayType,
   overlayOptions = {}
 }: Terrain3DProps) {
-  const { terrainData, loading: terrainLoading, error: terrainError } = use3DTerrain(roi, dataset);
-  const sitesGeoJson = useSitesGeoJson(showSites);
+  const { terrainData, metadata, loading: terrainLoading, error: terrainError } = use3DTerrain(roi || null, dataset);
   const waypointsGeoJson = useWaypointsGeoJson(showWaypoints);
 
-  const [verticalRelief, setVerticalRelief] = useState(1.0);
-  const [horizontalScale, setHorizontalScale] = useState(1.0);
-  const [colorScale, setColorScale] = useState('Terrain');
+  const [verticalRelief, setVerticalRelief] = useState(overlayOptions.relief ?? 1.0);
+  const [colorScale, setColorScale] = useState(toPlotlyColorScale(overlayOptions.colormap, overlayType));
   const [enableContourLines, setEnableContourLines] = useState(false);
   
   const plotRef = useRef<PlotlyHTMLElement | null>(null);
@@ -63,6 +72,16 @@ export default function Terrain3D({
     enableRoverAnimation && isAnimating,
     plotRef
   );
+
+  useEffect(() => {
+    if (typeof overlayOptions.relief === 'number') {
+      setVerticalRelief(overlayOptions.relief);
+    }
+  }, [overlayOptions.relief]);
+
+  useEffect(() => {
+    setColorScale(toPlotlyColorScale(overlayOptions.colormap, overlayType));
+  }, [overlayOptions.colormap, overlayType]);
 
   if (!roi) {
     return (
@@ -80,12 +99,29 @@ export default function Terrain3D({
     );
   }
 
+  if (terrainError?.isServiceUnavailable) {
+    return (
+      <div className="bg-gray-800 rounded-lg p-6">
+        <div className="p-4 bg-amber-900/40 border border-amber-600/70 rounded-md">
+          <p className="text-amber-200 font-semibold">3D terrain service unavailable</p>
+          <p className="text-amber-300 text-sm mt-1">{terrainError.message}</p>
+          {terrainError.detail && (
+            <p className="text-amber-400/90 text-xs mt-2">{terrainError.detail}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (terrainError) {
     return (
       <div className="bg-gray-800 rounded-lg p-6">
         <div className="p-4 bg-red-900/50 border border-red-700 rounded-md">
           <p className="text-red-300 font-semibold">Error loading 3D terrain</p>
-          <p className="text-red-400 text-sm mt-1">{terrainError}</p>
+          <p className="text-red-400 text-sm mt-1">{terrainError.message}</p>
+          {terrainError.detail && (
+            <p className="text-red-400/90 text-xs mt-2">{terrainError.detail}</p>
+          )}
         </div>
       </div>
     );
@@ -228,10 +264,23 @@ export default function Terrain3D({
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
+      {metadata && (
+        <div className="mb-4 bg-gray-900/80 border border-cyan-700/50 rounded-md px-3 py-2 text-xs font-mono text-cyan-300">
+          <div>REQUESTED: {(metadata.datasetRequested || dataset).toUpperCase()}</div>
+          <div>
+            RENDERED: {(metadata.datasetUsed || dataset).toUpperCase()}
+            {metadata.isFallback ? ' (fallback)' : ''}
+          </div>
+          {metadata.isFallback && metadata.fallbackReason && (
+            <div className="text-amber-300 mt-1">REASON: {metadata.fallbackReason}</div>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Vertical Relief</label>
-            <input type="range" min="0.1" max="5.0" step="0.1" value={verticalRelief} onChange={e => setVerticalRelief(parseFloat(e.target.value))} className="w-full" />
+            <input type="range" min="0" max="5.0" step="0.1" value={verticalRelief} onChange={e => setVerticalRelief(parseFloat(e.target.value))} className="w-full" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Color Scale</label>
@@ -240,6 +289,8 @@ export default function Terrain3D({
               <option>Viridis</option>
               <option>Plasma</option>
               <option>Earth</option>
+              <option>Magma</option>
+              <option>Cividis</option>
             </select>
           </div>
           <div className="flex items-center">

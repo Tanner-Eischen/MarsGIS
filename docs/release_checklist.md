@@ -28,6 +28,47 @@
 - [x] Route smoke test passes from top site selection to waypoints.
 - [x] Demo script uses fixed ROI, presets, and expected outputs.
 
+## Real-Data-Only Prewarm / Runbook
+- [x] Real-data-only mode is documented (`MARSHAB_ALLOW_SYNTHETIC_TILES=false`).
+- [x] MOLA tile prewarm endpoint is documented for target ROI.
+- [x] One-command tile + 3D readiness smoke check is available.
+
+### Runbook (Local API)
+1. Prepare real Jezero DEM cache:
+```bash
+poetry run python scripts/setup_real_dem.py --force-download
+```
+
+2. Start API in real-data-only tile mode:
+```bash
+# bash/zsh
+export MARSHAB_ALLOW_SYNTHETIC_TILES=false
+poetry run python -m marshab.web.server
+```
+
+```powershell
+# PowerShell
+$env:MARSHAB_ALLOW_SYNTHETIC_TILES = "false"
+poetry run python -m marshab.web.server
+```
+
+3. Optional direct prewarm call (same ROI used by smoke):
+```bash
+curl -X POST http://localhost:5000/api/v1/prewarm/mola-tiles \
+  -H "Content-Type: application/json" \
+  -d '{"roi":[18.25,18.45,77.25,77.45],"tile_deg":0.2,"force":false}'
+```
+
+4. Run one-command readiness smoke check:
+```bash
+poetry run python scripts/smoke_tile_3d_readiness.py
+```
+
+5. Pass criteria:
+- Basemap + overlay tile requests return `200 image/png`.
+- Tile headers include `X-Fallback-Used: false`.
+- `terrain-3d` reports `used_synthetic=false` and `is_fallback=false`.
+
 ## Build & Quality Gates
 - [x] Backend tests run in CI.
 - [x] Ruff lint runs in CI.

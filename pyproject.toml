@@ -55,10 +55,7 @@ mars = "marshab.cli:mars_app"
 marshab-web = "marshab.web.server:main"
 
 [tool.ruff]
-line-length = 100
-target-version = "py311"
-select = ["E", "F", "I", "N", "W", "UP"]
-ignore = []
+extend = ".ruff.toml"
 
 [tool.ruff.format]
 quote-style = "double"
@@ -88,4 +85,3 @@ line_length = 100
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-

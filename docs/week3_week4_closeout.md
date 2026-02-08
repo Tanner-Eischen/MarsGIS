@@ -21,12 +21,17 @@
 - Added configurable CORS for production:
   - `MARSHAB_CORS_ORIGINS` (comma-separated)
   - `MARSHAB_CORS_ALLOW_ALL=true` (no credentials)
+- Added real-data-only tile/3D readiness operations:
+  - API prewarm endpoint usage: `POST /api/v1/prewarm/mola-tiles`
+  - One-command smoke check: `scripts/smoke_tile_3d_readiness.py`
+  - 3D payload now reports `used_synthetic` for strict validation in runbooks.
 
 ## Validation Commands
 
 ```bash
 poetry run pytest -q tests/test_pipeline_smoke.py tests/test_route_smoke.py tests/api/test_portfolio_flows.py
 poetry run ruff check marshab tests scripts --select E9,F63,F7,F82
+poetry run python scripts/smoke_tile_3d_readiness.py
 cd webui && npm run build
 ```
 

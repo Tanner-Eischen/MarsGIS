@@ -15,7 +15,7 @@ select = [
 ignore = [
     "E501",  # Line too long (handled by Black)
     "UP007", # Keep legacy Optional/Union annotations for now
-    "UP038", # Keep tuple form in isinstance checks
+    "UP038", # Keep tuple form in isinstance checks (needed for older Ruff)
     "B008",  # Typer's Option/Argument defaults are intentional
     "B904",  # Existing exception style debt; defer chained-raise refactor
     "N803",  # Scientific/ML convention: uppercase feature matrix names

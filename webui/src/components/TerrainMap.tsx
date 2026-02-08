@@ -198,7 +198,8 @@ export default function TerrainMap({
         <TileLayer
           url={MARS_BASEMAP_URL}
           attribution='&copy; USGS / OpenPlanetary'
-          maxZoom={8}
+          maxNativeZoom={5}
+          maxZoom={12}
           noWrap={true}
         />
 

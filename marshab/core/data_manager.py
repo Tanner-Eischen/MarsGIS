@@ -15,7 +15,7 @@ from typing import Literal, Optional
 import numpy as np
 import rasterio
 import xarray as xr
-from rasterio.transform import from_bounds
+from rasterio.transform import Affine, from_bounds
 
 from marshab.config import get_config
 from marshab.exceptions import DataError
@@ -25,6 +25,11 @@ from marshab.testing.synthetic_dem import create_synthetic_dem_complex
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+DEFAULT_JEZERO_DEM_URL = (
+    "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/"
+    "JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif"
+)
 
 
 class DataManager:
@@ -85,13 +90,96 @@ class DataManager:
                 logger.error(f"Failed to clip/save MOLA tile: {e}")
                 # Fallback to synthetic
 
+        # 3. If ROI is near Jezero, attempt curated high-resolution tile download.
+        # This provides a much better map than synthetic fallback for portfolio demos.
+        if self._roi_is_jezero_like(roi):
+            try:
+                logger.info("Attempting curated Jezero DEM download for MOLA request")
+                self._download_curated_jezero_tile(dest_path)
+                return
+            except Exception as e:
+                logger.warning("Curated Jezero DEM download failed", error=str(e))
+
         # NOTE: We do NOT auto-download the 2GB global file here during a tile request.
         # It causes timeouts. The user must initiate global download via Data Settings.
         # Or we use synthetic fallback until then.
 
-        # 3. Final Fallback
+        # 4. Final fallback
         logger.warning("Real data not available (Global MOLA not cached). Generating realistic synthetic proxy.")
         self._generate_synthetic_proxy(roi, dest_path)
+
+    def _roi_is_jezero_like(self, roi: BoundingBox) -> bool:
+        """Return True when ROI intersects the Jezero demo area."""
+        # Broad bounds around Jezero crater and delta region.
+        jezero_lat_min, jezero_lat_max = 17.8, 18.8
+        jezero_lon_min, jezero_lon_max = 76.8, 77.8
+        return not (
+            roi.lat_max < jezero_lat_min
+            or roi.lat_min > jezero_lat_max
+            or roi.lon_max < jezero_lon_min
+            or roi.lon_min > jezero_lon_max
+        )
+
+    def _looks_geographic(self, src: rasterio.DatasetReader) -> bool:
+        """Return True when transform/bounds look like lon/lat in degrees."""
+        b = src.bounds
+        t = src.transform
+        return (
+            abs(t.a) < 1.0
+            and abs(t.e) < 1.0
+            and -90.0 <= b.bottom <= 90.0
+            and -90.0 <= b.top <= 90.0
+            and 0.0 <= b.left <= 360.0
+            and 0.0 <= b.right <= 360.0
+        )
+
+    def _download_curated_jezero_tile(self, dest_path: Path) -> None:
+        """Download and normalize a curated Jezero DEM tile into cache."""
+        url = os.getenv("MARSHAB_JEZERO_DEM_URL", DEFAULT_JEZERO_DEM_URL)
+        tmp_download = dest_path.with_suffix(".download.tmp.tif")
+        tmp_normalized = dest_path.with_suffix(".normalized.tmp.tif")
+
+        try:
+            urllib.request.urlretrieve(url, tmp_download)
+            with rasterio.open(tmp_download) as src:
+                profile = src.profile.copy()
+                transform = src.transform
+                if not self._looks_geographic(src):
+                    deg_per_m = 180.0 / (math.pi * self.config.mars.equatorial_radius_m)
+                    transform = Affine(
+                        transform.a * deg_per_m,
+                        transform.b * deg_per_m,
+                        transform.c * deg_per_m,
+                        transform.d * deg_per_m,
+                        transform.e * deg_per_m,
+                        transform.f * deg_per_m,
+                    )
+
+                profile.update(
+                    {
+                        "transform": transform,
+                        "crs": None,
+                        "compress": "lzw",
+                    }
+                )
+
+                with rasterio.open(tmp_normalized, "w", **profile) as dst:
+                    for band_idx in range(1, src.count + 1):
+                        dst.write(src.read(band_idx), band_idx)
+                    tags = dict(src.tags())
+                    tags["CRS_INFO"] = "EPSG:49900"
+                    tags["SOURCE_URL"] = url
+                    dst.update_tags(**tags)
+
+            if dest_path.exists():
+                dest_path.unlink()
+            tmp_normalized.replace(dest_path)
+            logger.info("Curated Jezero DEM cached", path=str(dest_path))
+        finally:
+            if tmp_download.exists():
+                tmp_download.unlink()
+            if tmp_normalized.exists():
+                tmp_normalized.unlink()
 
     def _get_demo_seed(self) -> int | None:
         """Get deterministic demo seed from environment, if configured."""

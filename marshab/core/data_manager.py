@@ -138,6 +138,11 @@ class DataManager:
         # Broad bounds around Jezero crater and delta region.
         jezero_lat_min, jezero_lat_max = 17.8, 18.8
         jezero_lon_min, jezero_lon_max = 76.8, 77.8
+        lat_span = roi.lat_max - roi.lat_min
+        lon_span = roi.lon_max - roi.lon_min
+        # Curated Jezero tile is only valid for small local windows.
+        if lat_span > 2.0 or lon_span > 2.0:
+            return False
         return not (
             roi.lat_max < jezero_lat_min
             or roi.lat_min > jezero_lat_max

@@ -238,6 +238,35 @@ async def get_dem_image(
             logger.error("Invalid ROI format", roi=roi, error=str(e))
             raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
 
+        lat_span = lat_max - lat_min
+        lon_span = lon_max - lon_min
+        if lat_span <= 0 or lon_span <= 0:
+            raise HTTPException(status_code=400, detail="Invalid ROI bounds: max must be greater than min")
+
+        dataset_lower = dataset.lower()
+        if dataset_lower not in {"mola", "ctx", "hirise"}:
+            raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, ctx, hirise")
+
+        # Prevent long-running overlay jobs that often surface in browser as CORS header errors
+        # when the upstream platform returns 502/timeout.
+        max_lat_span = 4.0 if dataset_lower == "mola" else 1.2
+        max_lon_span = 4.0 if dataset_lower == "mola" else 1.2
+        max_area_deg2 = 12.0 if dataset_lower == "mola" else 1.5
+        if lat_span > max_lat_span or lon_span > max_lon_span or (lat_span * lon_span) > max_area_deg2:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"ROI too large for interactive overlay ({lat_span:.2f} x {lon_span:.2f} deg). "
+                    "Zoom in or reduce ROI."
+                ),
+            )
+
+        if width * height > 2_200_000:
+            raise HTTPException(
+                status_code=413,
+                detail="Requested overlay image is too large. Reduce viewport size or zoom level.",
+            )
+
         # Extend ROI bounds if buffer is specified
         if buffer > 0:
             delta_lat = (lat_max - lat_min) * buffer
@@ -909,6 +938,35 @@ async def get_overlay(
         except Exception as e:
             logger.error("Invalid ROI format", roi=roi, error=str(e))
             raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
+
+        lat_span = lat_max - lat_min
+        lon_span = lon_max - lon_min
+        if lat_span <= 0 or lon_span <= 0:
+            raise HTTPException(status_code=400, detail="Invalid ROI bounds: max must be greater than min")
+
+        dataset_lower = dataset.lower()
+        if dataset_lower not in {"mola", "ctx", "hirise"}:
+            raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, ctx, hirise")
+
+        # Keep interactive overlays bounded to avoid platform 502/timeout responses
+        # that browsers often surface as CORS header errors.
+        max_lat_span = 4.0 if dataset_lower == "mola" else 1.2
+        max_lon_span = 4.0 if dataset_lower == "mola" else 1.2
+        max_area_deg2 = 12.0 if dataset_lower == "mola" else 1.5
+        if lat_span > max_lat_span or lon_span > max_lon_span or (lat_span * lon_span) > max_area_deg2:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"ROI too large for interactive overlay ({lat_span:.2f} x {lon_span:.2f} deg). "
+                    "Zoom in or reduce ROI."
+                ),
+            )
+
+        if width * height > 2_200_000:
+            raise HTTPException(
+                status_code=413,
+                detail="Requested overlay image is too large. Reduce viewport size or zoom level.",
+            )
 
         # Extend ROI bounds if buffer is specified
         if buffer > 0:

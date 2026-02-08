@@ -298,7 +298,7 @@ class DataManager:
 
     def download_dem(
         self,
-        dataset: Literal["mola", "hirise", "ctx"],
+        dataset: Literal["mola", "mola_200m", "hirise", "ctx"],
         roi: Optional[BoundingBox] = None,
         force: bool = False,
     ) -> Path:
@@ -363,7 +363,7 @@ class DataManager:
     def get_dem_for_roi(
         self,
         roi: BoundingBox,
-        dataset: Literal["mola", "hirise", "ctx"] = "mola",
+        dataset: Literal["mola", "mola_200m", "hirise", "ctx"] = "mola",
         download: bool = True,
         clip: bool = True,
     ) -> xr.DataArray:

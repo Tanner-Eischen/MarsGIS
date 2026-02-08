@@ -19,7 +19,7 @@ router = APIRouter()
 class DownloadRequest(BaseModel):
     """Request model for DEM download."""
 
-    dataset: str = Field(..., description="Dataset name (mola, hirise, ctx)")
+    dataset: str = Field(..., description="Dataset name (mola, mola_200m, hirise, ctx)")
     roi: list[float] = Field(..., description="Region of interest [lat_min, lat_max, lon_min, lon_max]")
     force: bool = Field(False, description="Force re-download even if cached")
 
@@ -50,7 +50,7 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
         )
 
         # Validate dataset
-        valid_datasets = ["mola", "hirise", "ctx"]
+        valid_datasets = ["mola", "mola_200m", "hirise", "ctx"]
         if request.dataset.lower() not in valid_datasets:
             raise HTTPException(
                 status_code=400,

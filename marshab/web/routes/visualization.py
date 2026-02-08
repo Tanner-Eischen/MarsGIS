@@ -6,6 +6,7 @@ import time
 import urllib.request
 
 import numpy as np
+from rasterio.transform import Affine, rowcol
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from PIL import Image
@@ -50,6 +51,91 @@ async def get_mars_basemap_tile(z: int, x: int, y: int):
     except Exception as e:
         logger.warning("Basemap tile proxy failed", z=z, x=x, y=y, error=str(e))
         raise HTTPException(status_code=502, detail="Failed to fetch basemap tile")
+
+
+@router.get("/visualization/elevation-at")
+async def get_elevation_at(
+    lat: float = Query(..., ge=-90.0, le=90.0, description="Latitude in degrees"),
+    lon: float = Query(..., ge=-180.0, le=360.0, description="Longitude in degrees"),
+    dataset: str = Query("mola", description="Dataset name (mola, hirise, ctx)"),
+    window_deg: float = Query(
+        0.05,
+        gt=0.0,
+        le=2.0,
+        description="Half-window size in degrees used to load DEM around the point",
+    ),
+):
+    """Sample numeric elevation from DEM at a clicked map coordinate."""
+    dataset_lower = dataset.lower()
+    if dataset_lower not in {"mola", "hirise", "ctx"}:
+        raise HTTPException(status_code=400, detail="Invalid dataset. Use one of: mola, hirise, ctx")
+
+    # Keep internal lon domain consistent with DEM loaders (0..360).
+    lon_360 = lon + 360.0 if lon < 0 else lon
+    lon_360 = min(360.0, max(0.0, lon_360))
+
+    bbox = BoundingBox(
+        lat_min=max(-90.0, lat - window_deg),
+        lat_max=min(90.0, lat + window_deg),
+        lon_min=max(0.0, lon_360 - window_deg),
+        lon_max=min(360.0, lon_360 + window_deg),
+    )
+    try:
+        data_manager = DataManager()
+        dem = data_manager.get_dem_for_roi(bbox, dataset=dataset_lower, download=True, clip=True)
+        elevation = dem.values.astype(np.float32)
+        if elevation.size == 0:
+            raise HTTPException(status_code=404, detail="No DEM data available at this location")
+
+        rows, cols = elevation.shape
+        sample_row = rows // 2
+        sample_col = cols // 2
+
+        transform_values = dem.attrs.get("transform")
+        if isinstance(transform_values, (list, tuple)) and len(transform_values) >= 6:
+            try:
+                transform = Affine(*transform_values[:6])
+                sample_row, sample_col = rowcol(transform, lon_360, lat, op=round)
+            except Exception:
+                sample_row, sample_col = rows // 2, cols // 2
+
+        sample_row = int(max(0, min(rows - 1, sample_row)))
+        sample_col = int(max(0, min(cols - 1, sample_col)))
+
+        nodata = dem.attrs.get("nodata")
+        valid_mask = np.isfinite(elevation)
+        if nodata is not None:
+            valid_mask &= elevation != nodata
+        if not np.any(valid_mask):
+            raise HTTPException(status_code=404, detail="DEM sample contains no valid elevation values")
+
+        sampled_value = elevation[sample_row, sample_col]
+        if (not np.isfinite(sampled_value)) or (nodata is not None and sampled_value == nodata):
+            valid_indices = np.argwhere(valid_mask)
+            distances = (valid_indices[:, 0] - sample_row) ** 2 + (valid_indices[:, 1] - sample_col) ** 2
+            nearest_idx = int(np.argmin(distances))
+            sample_row, sample_col = map(int, valid_indices[nearest_idx])
+            sampled_value = elevation[sample_row, sample_col]
+
+        valid_values = elevation[valid_mask]
+        return {
+            "dataset": dataset_lower,
+            "lat": float(lat),
+            "lon": float(lon),
+            "lon_360": float(lon_360),
+            "elevation_m": float(sampled_value),
+            "pixel_row": sample_row,
+            "pixel_col": sample_col,
+            "grid_shape": [int(rows), int(cols)],
+            "window_deg": float(window_deg),
+            "elevation_min_m": float(np.nanmin(valid_values)),
+            "elevation_max_m": float(np.nanmax(valid_values)),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to sample DEM elevation", lat=lat, lon=lon, dataset=dataset_lower)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/visualization/sites/{analysis_id}")

@@ -39,6 +39,7 @@ interface ViewportSample {
 }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+const roundTo = (value: number, step: number) => Math.round(value / step) * step
 
 const normalizeLon360 = (lon: number) => {
   let normalized = lon
@@ -52,16 +53,16 @@ const boundsToViewportSample = (map: L.Map): ViewportSample => {
   const size = map.getSize()
   const zoom = map.getZoom()
 
-  const south = clamp(bounds.getSouth(), -90, 90)
-  const north = clamp(bounds.getNorth(), -90, 90)
-  const west = normalizeLon360(bounds.getWest())
-  const east = normalizeLon360(bounds.getEast())
+  const south = clamp(roundTo(bounds.getSouth(), 0.01), -90, 90)
+  const north = clamp(roundTo(bounds.getNorth(), 0.01), -90, 90)
+  const west = normalizeLon360(roundTo(bounds.getWest(), 0.01))
+  const east = normalizeLon360(roundTo(bounds.getEast(), 0.01))
   const lonMin = west
   const lonMax = east > west ? east : clamp(west + 0.01, 0, 360)
 
   const scale = clamp(1 + (zoom - 5) * 0.4, 1, 4)
-  const width = Math.round(clamp(size.x * scale, 800, 4000))
-  const height = Math.round(clamp(size.y * scale, 600, 4000))
+  const width = roundTo(clamp(size.x * scale, 800, 4000), 64)
+  const height = roundTo(clamp(size.y * scale, 600, 4000), 64)
 
   return {
     roi: {
@@ -101,16 +102,31 @@ function ViewportTracker({
   onViewportChange: (sample: ViewportSample) => void
 }) {
   const map = useMap()
+  const debounceRef = useRef<number | null>(null)
 
   useEffect(() => {
-    const emitViewport = () => {
-      onViewportChange(boundsToViewportSample(map))
+    const scheduleViewport = (immediate = false) => {
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+      const run = () => onViewportChange(boundsToViewportSample(map))
+      if (immediate) {
+        run()
+      } else {
+        debounceRef.current = window.setTimeout(run, 250)
+      }
     }
+    const handleViewportEvent = () => scheduleViewport(false)
 
-    emitViewport()
-    map.on('moveend zoomend resize', emitViewport)
+    scheduleViewport(true)
+    map.on('moveend zoomend resize', handleViewportEvent)
     return () => {
-      map.off('moveend zoomend resize', emitViewport)
+      map.off('moveend zoomend resize', handleViewportEvent)
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
     }
   }, [map, onViewportChange])
 

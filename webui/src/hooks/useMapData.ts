@@ -49,6 +49,9 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
 
   useEffect(() => {
     if (!roi) return
+    let cancelled = false
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     const fetchDemImage = async () => {
       setDemImage((prev) => ({ ...prev, loading: true, error: null }))
@@ -59,11 +62,7 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
           `/visualization/dem-image?dataset=${dataset}&roi=${roiStr}&width=1200&height=800&colormap=terrain&relief=${relief}&buffer=0.25`
         )
 
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 30000)
-
         const response = await fetch(url, { signal: controller.signal })
-        clearTimeout(timeoutId)
 
         if (!response.ok) {
           const errorText = await response.text()
@@ -92,22 +91,32 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
             [roi.lat_min, roi.lon_min],
             [roi.lat_max, roi.lon_max]
           )
+          if (cancelled) return
           setDemImage({ url: newUrl, bounds: fallbackBounds, loading: false, error: null })
         } else {
+          if (cancelled) return
           setDemImage({ url: newUrl, bounds, loading: false, error: null })
         }
       } catch (error: unknown) {
+        if (cancelled) return
         if (error instanceof Error && error.name === 'AbortError') {
-          setDemImage({ url: null, bounds: null, loading: false, error: 'DEM loading timed out.' })
+          setDemImage((prev) => ({ ...prev, loading: false, error: 'DEM loading timed out.' }))
         } else {
           const message = error instanceof Error ? error.message : 'Unknown error'
-          setDemImage({ url: null, bounds: null, loading: false, error: message })
+          setDemImage((prev) => ({ ...prev, loading: false, error: message }))
         }
+      } finally {
+        clearTimeout(timeoutId)
       }
     }
 
     fetchDemImage()
-  }, [roi, dataset, relief])
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(timeoutId)
+    }
+  }, [roi?.lat_min, roi?.lat_max, roi?.lon_min, roi?.lon_max, dataset, relief])
 
   return demImage
 }
@@ -187,6 +196,9 @@ export function useOverlayImage(
 
   useEffect(() => {
     if (!roi || !overlayType) return
+    let cancelled = false
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
 
     const fetchOverlayImage = async () => {
       setOverlayImage((prev) => ({ ...prev, loading: true, error: null }))
@@ -211,11 +223,7 @@ export function useOverlayImage(
         if (dustStormPeriod) params.append('dust_storm_period', dustStormPeriod)
 
         const url = apiUrl(`/visualization/overlay?${params.toString()}`)
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 60000)
-
         const response = await fetch(url, { signal: controller.signal })
-        clearTimeout(timeoutId)
 
         if (!response.ok) {
           const errorText = await response.text()
@@ -244,23 +252,36 @@ export function useOverlayImage(
             [roi.lat_min, roi.lon_min],
             [roi.lat_max, roi.lon_max]
           )
+          if (cancelled) return
           setOverlayImage({ url: newUrl, bounds: fallbackBounds, loading: false, error: null })
         } else {
+          if (cancelled) return
           setOverlayImage({ url: newUrl, bounds, loading: false, error: null })
         }
       } catch (error: unknown) {
+        if (cancelled) return
         if (error instanceof Error && error.name === 'AbortError') {
           setOverlayImage((prev) => ({ ...prev, loading: false, error: 'Overlay loading timed out.' }))
         } else {
           const message = error instanceof Error ? error.message : 'Unknown error'
           setOverlayImage((prev) => ({ ...prev, loading: false, error: message }))
         }
+      } finally {
+        clearTimeout(timeoutId)
       }
     }
 
     fetchOverlayImage()
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(timeoutId)
+    }
   }, [
-    roi,
+    roi?.lat_min,
+    roi?.lat_max,
+    roi?.lon_min,
+    roi?.lon_max,
     dataset,
     overlayType,
     colormap,

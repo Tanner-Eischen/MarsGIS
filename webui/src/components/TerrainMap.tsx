@@ -75,6 +75,26 @@ const boundsToViewportSample = (map: L.Map): ViewportSample => {
   }
 }
 
+const capSpan = (minValue: number, maxValue: number, maxSpan: number, floor: number, ceil: number) => {
+  if (maxValue <= minValue) return [minValue, maxValue] as const
+  const span = maxValue - minValue
+  if (span <= maxSpan) return [minValue, maxValue] as const
+  const center = (minValue + maxValue) / 2
+  let nextMin = center - maxSpan / 2
+  let nextMax = center + maxSpan / 2
+  if (nextMin < floor) {
+    const delta = floor - nextMin
+    nextMin += delta
+    nextMax += delta
+  }
+  if (nextMax > ceil) {
+    const delta = nextMax - ceil
+    nextMin -= delta
+    nextMax -= delta
+  }
+  return [clamp(nextMin, floor, ceil), clamp(nextMax, floor, ceil)] as const
+}
+
 function ViewportTracker({
   onViewportChange,
 }: {
@@ -296,9 +316,52 @@ export default function TerrainMap({
     })
   }, [])
 
-  const renderRoi = viewportSample?.roi ?? roi
-  const renderWidth = overlayOptions.width ?? viewportSample?.width ?? 1400
-  const renderHeight = overlayOptions.height ?? viewportSample?.height ?? 900
+  const targetRoi = roi
+    ? {
+        lat_min: clamp(Number(roi.lat_min), -90, 90),
+        lat_max: clamp(Number(roi.lat_max), -90, 90),
+        lon_min: clamp(normalizeLon360(Number(roi.lon_min)), 0, 360),
+        lon_max: clamp(normalizeLon360(Number(roi.lon_max)), 0, 360),
+      }
+    : null
+
+  let renderRoi = viewportSample?.roi ?? targetRoi ?? null
+  if (renderRoi && targetRoi) {
+    const expandedTarget = {
+      lat_min: clamp(targetRoi.lat_min - 0.2, -90, 90),
+      lat_max: clamp(targetRoi.lat_max + 0.2, -90, 90),
+      lon_min: clamp(targetRoi.lon_min - 0.2, 0, 360),
+      lon_max: clamp(targetRoi.lon_max + 0.2, 0, 360),
+    }
+    const clipped = {
+      lat_min: Math.max(renderRoi.lat_min, expandedTarget.lat_min),
+      lat_max: Math.min(renderRoi.lat_max, expandedTarget.lat_max),
+      lon_min: Math.max(renderRoi.lon_min, expandedTarget.lon_min),
+      lon_max: Math.min(renderRoi.lon_max, expandedTarget.lon_max),
+    }
+    if (clipped.lat_max > clipped.lat_min && clipped.lon_max > clipped.lon_min) {
+      renderRoi = clipped
+    } else {
+      renderRoi = expandedTarget
+    }
+  }
+  if (renderRoi) {
+    const maxLatSpan = dataset.toLowerCase() === 'mola' ? 2.5 : 0.8
+    const maxLonSpan = dataset.toLowerCase() === 'mola' ? 2.5 : 0.8
+    const [latMin, latMax] = capSpan(renderRoi.lat_min, renderRoi.lat_max, maxLatSpan, -90, 90)
+    const [lonMin, lonMax] = capSpan(renderRoi.lon_min, renderRoi.lon_max, maxLonSpan, 0, 360)
+    renderRoi = {
+      lat_min: latMin,
+      lat_max: latMax,
+      lon_min: lonMin,
+      lon_max: lonMax,
+    }
+  }
+
+  const requestedWidth = overlayOptions.width ?? viewportSample?.width ?? 1400
+  const requestedHeight = overlayOptions.height ?? viewportSample?.height ?? 900
+  const renderWidth = clamp(requestedWidth, 800, 1800)
+  const renderHeight = clamp(requestedHeight, 600, 1400)
 
   const overlayImage = useOverlayImage(renderRoi, dataset, activeOverlayType, {
     colormap: overlayOptions.colormap || 'terrain',

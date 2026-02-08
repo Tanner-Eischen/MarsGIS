@@ -15,6 +15,7 @@ dependencies:
   - xarray=2023.12
   - plotly=5.18
   - matplotlib=3.8
+  - pyyaml=6.0
   - pip
   - pip:
     - spiceypy>=6.0

@@ -24,6 +24,7 @@ COPY . .
 
 # Install marshab package in development mode
 RUN pip install -e .
+RUN python -c "import yaml; print('PyYAML OK')"
 
 # Keep entrypoint command-flexible so container can run CLI or API commands.
 ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "marshab"]

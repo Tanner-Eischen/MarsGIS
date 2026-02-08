@@ -67,8 +67,8 @@ function generateCacheKey(
     String(options.relief || 0),
     String(options.sunAzimuth || 315),
     String(options.sunAltitude || 45),
-    String(options.width || 2400),
-    String(options.height || 1600)
+    String(options.width || 1200),
+    String(options.height || 800)
   ]
   
   // Add temporal parameters if present
@@ -239,9 +239,9 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
         relief: String(overlayOptions.relief || 0),
         sun_azimuth: String(overlayOptions.sunAzimuth || 315),
         sun_altitude: String(overlayOptions.sunAltitude || 45),
-        width: String(overlayOptions.width || 2400),
-        height: String(overlayOptions.height || 1600),
-        buffer: String(overlayOptions.buffer || 1.5)
+        width: String(overlayOptions.width || 1200),
+        height: String(overlayOptions.height || 800),
+        buffer: String(overlayOptions.buffer || 0.25)
       })
 
       // Add temporal parameters if present
@@ -290,8 +290,8 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
           relief: overlayOptions.relief,
           sunAzimuth: overlayOptions.sunAzimuth,
           sunAltitude: overlayOptions.sunAltitude,
-          width: overlayOptions.width || 2400,
-          height: overlayOptions.height || 1600,
+          width: overlayOptions.width || 1200,
+          height: overlayOptions.height || 800,
           temporalParams: {
             marsSol: overlayOptions.marsSol,
             season: overlayOptions.season,

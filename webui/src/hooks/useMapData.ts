@@ -53,7 +53,7 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
       try {
         const roiStr = `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}`
         const url = apiUrl(
-          `/visualization/dem-image?dataset=${dataset}&roi=${roiStr}&width=2400&height=1600&colormap=terrain&relief=${relief}&buffer=1.5`
+          `/visualization/dem-image?dataset=${dataset}&roi=${roiStr}&width=1200&height=800&colormap=terrain&relief=${relief}&buffer=0.25`
         )
 
         const controller = new AbortController()
@@ -169,9 +169,9 @@ export function useOverlayImage(
     relief = 0,
     sunAzimuth = 315,
     sunAltitude = 45,
-    width = 2400,
-    height = 1600,
-    buffer = 1.5,
+    width = 1200,
+    height = 800,
+    buffer = 0.25,
     marsSol,
     season,
     dustStormPeriod,

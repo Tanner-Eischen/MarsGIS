@@ -1,4 +1,4 @@
-import { MapContainer, ImageOverlay, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, ImageOverlay, GeoJSON, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
@@ -11,6 +11,9 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
+
+const MARS_BASEMAP_URL =
+  'https://s3-eu-west-1.amazonaws.com/whereonmars.cartodb.net/celestia_mars-shaded-16k_global/{z}/{x}/{y}.png';
 
 function FitBounds({ bounds, fitKey }) {
   const map = useMap();
@@ -170,7 +173,13 @@ export default function TerrainMap({
   const displayError = overlayImage?.error;
 
   const centerTuple: [number, number] = roi
-    ? [(roi.lat_min + roi.lat_max) / 2, (roi.lon_min + roi.lon_max) / 2]
+    ? [
+        (roi.lat_min + roi.lat_max) / 2,
+        (() => {
+          const lon = (roi.lon_min + roi.lon_max) / 2;
+          return lon > 180 ? lon - 360 : lon;
+        })(),
+      ]
     : [0, 180];
 
   const fitKey = roi
@@ -186,9 +195,16 @@ export default function TerrainMap({
         className="bg-black"
         scrollWheelZoom={true}
       >
+        <TileLayer
+          url={MARS_BASEMAP_URL}
+          attribution='&copy; USGS / OpenPlanetary'
+          maxZoom={8}
+          noWrap={true}
+        />
+
         {displayImageUrl && displayBounds && (
           <>
-            <ImageOverlay url={displayImageUrl} bounds={displayBounds} />
+            <ImageOverlay url={displayImageUrl} bounds={displayBounds} opacity={0.78} />
             <FitBounds bounds={displayBounds} fitKey={fitKey} />
           </>
         )}

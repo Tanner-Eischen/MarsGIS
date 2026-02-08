@@ -1,9 +1,9 @@
-import { MapContainer, ImageOverlay, GeoJSON, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, ImageOverlay, GeoJSON, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
-import { useEffect, useRef } from 'react';
-import { API_BASE } from '../lib/apiBase';
+import { useEffect, useRef, useState } from 'react';
+import { API_BASE, apiUrl } from '../lib/apiBase';
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -14,6 +14,59 @@ L.Icon.Default.mergeOptions({
 });
 
 const MARS_BASEMAP_URL = `${API_BASE}/visualization/basemap/{z}/{x}/{y}.png`;
+
+interface ElevationSample {
+  dataset: string
+  lat: number
+  lon: number
+  lon_360: number
+  elevation_m: number
+  pixel_row: number
+  pixel_col: number
+  grid_shape: [number, number]
+  window_deg: number
+  elevation_min_m: number
+  elevation_max_m: number
+}
+
+function ElevationProbe({
+  dataset,
+  onPending,
+  onResult,
+  onError,
+}: {
+  dataset: string
+  onPending: () => void
+  onResult: (sample: ElevationSample) => void
+  onError: (message: string) => void
+}) {
+  useMapEvents({
+    click: async (event) => {
+      const lat = event.latlng.lat
+      const lon = event.latlng.lng
+      const params = new URLSearchParams({
+        dataset,
+        lat: String(lat),
+        lon: String(lon),
+      })
+      onPending()
+      try {
+        const response = await fetch(apiUrl(`/visualization/elevation-at?${params.toString()}`))
+        if (!response.ok) {
+          const detail = await response.text()
+          throw new Error(`Elevation sample failed: ${response.status} ${detail}`)
+        }
+        const data: ElevationSample = await response.json()
+        onResult(data)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown elevation sampling error'
+        onError(message)
+      }
+    },
+  })
+
+  return null
+}
 
 function FitBounds({ bounds, fitKey }) {
   const map = useMap();
@@ -153,6 +206,9 @@ export default function TerrainMap({
   overlayOptions = {}
 }: TerrainMapProps) {
   const activeOverlayType = overlayType || 'elevation';
+  const [probeLoading, setProbeLoading] = useState(false)
+  const [probeError, setProbeError] = useState<string | null>(null)
+  const [probeSample, setProbeSample] = useState<ElevationSample | null>(null)
 
   const overlayImage = useOverlayImage(roi, dataset, activeOverlayType, {
     colormap: overlayOptions.colormap || 'terrain',
@@ -202,6 +258,22 @@ export default function TerrainMap({
           maxZoom={12}
           noWrap={true}
         />
+        <ElevationProbe
+          dataset={dataset}
+          onPending={() => {
+            setProbeLoading(true)
+            setProbeError(null)
+          }}
+          onResult={(sample) => {
+            setProbeLoading(false)
+            setProbeError(null)
+            setProbeSample(sample)
+          }}
+          onError={(message) => {
+            setProbeLoading(false)
+            setProbeError(message)
+          }}
+        />
 
         {displayImageUrl && displayBounds && (
           <>
@@ -230,6 +302,21 @@ export default function TerrainMap({
           Map data error: {displayError}
         </div>
       )}
+
+      <div className="pointer-events-none absolute bottom-3 right-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+        <div className="font-bold mb-1">DEM Probe (click map)</div>
+        {probeLoading && <div>Sampling elevation...</div>}
+        {!probeLoading && probeSample && (
+          <>
+            <div>LAT: {probeSample.lat.toFixed(4)}</div>
+            <div>LON: {probeSample.lon_360.toFixed(4)}</div>
+            <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
+            <div>DATASET: {probeSample.dataset.toUpperCase()}</div>
+          </>
+        )}
+        {!probeLoading && !probeSample && <div>No sample yet</div>}
+        {probeError && <div className="text-red-300 mt-1">Error: {probeError}</div>}
+      </div>
     </div>
   );
 }

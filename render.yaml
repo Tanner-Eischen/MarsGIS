@@ -1,7 +1,7 @@
 services:
   - type: web
     name: marshab-api
-    env: docker
+    runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     dockerCommand: conda run --no-capture-output -n marshab python -m marshab.web.server
@@ -15,7 +15,7 @@ services:
         sync: false
   - type: web
     name: marshab-web
-    env: static
+    runtime: static
     buildCommand: cd webui && npm ci && npm run build
     staticPublishPath: webui/dist
     envVars:

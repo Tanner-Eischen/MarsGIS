@@ -179,9 +179,9 @@ export default function TerrainMap({
         relief: overlayOptions.relief ?? relief,
         sunAzimuth: overlayOptions.sunAzimuth || 315,
         sunAltitude: overlayOptions.sunAltitude || 45,
-        width: overlayOptions.width || 2400,
-        height: overlayOptions.height || 1600,
-        buffer: overlayOptions.buffer || 1.5,
+        width: overlayOptions.width || 1200,
+        height: overlayOptions.height || 800,
+        buffer: overlayOptions.buffer || 0.25,
         marsSol: overlayOptions.marsSol,
         season: overlayOptions.season,
         dustStormPeriod: overlayOptions.dustStormPeriod

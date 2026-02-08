@@ -40,6 +40,7 @@ interface ViewportSample {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const roundTo = (value: number, step: number) => Math.round(value / step) * step
+const MAX_OVERLAY_PIXELS = 2_000_000
 
 const normalizeLon360 = (lon: number) => {
   let normalized = lon
@@ -94,6 +95,18 @@ const capSpan = (minValue: number, maxValue: number, maxSpan: number, floor: num
     nextMax -= delta
   }
   return [clamp(nextMin, floor, ceil), clamp(nextMax, floor, ceil)] as const
+}
+
+const capRenderSize = (width: number, height: number) => {
+  let w = clamp(width, 800, 1800)
+  let h = clamp(height, 600, 1400)
+  const pixels = w * h
+  if (pixels > MAX_OVERLAY_PIXELS) {
+    const scale = Math.sqrt(MAX_OVERLAY_PIXELS / pixels)
+    w = roundTo(clamp(w * scale, 800, 1600), 16)
+    h = roundTo(clamp(h * scale, 600, 1200), 16)
+  }
+  return { width: w, height: h }
 }
 
 function ViewportTracker({
@@ -376,8 +389,9 @@ export default function TerrainMap({
 
   const requestedWidth = overlayOptions.width ?? viewportSample?.width ?? 1400
   const requestedHeight = overlayOptions.height ?? viewportSample?.height ?? 900
-  const renderWidth = clamp(requestedWidth, 800, 1800)
-  const renderHeight = clamp(requestedHeight, 600, 1400)
+  const cappedRender = capRenderSize(requestedWidth, requestedHeight)
+  const renderWidth = cappedRender.width
+  const renderHeight = cappedRender.height
 
   const overlayImage = useOverlayImage(renderRoi, dataset, activeOverlayType, {
     colormap: overlayOptions.colormap || 'terrain',

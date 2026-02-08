@@ -140,6 +140,7 @@ export default function MissionLandingWizard() {
               className="w-full bg-gray-700 text-white px-4 py-2 rounded-md"
             >
               <option value="mola">MOLA</option>
+              <option value="mola_200m">MOLA 200m</option>
               <option value="hirise">HiRISE</option>
               <option value="ctx">CTX</option>
             </select>
@@ -318,4 +319,3 @@ export default function MissionLandingWizard() {
     </div>
   )
 }
-

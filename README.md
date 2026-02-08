@@ -171,12 +171,12 @@ poetry run marshab download mola \
   --roi "40,41,180,181" \
   --force
 
-# Available datasets: mola, hirise, ctx
+# Available datasets: mola, mola_200m, hirise, ctx
 # ROI format: "lat_min,lat_max,lon_min,lon_max"
 ```
 
 **Options:**
-- `dataset`: Dataset to download (`mola`, `hirise`, or `ctx`)
+- `dataset`: Dataset to download (`mola`, `mola_200m`, `hirise`, or `ctx`)
 - `--roi`: Region of interest as `lat_min,lat_max,lon_min,lon_max`
 - `--force`: Force re-download even if cached
 

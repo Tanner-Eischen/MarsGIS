@@ -47,6 +47,13 @@ class MultiResolutionFusion:
             noise_level=2.0,
             effective_range=(-8000.0, 21000.0)
         ),
+        'mola_200m': DatasetConfig(
+            name='MOLA 200m',
+            resolution=200.0,  # meters
+            priority=2,
+            noise_level=1.5,
+            effective_range=(-8000.0, 21000.0)
+        ),
         'hirise': DatasetConfig(
             name='HiRISE',
             resolution=1.0,  # meters

@@ -149,6 +149,19 @@ export default function SolarAnalysis({
                     <input type="number" value={roi.lon_max} onChange={(e) => setRoi({ ...roi, lon_max: parseFloat(e.target.value) })} className="bg-gray-900/50 border border-gray-700 text-white px-2 py-1 rounded text-xs" step="0.1" placeholder="Lon Max"/>
                 </div>
             </div>
+            <div className="pt-2 border-t border-gray-700/50">
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Source Data</label>
+              <select
+                value={dataset}
+                onChange={(e) => setDataset(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 text-white px-2 py-1.5 rounded text-xs focus:border-amber-500 focus:outline-none"
+              >
+                <option value="mola">MOLA (Global)</option>
+                <option value="mola_200m">MOLA 200m (Global)</option>
+                <option value="hirise">HiRISE (High Res)</option>
+                <option value="ctx">CTX (Medium Res)</option>
+              </select>
+            </div>
 
             {/* Panel Config */}
             <div className="pt-2 border-t border-gray-700/50">

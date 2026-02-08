@@ -21,7 +21,7 @@ class AnalysisRequest(BaseModel):
     """Request model for terrain analysis."""
 
     roi: list[float] = Field(..., description="Region of interest [lat_min, lat_max, lon_min, lon_max]")
-    dataset: str = Field("mola", description="Dataset to use (mola, hirise, ctx)")
+    dataset: str = Field("mola", description="Dataset to use (mola, mola_200m, hirise, ctx)")
     threshold: float = Field(0.7, ge=0, le=1, description="Suitability threshold (0-1)")
     task_id: Optional[str] = Field(None, description="Optional task ID for progress tracking (client-generated)")
     criteria_weights: Optional[dict[str, float]] = Field(None, description="Optional custom weights for criteria")
@@ -70,7 +70,7 @@ async def analyze_terrain(request: AnalysisRequest):
         )
 
         # Validate dataset
-        valid_datasets = ["mola", "hirise", "ctx"]
+        valid_datasets = ["mola", "mola_200m", "hirise", "ctx"]
         if request.dataset.lower() not in valid_datasets:
             raise HTTPException(
                 status_code=400,
@@ -136,7 +136,6 @@ async def analyze_terrain(request: AnalysisRequest):
     except Exception as e:
         logger.exception("Unexpected error during analysis")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 

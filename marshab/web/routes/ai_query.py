@@ -27,7 +27,7 @@ class AIQueryResponse(BaseModel):
     query: str
     criteria_weights: Optional[dict[str, float]] = Field(None, description="Extracted criteria weights")
     roi: Optional[dict[str, float]] = Field(None, description="Extracted ROI [lat_min, lat_max, lon_min, lon_max]")
-    dataset: Optional[str] = Field(None, description="Recommended dataset (mola, hirise, ctx)")
+    dataset: Optional[str] = Field(None, description="Recommended dataset (mola, mola_200m, hirise, ctx)")
     explanation: Optional[str] = Field(None, description="Human-readable explanation")
     confidence: float = Field(..., description="Confidence score (0.0 to 1.0)")
     message: Optional[str] = Field(None, description="Additional message or error details")

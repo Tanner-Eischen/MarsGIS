@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class LandingScenarioParams:
     """Parameters for landing site scenario."""
     roi: BoundingBox
-    dataset: Literal["mola", "hirise", "ctx"] = "mola"
+    dataset: Literal["mola", "mola_200m", "hirise", "ctx"] = "mola"
     preset_id: Optional[str] = None
     max_slope_deg: Optional[float] = None
     min_area_km2: Optional[float] = None
@@ -322,4 +322,3 @@ def run_rover_traverse_scenario(params: TraverseScenarioParams) -> ScenarioTrave
         metadata=metadata,
         created_at=datetime.now()
     )
-

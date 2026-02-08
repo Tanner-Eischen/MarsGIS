@@ -3,6 +3,7 @@ import { apiUrl } from '../lib/apiBase';
 
 export function use3DTerrain(roi, dataset, maxPoints = 50000) {
   const [terrainData, setTerrainData] = useState(null);
+  const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -21,6 +22,12 @@ export function use3DTerrain(roi, dataset, maxPoints = 50000) {
         }
         const data = await response.json();
         setTerrainData(data);
+        setMetadata({
+          datasetRequested: data.dataset_requested,
+          datasetUsed: data.dataset_used,
+          isFallback: data.is_fallback,
+          fallbackReason: data.fallback_reason,
+        });
       } catch (e) {
         setError(e.message);
       } finally {
@@ -31,5 +38,5 @@ export function use3DTerrain(roi, dataset, maxPoints = 50000) {
     fetchTerrain();
   }, [roi, dataset, maxPoints]);
 
-  return { terrainData, loading, error };
+  return { terrainData, metadata, loading, error };
 }

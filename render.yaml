@@ -20,9 +20,9 @@ services:
     staticPublishPath: webui/dist
     envVars:
       - key: VITE_API_URL
-        value: https://mars-gis-api.onrender.com/api/v1
+        value: https://marshab-api.onrender.com/api/v1
       - key: VITE_WS_URL
-        value: wss://mars-gis-api.onrender.com
+        value: wss://marshab-api.onrender.com
     routes:
       - type: rewrite
         source: /*

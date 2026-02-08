@@ -6,6 +6,7 @@ import hashlib
 import os
 import time
 from dataclasses import dataclass
+from typing import Literal, Optional
 
 import numpy as np
 import rasterio
@@ -13,28 +14,13 @@ from rasterio.transform import from_bounds
 
 from marshab.config import get_config
 from marshab.core.data_manager import DataManager
-from marshab.core.raster_contracts import (
-    EPSG4326_MAX_LAT_DEG,
-    EPSG4326_MIN_LON_DEG,
-    EPSG4326_WORLD_LAT_SPAN_DEG,
-    EPSG4326_WORLD_LON_SPAN_DEG,
-    REAL_DEM_UNAVAILABLE_ERROR_CODE,
-    MarsDataset,
-    RasterResponseMetadata,
-    build_raster_response_metadata,
-    epsg4326_x_cols,
-    epsg4326_y_rows,
-    normalize_lon_for_client,
-    normalize_lon_for_raster,
-)
 from marshab.exceptions import DataError
 from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-REAL_DEM_UNAVAILABLE = REAL_DEM_UNAVAILABLE_ERROR_CODE
-_LON_TOLERANCE = 1e-9
+MarsDataset = Literal["mola", "mola_200m", "hirise", "ctx"]
 
 
 @dataclass
@@ -42,16 +28,7 @@ class DatasetResolutionResult:
     dataset_requested: MarsDataset
     dataset_used: MarsDataset
     is_fallback: bool
-    fallback_reason: str | None
-
-    def metadata(self) -> RasterResponseMetadata:
-        """Return stable response metadata keys for API callers."""
-        return build_raster_response_metadata(
-            dataset_requested=self.dataset_requested,
-            dataset_used=self.dataset_used,
-            is_fallback=self.is_fallback,
-            fallback_reason=self.fallback_reason,
-        )
+    fallback_reason: Optional[str]
 
 
 @dataclass
@@ -61,19 +38,10 @@ class RasterWindowResult:
     dataset_requested: MarsDataset
     dataset_used: MarsDataset
     is_fallback: bool
-    fallback_reason: str | None
-    resolution_m: float | None
-    nodata: float | None
-    transform: tuple[float, float, float, float, float, float] | None
-
-    def metadata(self) -> RasterResponseMetadata:
-        """Return stable response metadata keys for API callers."""
-        return build_raster_response_metadata(
-            dataset_requested=self.dataset_requested,
-            dataset_used=self.dataset_used,
-            is_fallback=self.is_fallback,
-            fallback_reason=self.fallback_reason,
-        )
+    fallback_reason: Optional[str]
+    resolution_m: Optional[float]
+    nodata: Optional[float]
+    transform: Optional[tuple[float, float, float, float, float, float]]
 
 
 def normalize_dataset(dataset: str) -> MarsDataset:
@@ -85,70 +53,38 @@ def normalize_dataset(dataset: str) -> MarsDataset:
 
 def to_lon360(lon: float) -> float:
     """Normalize longitude to [0, 360)."""
-    return normalize_lon_for_raster(lon)
+    while lon < 0:
+        lon += 360
+    while lon >= 360:
+        lon -= 360
+    return lon
 
 
 def to_lon180(lon: float) -> float:
     """Normalize longitude to [-180, 180]."""
-    return normalize_lon_for_client(lon)
-
-
-def normalize_lon_bounds(lon_min: float, lon_max: float) -> tuple[float, float]:
-    """Normalize longitude bounds into a single 0..360 interval."""
-    lon_span = lon_max - lon_min
-    if lon_span <= 0:
-        raise ValueError("Longitude bounds must satisfy lon_max > lon_min")
-
-    # Preserve whole-planet extents so lon_max stays at 360 instead of wrapping to 0.
-    if lon_span >= 360.0 - _LON_TOLERANCE:
-        return 0.0, 360.0
-
-    lon_min_norm = to_lon360(lon_min)
-    lon_max_norm = lon_min_norm + lon_span
-
-    if lon_max_norm > 360.0:
-        if lon_max_norm - 360.0 <= _LON_TOLERANCE:
-            lon_max_norm = 360.0
-        else:
-            # Dateline-crossing windows are represented by clamping at the domain edge.
-            lon_max_norm = 360.0
-
-    return lon_min_norm, lon_max_norm
-
-
-def bbox_to_lon360(bbox: BoundingBox) -> BoundingBox:
-    """Return a bbox with longitude bounds in the model's 0..360 domain."""
-    lon_min, lon_max = normalize_lon_bounds(bbox.lon_min, bbox.lon_max)
-    return BoundingBox(
-        lat_min=bbox.lat_min,
-        lat_max=bbox.lat_max,
-        lon_min=lon_min,
-        lon_max=lon_max,
-    )
+    lon = to_lon360(lon)
+    return lon - 360 if lon > 180 else lon
 
 
 def compute_tile_bbox_epsg4326(z: int, x: int, y: int) -> BoundingBox:
-    """Compute EPSG:4326 tile bbox using geodetic matrix dimensions.
-
-    Contract:
-    - `x_cols = 2^(z+1)`
-    - `y_rows = 2^z`
-    - lon math in client domain `[-180, 180]`, then normalized for raster access.
-    """
+    """Compute EPSG:4326 tile bbox for a z/x/y tile in geodetic scheme."""
     if z < 0 or x < 0 or y < 0:
         raise ValueError("Invalid tile indices")
-    x_cols = epsg4326_x_cols(z)
-    y_rows = epsg4326_y_rows(z)
-    if x >= x_cols or y >= y_rows:
+    tiles = 2 ** z
+    if x >= tiles or y >= tiles:
         raise ValueError("Tile indices out of range")
-    lon_span = EPSG4326_WORLD_LON_SPAN_DEG / x_cols
-    lat_span = EPSG4326_WORLD_LAT_SPAN_DEG / y_rows
-    lon_min_raw = EPSG4326_MIN_LON_DEG + x * lon_span
-    lon_max_raw = lon_min_raw + lon_span
-    lat_max = EPSG4326_MAX_LAT_DEG - y * lat_span
+    lon_span = 360.0 / tiles
+    lat_span = 180.0 / tiles
+    lon_min = -180.0 + x * lon_span
+    lon_max = lon_min + lon_span
+    lat_max = 90.0 - y * lat_span
     lat_min = lat_max - lat_span
-    lon_min, lon_max = normalize_lon_bounds(lon_min_raw, lon_max_raw)
-    return BoundingBox(lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
+    return BoundingBox(
+        lat_min=lat_min,
+        lat_max=lat_max,
+        lon_min=lon_min,
+        lon_max=lon_max,
+    )
 
 
 def _cache_has_real_data(path) -> bool:
@@ -167,16 +103,6 @@ def _cache_has_real_data(path) -> bool:
     return False
 
 
-def _raise_real_dem_unavailable(dataset: MarsDataset) -> None:
-    raise DataError(REAL_DEM_UNAVAILABLE, details={"dataset": dataset})
-
-
-def is_real_dem_unavailable_error(exc: Exception) -> bool:
-    if not isinstance(exc, DataError):
-        return False
-    return exc.message == REAL_DEM_UNAVAILABLE
-
-
 def resolve_dataset_with_fallback(requested: MarsDataset, bbox: BoundingBox) -> DatasetResolutionResult:
     """Resolve dataset with fallback rules for HiRISE coverage."""
     if requested != "hirise":
@@ -188,7 +114,12 @@ def resolve_dataset_with_fallback(requested: MarsDataset, bbox: BoundingBox) -> 
         )
 
     data_manager = DataManager()
-    roi = bbox_to_lon360(bbox)
+    roi = BoundingBox(
+        lat_min=bbox.lat_min,
+        lat_max=bbox.lat_max,
+        lon_min=to_lon360(bbox.lon_min),
+        lon_max=to_lon360(bbox.lon_max),
+    )
     hirise_cache = data_manager._get_cache_path("hirise", roi)
     if _cache_has_real_data(hirise_cache):
         return DatasetResolutionResult(
@@ -227,27 +158,22 @@ def _resample_array(arr: np.ndarray, target_shape: tuple[int, int]) -> np.ndarra
 def load_dem_window(
     dataset: str,
     bbox: BoundingBox,
-    target_shape: tuple[int, int] | None = None,
+    target_shape: Optional[tuple[int, int]] = None,
     allow_download: bool = True,
-    require_real_data: bool = False,
 ) -> RasterWindowResult:
     """Load DEM window with consistent dataset resolution + fallback behavior."""
     dataset_normalized = normalize_dataset(dataset)
     resolution = resolve_dataset_with_fallback(dataset_normalized, bbox)
     config = get_config()
     data_manager = DataManager()
-    roi_360 = bbox_to_lon360(bbox)
-    allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
-    enforce_real_data = require_real_data or not allow_synthetic
-
-    def ensure_real_data(dataset_id: MarsDataset) -> None:
-        if dataset_id not in {"mola", "mola_200m"}:
-            return
-        cache_path = data_manager._get_cache_path(dataset_id, roi_360)
-        if not _cache_has_real_data(cache_path):
-            _raise_real_dem_unavailable(dataset_id)
 
     def load_from_cache(dataset_id: MarsDataset):
+        roi_360 = BoundingBox(
+            lat_min=bbox.lat_min,
+            lat_max=bbox.lat_max,
+            lon_min=to_lon360(bbox.lon_min),
+            lon_max=to_lon360(bbox.lon_max),
+        )
         cache_path = data_manager._get_cache_path(dataset_id, roi_360)
         if not cache_path.exists():
             raise DataError(f"Dataset cache missing: {dataset_id}")
@@ -256,6 +182,12 @@ def load_dem_window(
         return dem
 
     try:
+        roi_360 = BoundingBox(
+            lat_min=bbox.lat_min,
+            lat_max=bbox.lat_max,
+            lon_min=to_lon360(bbox.lon_min),
+            lon_max=to_lon360(bbox.lon_max),
+        )
         if allow_download:
             dem = data_manager.get_dem_for_roi(
                 roi_360,
@@ -263,12 +195,15 @@ def load_dem_window(
                 download=True,
                 clip=True,
             )
-            if enforce_real_data:
-                ensure_real_data(resolution.dataset_used)
+            allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
+            if (
+                resolution.dataset_used in {"mola", "mola_200m"}
+                and not allow_synthetic
+                and not _cache_has_real_data(data_manager._get_cache_path(resolution.dataset_used, roi_360))
+            ):
+                raise DataError(f"Synthetic fallback disallowed for dataset {resolution.dataset_used}")
         else:
             dem = load_from_cache(resolution.dataset_used)
-            if enforce_real_data:
-                ensure_real_data(resolution.dataset_used)
     except Exception as exc:
         if resolution.dataset_used == "mola_200m":
             logger.warning("Falling back to MOLA after MOLA 200m failure", error=str(exc))
@@ -285,12 +220,8 @@ def load_dem_window(
                     download=True,
                     clip=True,
                 )
-                if enforce_real_data:
-                    ensure_real_data(fallback_resolution.dataset_used)
             else:
                 dem = load_from_cache(fallback_resolution.dataset_used)
-                if enforce_real_data:
-                    ensure_real_data(fallback_resolution.dataset_used)
             resolution = fallback_resolution
         else:
             raise

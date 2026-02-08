@@ -9,25 +9,41 @@ import urllib.request
 
 import numpy as np
 import xarray as xr
-from rasterio.transform import Affine, rowcol
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image
+from rasterio.transform import Affine, rowcol
 
 from marshab.analysis.solar_potential import SolarPotentialAnalyzer
 from marshab.config import get_config
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.core.data_manager import DataManager
 from marshab.core.overlay_cache import OverlayCache
+from marshab.core.raster_contracts import (
+    REAL_DEM_UNAVAILABLE_RESPONSE_DOC,
+    MarsDataset,
+    build_raster_response_metadata,
+    build_real_dem_unavailable_payload,
+)
 from marshab.core.raster_service import (
+    REAL_DEM_UNAVAILABLE,
+    bbox_to_lon360,
     compute_tile_bbox_epsg4326,
+    is_real_dem_unavailable_error,
     load_dem_window,
     normalize_dataset,
     resolve_dataset_with_fallback,
     tile_style_hash,
     to_lon360,
 )
-from marshab.core.tile_cache import TileCache, TileCacheConfig, read_disk_cache, tile_cache_path, write_disk_cache
+from marshab.core.tile_cache import (
+    TileCache,
+    TileCacheConfig,
+    read_disk_cache,
+    tile_cache_path,
+    write_disk_cache,
+)
+from marshab.exceptions import DataError
 from marshab.models import BoundingBox
 from marshab.processing.terrain import TerrainAnalyzer
 from marshab.utils.logging import get_logger
@@ -71,6 +87,26 @@ def _log_metric(name: str, value: float = 1.0, **fields) -> None:
     logger.info("metric", metric=name, value=value, **fields)
 
 
+def _real_dem_unavailable_response(
+    exc: Exception,
+    *,
+    endpoint: str,
+    dataset_requested: MarsDataset,
+    dataset_used: MarsDataset | None = None,
+    is_fallback: bool = False,
+    fallback_reason: str | None = None,
+) -> JSONResponse:
+    logger.warning("Real DEM unavailable", endpoint=endpoint, error=str(exc))
+    payload = build_real_dem_unavailable_payload(
+        detail=f"Real DEM unavailable for {endpoint}.",
+        dataset_requested=dataset_requested,
+        dataset_used=dataset_used,
+        is_fallback=is_fallback,
+        fallback_reason=fallback_reason,
+    )
+    return JSONResponse(status_code=503, content=payload)
+
+
 @router.get("/visualization/basemap/{z}/{x}/{y}.png")
 async def get_mars_basemap_tile(z: int, x: int, y: int):
     """Proxy Mars basemap tiles through same-origin API to avoid browser CORS issues."""
@@ -95,7 +131,10 @@ async def get_mars_basemap_tile(z: int, x: int, y: int):
         raise HTTPException(status_code=502, detail="Failed to fetch basemap tile")
 
 
-@router.get("/visualization/tiles/basemap/{dataset}/{z}/{x}/{y}.png")
+@router.get(
+    "/visualization/tiles/basemap/{dataset}/{z}/{x}/{y}.png",
+    responses=REAL_DEM_UNAVAILABLE_RESPONSE_DOC,
+)
 async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
     """Render DEM-backed basemap tiles."""
     if not ENABLE_TILE_BASEMAP:
@@ -122,12 +161,7 @@ async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
     data_manager = DataManager()
     dem_cache_buster = "none"
     try:
-        bbox_cache = BoundingBox(
-            lat_min=bbox.lat_min,
-            lat_max=bbox.lat_max,
-            lon_min=to_lon360(bbox.lon_min),
-            lon_max=to_lon360(bbox.lon_max),
-        )
+        bbox_cache = bbox_to_lon360(bbox)
         cache_path = data_manager._get_cache_path(dataset_cache, bbox_cache)
         if cache_path.exists():
             dem_cache_buster = str(int(cache_path.stat().st_mtime))
@@ -177,6 +211,7 @@ async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
             bbox,
             target_shape=(256, 256),
             allow_download=True,
+            require_real_data=True,
         )
         dem = _build_dem_dataarray(raster_result)
         png_bytes, _bounds, _elev_min, _elev_max = await _generate_elevation_overlay(
@@ -194,6 +229,16 @@ async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
         _log_metric("tile.error.5xx", 1, kind="basemap")
         raise
     except Exception as exc:
+        if is_real_dem_unavailable_error(exc):
+            _log_metric("tile.error.503", 1, kind="basemap")
+            return _real_dem_unavailable_response(
+                exc,
+                endpoint="tile_basemap",
+                dataset_requested=resolution.dataset_requested,
+                dataset_used=resolution.dataset_used,
+                is_fallback=resolution.is_fallback,
+                fallback_reason=resolution.fallback_reason,
+            )
         _log_metric("tile.error.5xx", 1, kind="basemap")
         logger.exception("Basemap tile render failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to render basemap tile")
@@ -216,7 +261,10 @@ async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
     return response
 
 
-@router.get("/visualization/tiles/overlay/{overlay_type}/{dataset}/{z}/{x}/{y}.png")
+@router.get(
+    "/visualization/tiles/overlay/{overlay_type}/{dataset}/{z}/{x}/{y}.png",
+    responses=REAL_DEM_UNAVAILABLE_RESPONSE_DOC,
+)
 async def get_overlay_tile(
     overlay_type: str,
     dataset: str,
@@ -258,12 +306,7 @@ async def get_overlay_tile(
     data_manager = DataManager()
     dem_cache_buster = "none"
     try:
-        bbox_cache = BoundingBox(
-            lat_min=bbox.lat_min,
-            lat_max=bbox.lat_max,
-            lon_min=to_lon360(bbox.lon_min),
-            lon_max=to_lon360(bbox.lon_max),
-        )
+        bbox_cache = bbox_to_lon360(bbox)
         cache_path = data_manager._get_cache_path(dataset_cache, bbox_cache)
         if cache_path.exists():
             dem_cache_buster = str(int(cache_path.stat().st_mtime))
@@ -316,6 +359,7 @@ async def get_overlay_tile(
             bbox,
             target_shape=(256, 256),
             allow_download=True,
+            require_real_data=True,
         )
         dem = _build_dem_dataarray(raster_result)
         loop = asyncio.get_event_loop()
@@ -344,6 +388,7 @@ async def get_overlay_tile(
                 False,
                 loop,
                 None,
+                strict_real_data=True,
             )
         elif overlay_type == "dust":
             png_bytes, _bounds = await _generate_dust_overlay(
@@ -353,6 +398,7 @@ async def get_overlay_tile(
                 colormap,
                 False,
                 loop,
+                strict_real_data=True,
             )
         elif overlay_type == "hillshade":
             png_bytes, _bounds = await _generate_hillshade_overlay(
@@ -379,6 +425,16 @@ async def get_overlay_tile(
                 loop,
             )
     except Exception as exc:
+        if is_real_dem_unavailable_error(exc):
+            _log_metric("tile.error.503", 1, kind="overlay", overlay_type=overlay_type)
+            return _real_dem_unavailable_response(
+                exc,
+                endpoint=f"tile_overlay_{overlay_type}",
+                dataset_requested=resolution.dataset_requested,
+                dataset_used=resolution.dataset_used,
+                is_fallback=resolution.is_fallback,
+                fallback_reason=resolution.fallback_reason,
+            )
         _log_metric("tile.error.5xx", 1, kind="overlay", overlay_type=overlay_type)
         logger.exception("Overlay tile render failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Failed to render overlay tile")
@@ -671,7 +727,7 @@ async def get_dem_image(
                     timeout=120.0
                 )
             logger.info("DEM loaded successfully", shape=raster_result.array.shape, dtype=str(raster_result.array.dtype))
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("DEM loading timed out, generating synthetic visualization for demo mode", bbox=extended_bbox.model_dump())
             use_synthetic = True
         except Exception as e:
@@ -1061,7 +1117,7 @@ async def get_waypoints_geojson():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/visualization/terrain-3d")
+@router.get("/visualization/terrain-3d", responses=REAL_DEM_UNAVAILABLE_RESPONSE_DOC)
 async def get_terrain_3d(
     dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
     roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
@@ -1095,58 +1151,39 @@ async def get_terrain_3d(
             lon_max=lon_max_norm,
         )
 
-        # Load DEM (allow download if not cached)
-        use_synthetic = False
-        raster_result = None
-        try:
-            raster_result = load_dem_window(
-                dataset_lower,
-                bbox,
-                allow_download=True,
-            )
-        except Exception as e:
-            logger.warning("DEM load failed for 3D terrain, using synthetic surface for demo mode", error=str(e))
-            use_synthetic = True
+        # Load DEM (allow download if not cached) with strict real-data policy.
+        raster_result = load_dem_window(
+            dataset_lower,
+            bbox,
+            allow_download=True,
+            require_real_data=True,
+        )
 
         # Get elevation data
-        elevation = raster_result.array.astype(np.float32) if not use_synthetic and raster_result else None
+        elevation = raster_result.array.astype(np.float32)
 
         # Handle nodata values
-        if not use_synthetic and raster_result and raster_result.nodata is not None:
+        if raster_result.nodata is not None:
             nodata = raster_result.nodata
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
 
         # Downsample if too large
-        if not use_synthetic:
-            height, width = elevation.shape
-            total_points = height * width
-        else:
-            # Generate synthetic grid size based on max_points
-            side = int(np.sqrt(max_points))
-            height, width = side, side
-            total_points = height * width
-
+        height, width = elevation.shape
+        total_points = height * width
         downsample_factor = 1
-        if not use_synthetic and total_points > max_points:
+        if total_points > max_points:
             downsample_factor = int(np.ceil(np.sqrt(total_points / max_points)))
             elevation = elevation[::downsample_factor, ::downsample_factor]
             height, width = elevation.shape
 
         # Replace NaN values with minimum valid elevation (or 0 if all NaN)
-        if not use_synthetic:
-            valid_mask = np.isfinite(elevation)
-            if np.any(valid_mask):
-                min_elevation = float(np.nanmin(elevation[valid_mask]))
-                elevation[~valid_mask] = min_elevation
-            else:
-                elevation[:] = 0.0
+        valid_mask = np.isfinite(elevation)
+        if np.any(valid_mask):
+            min_elevation = float(np.nanmin(elevation[valid_mask]))
+            elevation[~valid_mask] = min_elevation
         else:
-            # Synthetic elevation surface
-            yy = np.linspace(0, 1, height)
-            xx = np.linspace(0, 1, width)
-            X, Y = np.meshgrid(xx, yy)
-            elevation = (np.sin(2 * np.pi * X) * np.cos(2 * np.pi * Y)) * 1500.0
+            elevation[:] = 0.0
 
         # Create coordinate grids - use actual DEM bounds, not requested ROI
         lon_min_actual = lon_min
@@ -1155,7 +1192,7 @@ async def get_terrain_3d(
         lat_max_actual = lat_max
 
         # Try to get actual bounds from transform
-        if not use_synthetic and raster_result and raster_result.transform:
+        if raster_result.transform:
             try:
                 a, b, c, d, e, f = raster_result.transform[:6]
                 height, width = elevation.shape
@@ -1180,6 +1217,13 @@ async def get_terrain_3d(
         # Create meshgrid
         lon_grid, lat_grid = np.meshgrid(lons, lats)
 
+        metadata = build_raster_response_metadata(
+            dataset_requested=dataset_lower,
+            dataset_used=raster_result.dataset_used,
+            is_fallback=raster_result.is_fallback,
+            fallback_reason=raster_result.fallback_reason,
+        )
+
         # Prepare response data
         response_data = {
             "x": lon_grid.tolist(),
@@ -1191,10 +1235,8 @@ async def get_terrain_3d(
                 "lat_min": float(lat_min_actual),
                 "lat_max": float(lat_max_actual),
             },
-            "dataset_requested": dataset_lower,
-            "dataset_used": raster_result.dataset_used if raster_result else dataset_lower,
-            "is_fallback": raster_result.is_fallback if raster_result else False,
-            "fallback_reason": raster_result.fallback_reason if raster_result else None,
+            **metadata,
+            "used_synthetic": False,
             "elevation_range": {
                 "min": float(np.nanmin(elevation)),
                 "max": float(np.nanmax(elevation)),
@@ -1209,6 +1251,12 @@ async def get_terrain_3d(
     except HTTPException:
         raise
     except Exception as e:
+        if is_real_dem_unavailable_error(e):
+            return _real_dem_unavailable_response(
+                e,
+                endpoint="terrain_3d",
+                dataset_requested=dataset_lower,
+            )
         logger.exception("Failed to generate 3D terrain data")
         raise HTTPException(status_code=500, detail={"error":"terrain3d_failed","detail":str(e)})
 
@@ -1400,7 +1448,7 @@ async def get_overlay(
                 )
             dem = _build_dem_dataarray(raster_result) if raster_result else None
             logger.info("DEM loaded successfully", shape=dem.shape if dem is not None else None)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("DEM loading timed out, using synthetic", bbox=extended_bbox.model_dump())
             use_synthetic = True
         except Exception as e:
@@ -1712,7 +1760,18 @@ async def _generate_elevation_overlay(
 
 
 async def _generate_solar_overlay(
-    dem, bbox, cell_size_m, sun_azimuth, sun_altitude, width, height, colormap, use_synthetic, loop, dust_cover_index=None
+    dem,
+    bbox,
+    cell_size_m,
+    sun_azimuth,
+    sun_altitude,
+    width,
+    height,
+    colormap,
+    use_synthetic,
+    loop,
+    dust_cover_index=None,
+    strict_real_data: bool = False,
 ):
     """Generate solar potential overlay."""
     from concurrent.futures import ThreadPoolExecutor
@@ -1735,6 +1794,8 @@ async def _generate_solar_overlay(
             if results.metrics is None:
                 raise Exception("No metrics from pipeline")
         except Exception as e:
+            if strict_real_data:
+                raise DataError(REAL_DEM_UNAVAILABLE, details={"error": str(e)})
             logger.warning("Analysis pipeline failed, using synthetic", error=str(e))
             rows, cols = dem.shape[0], dem.shape[1]
             y = np.linspace(0, 1, rows)
@@ -1822,7 +1883,7 @@ async def _generate_solar_overlay(
 
 
 async def _generate_dust_overlay(
-    bbox, width, height, colormap, use_synthetic, loop
+    bbox, width, height, colormap, use_synthetic, loop, strict_real_data: bool = False
 ):
     """Generate TES Dust Cover Index overlay."""
     from concurrent.futures import ThreadPoolExecutor
@@ -1838,6 +1899,8 @@ async def _generate_dust_overlay(
     else:
         # TODO: Load actual TES DCI data from DataManager
         # For now, generate synthetic data
+        if strict_real_data:
+            raise DataError(REAL_DEM_UNAVAILABLE, details={"overlay": "dust"})
         logger.warning("TES DCI data loading not yet implemented, using synthetic")
         rows, cols = height, width
         y = np.linspace(bbox.lat_min, bbox.lat_max, rows)

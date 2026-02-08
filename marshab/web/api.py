@@ -1,12 +1,13 @@
 """FastAPI application for MarsHab web interface."""
 
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from marshab.config import get_config
 from marshab.utils.logging import get_logger
@@ -99,7 +100,8 @@ def create_app() -> FastAPI:
     ]
     configured_origins = os.getenv("MARSHAB_CORS_ORIGINS", "")
     extra_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
-    allow_all = os.getenv("MARSHAB_CORS_ALLOW_ALL", "false").lower() in {"1", "true", "yes"}
+    # Portfolio deployments span multiple preview domains; default to permissive CORS unless explicitly disabled.
+    allow_all = os.getenv("MARSHAB_CORS_ALLOW_ALL", "true").lower() in {"1", "true", "yes"}
     cors_origins = ["*"] if allow_all else [*default_origins, *extra_origins]
     default_origin_regex = r"^https://([A-Za-z0-9-]+\.)*(vercel\.app|onrender\.com)$"
     configured_origin_regex = os.getenv("MARSHAB_CORS_ORIGIN_REGEX", "").strip()
@@ -114,6 +116,48 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         expose_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def ensure_cors_headers(request: Request, call_next):
+        """Fallback CORS headers so browser doesn't drop useful error responses."""
+        origin = request.headers.get("origin")
+        requested_headers = request.headers.get("access-control-request-headers", "*")
+        requested_method = request.headers.get("access-control-request-method", "GET")
+
+        def origin_allowed(value: str | None) -> bool:
+            if not value:
+                return False
+            if allow_all:
+                return True
+            if value in cors_origins:
+                return True
+            if allow_origin_regex:
+                try:
+                    return re.match(allow_origin_regex, value) is not None
+                except re.error:
+                    return False
+            return False
+
+        if request.method == "OPTIONS" and origin_allowed(origin):
+            response = Response(status_code=200)
+            response.headers["Access-Control-Allow-Origin"] = "*" if allow_all else str(origin)
+            response.headers["Access-Control-Allow-Methods"] = requested_method
+            response.headers["Access-Control-Allow-Headers"] = requested_headers
+            response.headers["Access-Control-Max-Age"] = "86400"
+            response.headers["Vary"] = "Origin"
+            if not allow_all:
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
+
+        response = await call_next(request)
+        if origin_allowed(origin):
+            response.headers.setdefault("Access-Control-Allow-Origin", "*" if allow_all else str(origin))
+            response.headers.setdefault("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+            response.headers.setdefault("Access-Control-Allow-Headers", requested_headers)
+            response.headers.setdefault("Vary", "Origin")
+            if not allow_all:
+                response.headers.setdefault("Access-Control-Allow-Credentials", "true")
+        return response
 
     # Add request logging middleware
     @app.middleware("http")

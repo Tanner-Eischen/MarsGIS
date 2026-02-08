@@ -12,41 +12,23 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-// --- Helper Components ---
-
-function FitBounds({ bounds }) {
+function FitBounds({ bounds, fitKey }) {
   const map = useMap();
-  
+  const lastFitKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (bounds && bounds.isValid()) {
-      console.log("Fitting bounds:", bounds);
+    if (bounds && bounds.isValid() && lastFitKeyRef.current !== fitKey) {
       try {
         map.fitBounds(bounds, { padding: [20, 20], maxZoom: 14, animate: true });
+        lastFitKeyRef.current = fitKey;
       } catch (e) {
-        console.error("Error fitting bounds:", e);
+        console.error('Error fitting bounds:', e);
       }
     }
-  }, [map, bounds]);
-  
+  }, [map, bounds, fitKey]);
+
   return null;
 }
-
-function MapController({ roi }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (roi) {
-        // Initial center if no bounds available yet
-        const lat = (roi.lat_min + roi.lat_max) / 2;
-        const lon = (roi.lon_min + roi.lon_max) / 2;
-        map.panTo([lat, lon]);
-    }
-  }, [map, roi]);
-  
-  return null;
-}
-
-// --- Feature Styling and Interaction ---
 
 const siteStyle = (isSelected) => ({
   radius: isSelected ? 12 : 8,
@@ -71,7 +53,7 @@ const pointToLayer = (feature, latlng, selectedSiteId) => {
   if (isWaypoint) {
     return L.circleMarker(latlng, waypointStyle);
   }
-  
+
   const siteId = feature.properties?.site_id;
   const isSelected = selectedSiteId === siteId;
   return L.circleMarker(latlng, siteStyle(isSelected));
@@ -84,9 +66,9 @@ const onEachFeature = (feature, layer, onSiteSelect) => {
       <div>
         <strong>Site ${props.site_id}</strong><br/>
         Rank: ${props.rank}<br/>
-        Area: ${props.area_km2.toFixed(2)} km²<br/>
+        Area: ${props.area_km2.toFixed(2)} km2<br/>
         Suitability: ${(props.suitability_score * 100).toFixed(1)}%<br/>
-        Slope: ${props.mean_slope_deg.toFixed(2)}°<br/>
+        Slope: ${props.mean_slope_deg.toFixed(2)} deg<br/>
         Elevation: ${props.mean_elevation_m.toFixed(0)} m
       </div>
     `;
@@ -97,15 +79,13 @@ const onEachFeature = (feature, layer, onSiteSelect) => {
   }
 };
 
-// --- Layer Components ---
-
 function SitesLayer({ showSites, onSiteSelect, selectedSiteId }) {
   const sitesGeoJson = useSitesGeoJson(showSites);
   if (!sitesGeoJson) return null;
-  
+
   return (
-    <GeoJSON 
-      data={sitesGeoJson} 
+    <GeoJSON
+      data={sitesGeoJson}
       pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
       onEachFeature={(f, l) => onEachFeature(f, l, onSiteSelect)}
     />
@@ -117,15 +97,13 @@ function WaypointsLayer({ showWaypoints, selectedSiteId }) {
   if (!waypointsGeoJson) return null;
 
   return (
-    <GeoJSON 
-      data={waypointsGeoJson} 
+    <GeoJSON
+      data={waypointsGeoJson}
       pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
       style={(feature) => ({ color: feature?.properties?.line_color || '#ff0000', weight: 2, opacity: 0.8 })}
     />
   );
 }
-
-// --- Main Component ---
 
 interface TerrainMapProps {
   roi: any
@@ -160,31 +138,30 @@ interface TerrainMapProps {
   }
 }
 
-export default function TerrainMap({ 
-  roi, 
-  dataset = 'mola', 
-  showSites = false, 
-  showWaypoints = false, 
-  relief = 0, 
-  onSiteSelect, 
+export default function TerrainMap({
+  roi,
+  dataset = 'mola',
+  showSites = false,
+  showWaypoints = false,
+  relief = 0,
+  onSiteSelect,
   selectedSiteId,
   overlayType,
   overlayOptions = {}
 }: TerrainMapProps) {
-  // Use overlay system for everything (including elevation) to benefit from caching
   const activeOverlayType = overlayType || 'elevation';
-  
+
   const overlayImage = useOverlayImage(roi, dataset, activeOverlayType, {
-        colormap: overlayOptions.colormap || 'terrain',
-        relief: overlayOptions.relief ?? relief,
-        sunAzimuth: overlayOptions.sunAzimuth || 315,
-        sunAltitude: overlayOptions.sunAltitude || 45,
-        width: overlayOptions.width || 1200,
-        height: overlayOptions.height || 800,
-        buffer: overlayOptions.buffer || 0.25,
-        marsSol: overlayOptions.marsSol,
-        season: overlayOptions.season,
-        dustStormPeriod: overlayOptions.dustStormPeriod
+    colormap: overlayOptions.colormap || 'terrain',
+    relief: overlayOptions.relief ?? relief,
+    sunAzimuth: overlayOptions.sunAzimuth || 315,
+    sunAltitude: overlayOptions.sunAltitude || 45,
+    width: overlayOptions.width || 1200,
+    height: overlayOptions.height || 800,
+    buffer: overlayOptions.buffer || 0.25,
+    marsSol: overlayOptions.marsSol,
+    season: overlayOptions.season,
+    dustStormPeriod: overlayOptions.dustStormPeriod
   });
 
   const displayImageUrl = overlayImage?.url;
@@ -192,51 +169,50 @@ export default function TerrainMap({
   const displayLoading = overlayImage?.loading;
   const displayError = overlayImage?.error;
 
-  // Calculate center for initial map render
-  const centerTuple: [number, number] = roi 
-    ? [ (roi.lat_min + roi.lat_max) / 2, (roi.lon_min + roi.lon_max) / 2 ]
+  const centerTuple: [number, number] = roi
+    ? [(roi.lat_min + roi.lat_max) / 2, (roi.lon_min + roi.lon_max) / 2]
     : [0, 180];
 
-  if (displayLoading) {
-    return (
-      <div className="flex items-center justify-center h-full w-full bg-gray-900 text-cyan-400 font-mono">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mx-auto mb-2"></div>
-          LOADING MAP DATA...
-        </div>
-      </div>
-    );
-  }
-
-  if (displayError) {
-    return (
-      <div className="flex items-center justify-center h-full w-full bg-gray-900 text-red-400 font-mono border border-red-900/50">
-        <div className="text-center p-4">
-          <div className="text-xl mb-2">⚠ ERROR</div>
-          <div>{displayError}</div>
-        </div>
-      </div>
-    );
-  }
+  const fitKey = roi
+    ? `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}|${dataset}|${activeOverlayType}`
+    : `${dataset}|${activeOverlayType}`;
 
   return (
-    <MapContainer center={centerTuple} zoom={6} style={{ height: '100%', width: '100%' }} className="bg-black">
-      <MapController roi={roi} />
-      
-      {displayImageUrl && displayBounds && (
-        <>
-          <ImageOverlay url={displayImageUrl} bounds={displayBounds} />
-          <FitBounds bounds={displayBounds} />
-        </>
+    <div className="relative h-full w-full">
+      <MapContainer
+        center={centerTuple}
+        zoom={6}
+        style={{ height: '100%', width: '100%' }}
+        className="bg-black"
+        scrollWheelZoom={true}
+      >
+        {displayImageUrl && displayBounds && (
+          <>
+            <ImageOverlay url={displayImageUrl} bounds={displayBounds} />
+            <FitBounds bounds={displayBounds} fitKey={fitKey} />
+          </>
+        )}
+
+        {showSites && (
+          <SitesLayer showSites={showSites} onSiteSelect={onSiteSelect} selectedSiteId={selectedSiteId} />
+        )}
+
+        {showWaypoints && (
+          <WaypointsLayer showWaypoints={showWaypoints} selectedSiteId={selectedSiteId} />
+        )}
+      </MapContainer>
+
+      {displayLoading && (
+        <div className="pointer-events-none absolute top-3 left-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+          Loading map data...
+        </div>
       )}
 
-      {showSites && (
-        <SitesLayer showSites={showSites} onSiteSelect={onSiteSelect} selectedSiteId={selectedSiteId} />
+      {displayError && (
+        <div className="absolute top-3 right-3 max-w-[420px] bg-red-950/90 border border-red-700/70 text-red-200 text-xs font-mono px-3 py-2 rounded">
+          Map data error: {displayError}
+        </div>
       )}
-
-      {showWaypoints && (
-        <WaypointsLayer showWaypoints={showWaypoints} selectedSiteId={selectedSiteId} />
-      )}
-    </MapContainer>
+    </div>
   );
 }

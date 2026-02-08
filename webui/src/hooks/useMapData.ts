@@ -40,15 +40,18 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
   const imageUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
+    return () => {
+      if (imageUrlRef.current) {
+        URL.revokeObjectURL(imageUrlRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (!roi) return
 
     const fetchDemImage = async () => {
       setDemImage((prev) => ({ ...prev, loading: true, error: null }))
-
-      if (imageUrlRef.current) {
-        URL.revokeObjectURL(imageUrlRef.current)
-        imageUrlRef.current = null
-      }
 
       try {
         const roiStr = `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}`
@@ -72,6 +75,9 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
           throw new Error('Empty DEM image received')
         }
 
+        if (imageUrlRef.current) {
+          URL.revokeObjectURL(imageUrlRef.current)
+        }
         const newUrl = URL.createObjectURL(blob)
         imageUrlRef.current = newUrl
 
@@ -101,12 +107,6 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
     }
 
     fetchDemImage()
-
-    return () => {
-      if (imageUrlRef.current) {
-        URL.revokeObjectURL(imageUrlRef.current)
-      }
-    }
   }, [roi, dataset, relief])
 
   return demImage
@@ -164,6 +164,14 @@ export function useOverlayImage(
   })
   const imageUrlRef = useRef<string | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (imageUrlRef.current) {
+        URL.revokeObjectURL(imageUrlRef.current)
+      }
+    }
+  }, [])
+
   const {
     colormap = 'terrain',
     relief = 0,
@@ -182,11 +190,6 @@ export function useOverlayImage(
 
     const fetchOverlayImage = async () => {
       setOverlayImage((prev) => ({ ...prev, loading: true, error: null }))
-
-      if (imageUrlRef.current) {
-        URL.revokeObjectURL(imageUrlRef.current)
-        imageUrlRef.current = null
-      }
 
       try {
         const roiStr = `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}`
@@ -224,6 +227,9 @@ export function useOverlayImage(
           throw new Error('Empty overlay image received')
         }
 
+        if (imageUrlRef.current) {
+          URL.revokeObjectURL(imageUrlRef.current)
+        }
         const newUrl = URL.createObjectURL(blob)
         imageUrlRef.current = newUrl
 
@@ -244,26 +250,15 @@ export function useOverlayImage(
         }
       } catch (error: unknown) {
         if (error instanceof Error && error.name === 'AbortError') {
-          setOverlayImage({
-            url: null,
-            bounds: null,
-            loading: false,
-            error: 'Overlay loading timed out.',
-          })
+          setOverlayImage((prev) => ({ ...prev, loading: false, error: 'Overlay loading timed out.' }))
         } else {
           const message = error instanceof Error ? error.message : 'Unknown error'
-          setOverlayImage({ url: null, bounds: null, loading: false, error: message })
+          setOverlayImage((prev) => ({ ...prev, loading: false, error: message }))
         }
       }
     }
 
     fetchOverlayImage()
-
-    return () => {
-      if (imageUrlRef.current) {
-        URL.revokeObjectURL(imageUrlRef.current)
-      }
-    }
   }, [
     roi,
     dataset,

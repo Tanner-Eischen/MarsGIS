@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
 import { useEffect, useRef } from 'react';
+import { API_BASE } from '../lib/apiBase';
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -12,8 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-const MARS_BASEMAP_URL =
-  'https://s3-eu-west-1.amazonaws.com/whereonmars.cartodb.net/celestia_mars-shaded-16k_global/{z}/{x}/{y}.png';
+const MARS_BASEMAP_URL = `${API_BASE}/visualization/basemap/{z}/{x}/{y}.png`;
 
 function FitBounds({ bounds, fitKey }) {
   const map = useMap();

@@ -3,6 +3,7 @@
 import io
 import json
 import time
+import urllib.request
 
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query
@@ -21,6 +22,34 @@ from marshab.utils.logging import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter()
+MARS_BASEMAP_TILE_URL = (
+    "https://s3-eu-west-1.amazonaws.com/whereonmars.cartodb.net/"
+    "celestia_mars-shaded-16k_global/{z}/{x}/{y}.png"
+)
+
+
+@router.get("/visualization/basemap/{z}/{x}/{y}.png")
+async def get_mars_basemap_tile(z: int, x: int, y: int):
+    """Proxy Mars basemap tiles through same-origin API to avoid browser CORS issues."""
+    if z < 0 or x < 0 or y < 0:
+        raise HTTPException(status_code=400, detail="Invalid tile coordinates")
+
+    tile_url = MARS_BASEMAP_TILE_URL.format(z=z, x=x, y=y)
+    req = urllib.request.Request(tile_url, headers={"User-Agent": "MarsHab/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            tile_bytes = resp.read()
+            if not tile_bytes:
+                raise HTTPException(status_code=404, detail="Tile not found")
+            response = Response(content=tile_bytes, media_type="image/png")
+            # Allow light CDN/proxy caching while keeping refresh reasonably quick.
+            response.headers["Cache-Control"] = "public, max-age=86400"
+            return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("Basemap tile proxy failed", z=z, x=x, y=y, error=str(e))
+        raise HTTPException(status_code=502, detail="Failed to fetch basemap tile")
 
 
 @router.get("/visualization/sites/{analysis_id}")

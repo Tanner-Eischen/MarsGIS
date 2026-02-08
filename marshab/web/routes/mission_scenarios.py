@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1/mission", tags=["mission"])
 class LandingScenarioRequest(BaseModel):
     """Request for landing site scenario."""
     roi: dict[str, float] = Field(..., description="ROI as {lat_min, lat_max, lon_min, lon_max}")
-    dataset: str = Field("mola", description="Dataset name (mola, hirise, ctx)")
+    dataset: str = Field("mola", description="Dataset name (mola, mola_200m, hirise, ctx)")
     preset_id: Optional[str] = Field(None, description="Preset ID for criteria weights")
     constraints: Optional[dict[str, float]] = Field(None, description="Mission constraints")
     suitability_threshold: float = Field(0.7, ge=0, le=1, description="Minimum suitability threshold")
@@ -245,4 +245,3 @@ async def create_rover_traverse(request: TraverseScenarioRequest):
     except Exception:
         logger.exception("Unexpected error in traverse scenario")
         raise HTTPException(status_code=500, detail="Internal server error")
-

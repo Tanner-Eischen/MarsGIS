@@ -18,13 +18,13 @@ router = APIRouter(prefix="/fusion", tags=["fusion"])
 class FusionRequest(BaseModel):
     """Request model for multi-resolution data fusion."""
     roi: BoundingBox = Field(..., description="Region of interest bounding box")
-    datasets: list[Literal["mola", "hirise", "ctx"]] = Field(
+    datasets: list[Literal["mola", "mola_200m", "hirise", "ctx"]] = Field(
         ...,
         description="List of datasets to fuse",
         min_items=1,
         max_items=3
     )
-    primary_dataset: Literal["mola", "hirise", "ctx"] = Field(
+    primary_dataset: Literal["mola", "mola_200m", "hirise", "ctx"] = Field(
         "mola",
         description="Primary dataset for fusion"
     )

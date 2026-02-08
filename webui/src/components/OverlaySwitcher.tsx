@@ -120,25 +120,33 @@ export default function OverlaySwitcher({
           {activeTab === 'layers' && (
             <div className="grid grid-cols-2 gap-2">
                {MARS_OVERLAY_DEFINITIONS.filter(def => 
-                ['elevation', 'solar', 'viewshed', 'comms_risk', 'hillshade', 'slope', 'roughness', 'tri'].includes(def.name)
+                ['elevation', 'solar', 'viewshed', 'comms_risk', 'hillshade', 'slope', 'roughness', 'tri', 'aspect', 'dust'].includes(def.name)
                ).map((def) => {
                  const isActive = overlayType === def.name
                  const status = getLayerStatus(def.name as OverlayType)
+                 const isDisabled = def.comingSoon === true
                  return (
                    <button
                      key={def.name}
-                     onClick={() => onOverlayTypeChange(def.name as OverlayType)}
+                     onClick={() => {
+                       if (isDisabled) return
+                       onOverlayTypeChange(def.name as OverlayType)
+                     }}
+                     disabled={isDisabled}
                      className={`relative flex flex-col items-start p-2 rounded border transition-all duration-200 ${
                        isActive
                          ? 'bg-cyan-900/20 border-cyan-500/50 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
                          : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:bg-gray-700 hover:border-gray-500'
-                     }`}
+                     } ${isDisabled ? 'opacity-60 cursor-not-allowed hover:bg-gray-800/50 hover:border-gray-700' : ''}`}
                    >
                      <div className="flex items-center justify-between w-full mb-1">
                         <span className="font-mono text-xs font-bold uppercase">{def.displayName}</span>
                         <LayerStatusBadge status={status} dataset={dataset} />
                      </div>
                      <span className="text-[10px] opacity-70 truncate w-full text-left">{def.description}</span>
+                     {isDisabled && (
+                       <span className="mt-1 text-[9px] uppercase tracking-wide text-amber-300/80">Coming soon</span>
+                     )}
                    </button>
                  )
                })}

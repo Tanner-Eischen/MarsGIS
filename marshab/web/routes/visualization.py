@@ -1,11 +1,14 @@
 """Visualization data export endpoints."""
 
+import asyncio
 import io
 import json
+import os
 import time
 import urllib.request
 
 import numpy as np
+import xarray as xr
 from rasterio.transform import Affine, rowcol
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
@@ -16,6 +19,15 @@ from marshab.config import get_config
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.core.data_manager import DataManager
 from marshab.core.overlay_cache import OverlayCache
+from marshab.core.raster_service import (
+    compute_tile_bbox_epsg4326,
+    load_dem_window,
+    normalize_dataset,
+    resolve_dataset_with_fallback,
+    tile_style_hash,
+    to_lon360,
+)
+from marshab.core.tile_cache import TileCache, TileCacheConfig, read_disk_cache, tile_cache_path, write_disk_cache
 from marshab.models import BoundingBox
 from marshab.processing.terrain import TerrainAnalyzer
 from marshab.utils.logging import get_logger
@@ -27,6 +39,36 @@ MARS_BASEMAP_TILE_URL = (
     "https://s3-eu-west-1.amazonaws.com/whereonmars.cartodb.net/"
     "celestia_mars-shaded-16k_global/{z}/{x}/{y}.png"
 )
+
+TILE_CACHE = TileCache(
+    TileCacheConfig(
+        max_entries=int(os.getenv("MARSHAB_TILE_CACHE_MAX", "4000")),
+        ttl_seconds=int(os.getenv("MARSHAB_TILE_CACHE_TTL", str(7 * 24 * 60 * 60))),
+    )
+)
+ENABLE_TILE_BASEMAP = os.getenv("MARSHAB_ENABLE_TILE_BASEMAP", "true").lower() in {"1", "true", "yes"}
+ENABLE_TILE_OVERLAYS = os.getenv("MARSHAB_ENABLE_TILE_OVERLAYS", "true").lower() in {"1", "true", "yes"}
+
+
+def _build_dem_dataarray(raster_result) -> xr.DataArray:
+    rows, cols = raster_result.array.shape
+    lat_coords = np.linspace(raster_result.bbox_used.lat_max, raster_result.bbox_used.lat_min, rows)
+    lon_coords = np.linspace(raster_result.bbox_used.lon_min, raster_result.bbox_used.lon_max, cols)
+    data = xr.DataArray(
+        raster_result.array,
+        dims=("lat", "lon"),
+        coords={"lat": lat_coords, "lon": lon_coords},
+        attrs={
+            "nodata": raster_result.nodata,
+            "transform": raster_result.transform,
+            "dataset": raster_result.dataset_used,
+        },
+    )
+    return data
+
+
+def _log_metric(name: str, value: float = 1.0, **fields) -> None:
+    logger.info("metric", metric=name, value=value, **fields)
 
 
 @router.get("/visualization/basemap/{z}/{x}/{y}.png")
@@ -53,11 +95,317 @@ async def get_mars_basemap_tile(z: int, x: int, y: int):
         raise HTTPException(status_code=502, detail="Failed to fetch basemap tile")
 
 
+@router.get("/visualization/tiles/basemap/{dataset}/{z}/{x}/{y}.png")
+async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
+    """Render DEM-backed basemap tiles."""
+    if not ENABLE_TILE_BASEMAP:
+        raise HTTPException(status_code=404, detail="Basemap tiling disabled")
+
+    try:
+        dataset_lower = normalize_dataset(dataset)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid dataset. Use mola, mola_200m, or hirise")
+
+    if dataset_lower not in {"mola", "mola_200m", "hirise"}:
+        raise HTTPException(status_code=400, detail="Invalid dataset. Use mola, mola_200m, or hirise")
+
+    _log_metric("tile.request.count", 1, kind="basemap")
+
+    try:
+        bbox = compute_tile_bbox_epsg4326(z, x, y)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    resolution = resolve_dataset_with_fallback(dataset_lower, bbox)
+    dataset_cache = resolution.dataset_used
+
+    data_manager = DataManager()
+    dem_cache_buster = "none"
+    try:
+        bbox_cache = BoundingBox(
+            lat_min=bbox.lat_min,
+            lat_max=bbox.lat_max,
+            lon_min=to_lon360(bbox.lon_min),
+            lon_max=to_lon360(bbox.lon_max),
+        )
+        cache_path = data_manager._get_cache_path(dataset_cache, bbox_cache)
+        if cache_path.exists():
+            dem_cache_buster = str(int(cache_path.stat().st_mtime))
+    except Exception:
+        pass
+
+    style_params = {
+        "colormap": "terrain",
+        "relief": "0.3",
+        "sun_azimuth": "315",
+        "sun_altitude": "45",
+    }
+    style_hash = tile_style_hash(style_params)
+    cache_key = f"basemap::{dataset_cache}::{z}:{x}:{y}:{style_hash}:{dem_cache_buster}"
+
+    cached = TILE_CACHE.get(cache_key)
+    if cached:
+        _log_metric("tile.cache.hit.memory", 1, kind="basemap")
+        response = Response(content=cached, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["X-Dataset-Requested"] = resolution.dataset_requested
+        response.headers["X-Dataset-Used"] = resolution.dataset_used
+        response.headers["X-Fallback-Used"] = str(resolution.is_fallback).lower()
+        if resolution.fallback_reason:
+            response.headers["X-Fallback-Reason"] = resolution.fallback_reason
+        return response
+
+    disk_path = tile_cache_path("basemap", dataset_cache, z, x, y, style_hash)
+    disk_cached = read_disk_cache(disk_path, TILE_CACHE.config.ttl_seconds)
+    if disk_cached:
+        _log_metric("tile.cache.hit.disk", 1, kind="basemap")
+        TILE_CACHE.set(cache_key, disk_cached)
+        response = Response(content=disk_cached, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["X-Dataset-Requested"] = resolution.dataset_requested
+        response.headers["X-Dataset-Used"] = resolution.dataset_used
+        response.headers["X-Fallback-Used"] = str(resolution.is_fallback).lower()
+        if resolution.fallback_reason:
+            response.headers["X-Fallback-Reason"] = resolution.fallback_reason
+        return response
+
+    _log_metric("tile.cache.miss", 1, kind="basemap")
+    start = time.time()
+    try:
+        raster_result = load_dem_window(
+            dataset_lower,
+            bbox,
+            target_shape=(256, 256),
+            allow_download=True,
+        )
+        dem = _build_dem_dataarray(raster_result)
+        png_bytes, _bounds, _elev_min, _elev_max = await _generate_elevation_overlay(
+            dem,
+            bbox,
+            "terrain",
+            0.3,
+            315.0,
+            45.0,
+            256,
+            256,
+            False,
+        )
+    except HTTPException:
+        _log_metric("tile.error.5xx", 1, kind="basemap")
+        raise
+    except Exception as exc:
+        _log_metric("tile.error.5xx", 1, kind="basemap")
+        logger.exception("Basemap tile render failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to render basemap tile")
+
+    duration_ms = (time.time() - start) * 1000
+    _log_metric("tile.render.ms", duration_ms, kind="basemap")
+
+    TILE_CACHE.set(cache_key, png_bytes)
+    write_disk_cache(disk_path, png_bytes)
+
+    response = Response(content=png_bytes, media_type="image/png")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+    response.headers["X-Dataset-Used"] = raster_result.dataset_used
+    response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+    if raster_result.is_fallback:
+        _log_metric("tile.fallback.rate", 1, kind="basemap")
+    if raster_result.fallback_reason:
+        response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
+    return response
+
+
+@router.get("/visualization/tiles/overlay/{overlay_type}/{dataset}/{z}/{x}/{y}.png")
+async def get_overlay_tile(
+    overlay_type: str,
+    dataset: str,
+    z: int,
+    x: int,
+    y: int,
+    colormap: str = Query("terrain"),
+    relief: float = Query(0.0, ge=0.0, le=3.0),
+    sun_azimuth: float = Query(315.0, ge=0.0, le=360.0),
+    sun_altitude: float = Query(45.0, ge=0.0, le=90.0),
+    mars_sol: int | None = Query(None),
+    season: str | None = Query(None),
+    dust_storm_period: str | None = Query(None),
+):
+    """Render overlay tiles backed by DEM-derived layers."""
+    if not ENABLE_TILE_OVERLAYS:
+        raise HTTPException(status_code=404, detail="Overlay tiling disabled")
+
+    valid_types = ["elevation", "hillshade", "slope", "aspect", "roughness", "tri", "solar", "dust"]
+    overlay_type = overlay_type.lower()
+    if overlay_type not in valid_types:
+        raise HTTPException(status_code=400, detail=f"Invalid overlay type: {overlay_type}")
+
+    try:
+        dataset_lower = normalize_dataset(dataset)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid dataset. Use mola, mola_200m, hirise, or ctx")
+
+    _log_metric("tile.request.count", 1, kind="overlay", overlay_type=overlay_type)
+
+    try:
+        bbox = compute_tile_bbox_epsg4326(z, x, y)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    resolution = resolve_dataset_with_fallback(dataset_lower, bbox)
+    dataset_cache = resolution.dataset_used
+
+    data_manager = DataManager()
+    dem_cache_buster = "none"
+    try:
+        bbox_cache = BoundingBox(
+            lat_min=bbox.lat_min,
+            lat_max=bbox.lat_max,
+            lon_min=to_lon360(bbox.lon_min),
+            lon_max=to_lon360(bbox.lon_max),
+        )
+        cache_path = data_manager._get_cache_path(dataset_cache, bbox_cache)
+        if cache_path.exists():
+            dem_cache_buster = str(int(cache_path.stat().st_mtime))
+    except Exception:
+        pass
+
+    style_params = {
+        "colormap": colormap,
+        "relief": f"{relief:.2f}",
+        "sun_azimuth": f"{sun_azimuth:.1f}",
+        "sun_altitude": f"{sun_altitude:.1f}",
+        "mars_sol": str(mars_sol) if mars_sol is not None else "",
+        "season": season or "",
+        "dust_storm_period": dust_storm_period or "",
+    }
+    style_hash = tile_style_hash(style_params)
+    cache_key = f"overlay::{overlay_type}:{dataset_cache}:{z}:{x}:{y}:{style_hash}:{dem_cache_buster}"
+
+    cached = TILE_CACHE.get(cache_key)
+    if cached:
+        _log_metric("tile.cache.hit.memory", 1, kind="overlay", overlay_type=overlay_type)
+        response = Response(content=cached, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["X-Dataset-Requested"] = resolution.dataset_requested
+        response.headers["X-Dataset-Used"] = resolution.dataset_used
+        response.headers["X-Fallback-Used"] = str(resolution.is_fallback).lower()
+        if resolution.fallback_reason:
+            response.headers["X-Fallback-Reason"] = resolution.fallback_reason
+        return response
+
+    disk_path = tile_cache_path("overlay", dataset_cache, z, x, y, style_hash)
+    disk_cached = read_disk_cache(disk_path, TILE_CACHE.config.ttl_seconds)
+    if disk_cached:
+        _log_metric("tile.cache.hit.disk", 1, kind="overlay", overlay_type=overlay_type)
+        TILE_CACHE.set(cache_key, disk_cached)
+        response = Response(content=disk_cached, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["X-Dataset-Requested"] = resolution.dataset_requested
+        response.headers["X-Dataset-Used"] = resolution.dataset_used
+        response.headers["X-Fallback-Used"] = str(resolution.is_fallback).lower()
+        if resolution.fallback_reason:
+            response.headers["X-Fallback-Reason"] = resolution.fallback_reason
+        return response
+
+    _log_metric("tile.cache.miss", 1, kind="overlay", overlay_type=overlay_type)
+    start = time.time()
+    try:
+        raster_result = load_dem_window(
+            dataset_lower,
+            bbox,
+            target_shape=(256, 256),
+            allow_download=True,
+        )
+        dem = _build_dem_dataarray(raster_result)
+        loop = asyncio.get_event_loop()
+        if overlay_type == "elevation":
+            png_bytes, _bounds, _elev_min, _elev_max = await _generate_elevation_overlay(
+                dem,
+                bbox,
+                colormap,
+                relief,
+                sun_azimuth,
+                sun_altitude,
+                256,
+                256,
+                False,
+            )
+        elif overlay_type == "solar":
+            png_bytes, _bounds = await _generate_solar_overlay(
+                dem,
+                bbox,
+                raster_result.resolution_m or 200.0,
+                sun_azimuth,
+                sun_altitude,
+                256,
+                256,
+                colormap,
+                False,
+                loop,
+                None,
+            )
+        elif overlay_type == "dust":
+            png_bytes, _bounds = await _generate_dust_overlay(
+                bbox,
+                256,
+                256,
+                colormap,
+                False,
+                loop,
+            )
+        elif overlay_type == "hillshade":
+            png_bytes, _bounds = await _generate_hillshade_overlay(
+                dem,
+                bbox,
+                raster_result.resolution_m or 200.0,
+                sun_azimuth,
+                sun_altitude,
+                256,
+                256,
+                False,
+                loop,
+            )
+        else:
+            png_bytes, _bounds = await _generate_terrain_metric_overlay(
+                overlay_type,
+                dem,
+                bbox,
+                raster_result.resolution_m or 200.0,
+                colormap,
+                256,
+                256,
+                False,
+                loop,
+            )
+    except Exception as exc:
+        _log_metric("tile.error.5xx", 1, kind="overlay", overlay_type=overlay_type)
+        logger.exception("Overlay tile render failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to render overlay tile")
+
+    duration_ms = (time.time() - start) * 1000
+    _log_metric("tile.render.ms", duration_ms, kind="overlay", overlay_type=overlay_type)
+
+    TILE_CACHE.set(cache_key, png_bytes)
+    write_disk_cache(disk_path, png_bytes)
+
+    response = Response(content=png_bytes, media_type="image/png")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+    response.headers["X-Dataset-Used"] = raster_result.dataset_used
+    response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+    if raster_result.is_fallback:
+        _log_metric("tile.fallback.rate", 1, kind="overlay", overlay_type=overlay_type)
+    if raster_result.fallback_reason:
+        response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
+    return response
+
+
 @router.get("/visualization/elevation-at")
 async def get_elevation_at(
     lat: float = Query(..., ge=-90.0, le=90.0, description="Latitude in degrees"),
     lon: float = Query(..., ge=-180.0, le=360.0, description="Longitude in degrees"),
-    dataset: str = Query("mola", description="Dataset name (mola, hirise, ctx)"),
+    dataset: str = Query("mola", description="Dataset name (mola, mola_200m, hirise, ctx)"),
     window_deg: float = Query(
         0.05,
         gt=0.0,
@@ -66,13 +414,13 @@ async def get_elevation_at(
     ),
 ):
     """Sample numeric elevation from DEM at a clicked map coordinate."""
-    dataset_lower = dataset.lower()
-    if dataset_lower not in {"mola", "hirise", "ctx"}:
-        raise HTTPException(status_code=400, detail="Invalid dataset. Use one of: mola, hirise, ctx")
+    try:
+        dataset_lower = normalize_dataset(dataset)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid dataset. Use one of: mola, mola_200m, hirise, ctx")
 
     # Keep internal lon domain consistent with DEM loaders (0..360).
-    lon_360 = lon + 360.0 if lon < 0 else lon
-    lon_360 = min(360.0, max(0.0, lon_360))
+    lon_360 = to_lon360(lon)
 
     bbox = BoundingBox(
         lat_min=max(-90.0, lat - window_deg),
@@ -81,9 +429,8 @@ async def get_elevation_at(
         lon_max=min(360.0, lon_360 + window_deg),
     )
     try:
-        data_manager = DataManager()
-        dem = data_manager.get_dem_for_roi(bbox, dataset=dataset_lower, download=True, clip=True)
-        elevation = dem.values.astype(np.float32)
+        raster_result = load_dem_window(dataset_lower, bbox)
+        elevation = raster_result.array.astype(np.float32)
         if elevation.size == 0:
             raise HTTPException(status_code=404, detail="No DEM data available at this location")
 
@@ -91,7 +438,7 @@ async def get_elevation_at(
         sample_row = rows // 2
         sample_col = cols // 2
 
-        transform_values = dem.attrs.get("transform")
+        transform_values = raster_result.transform
         if isinstance(transform_values, (list, tuple)) and len(transform_values) >= 6:
             try:
                 transform = Affine(*transform_values[:6])
@@ -102,7 +449,7 @@ async def get_elevation_at(
         sample_row = int(max(0, min(rows - 1, sample_row)))
         sample_col = int(max(0, min(cols - 1, sample_col)))
 
-        nodata = dem.attrs.get("nodata")
+        nodata = raster_result.nodata
         valid_mask = np.isfinite(elevation)
         if nodata is not None:
             valid_mask &= elevation != nodata
@@ -119,7 +466,10 @@ async def get_elevation_at(
 
         valid_values = elevation[valid_mask]
         return {
-            "dataset": dataset_lower,
+            "dataset": raster_result.dataset_requested,
+            "dataset_used": raster_result.dataset_used,
+            "is_fallback": raster_result.is_fallback,
+            "fallback_reason": raster_result.fallback_reason,
             "lat": float(lat),
             "lon": float(lon),
             "lon_360": float(lon_360),
@@ -187,7 +537,7 @@ async def get_waypoints_file(navigation_id: str):
 
 @router.get("/visualization/dem-image")
 async def get_dem_image(
-    dataset: str = Query(..., description="Dataset name (mola, hirise, ctx)"),
+    dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
     roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
     colormap: str = Query("terrain", description="Colormap name (terrain, viridis, plasma, etc.)"),
     relief: float = Query(
@@ -243,15 +593,20 @@ async def get_dem_image(
         if lat_span <= 0 or lon_span <= 0:
             raise HTTPException(status_code=400, detail="Invalid ROI bounds: max must be greater than min")
 
-        dataset_lower = dataset.lower()
-        if dataset_lower not in {"mola", "ctx", "hirise"}:
-            raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, ctx, hirise")
+        try:
+            dataset_lower = normalize_dataset(dataset)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid dataset. Must be one of: mola, mola_200m, ctx, hirise",
+            )
 
         # Prevent long-running overlay jobs that often surface in browser as CORS header errors
         # when the upstream platform returns 502/timeout.
-        max_lat_span = 4.0 if dataset_lower == "mola" else 1.2
-        max_lon_span = 4.0 if dataset_lower == "mola" else 1.2
-        max_area_deg2 = 12.0 if dataset_lower == "mola" else 1.5
+        is_low_res = dataset_lower in {"mola", "mola_200m"}
+        max_lat_span = 4.0 if is_low_res else 1.2
+        max_lon_span = 4.0 if is_low_res else 1.2
+        max_area_deg2 = 12.0 if is_low_res else 1.5
         if lat_span > max_lat_span or lon_span > max_lon_span or (lat_span * lon_span) > max_area_deg2:
             raise HTTPException(
                 status_code=413,
@@ -267,18 +622,28 @@ async def get_dem_image(
                 detail="Requested overlay image is too large. Reduce viewport size or zoom level.",
             )
 
+        lon_min_norm = to_lon360(lon_min)
+        lon_max_norm = to_lon360(lon_max)
+        if lon_max_norm <= lon_min_norm:
+            lon_max_norm = min(360.0, lon_min_norm + max(lon_span, 0.01))
+
         # Extend ROI bounds if buffer is specified
         if buffer > 0:
             delta_lat = (lat_max - lat_min) * buffer
-            delta_lon = (lon_max - lon_min) * buffer
+            delta_lon = (lon_max_norm - lon_min_norm) * buffer
             extended_bbox = BoundingBox(
                 lat_min=max(-90, lat_min - delta_lat),
                 lat_max=min(90, lat_max + delta_lat),
-                lon_min=max(0, lon_min - delta_lon),
-                lon_max=min(360, lon_max + delta_lon),
+                lon_min=max(0, lon_min_norm - delta_lon),
+                lon_max=min(360, lon_max_norm + delta_lon),
             )
         else:
-            extended_bbox = original_bbox
+            extended_bbox = BoundingBox(
+                lat_min=lat_min,
+                lat_max=lat_max,
+                lon_min=lon_min_norm,
+                lon_max=lon_max_norm,
+            )
 
         logger.info("Loading DEM data...", bbox=extended_bbox.model_dump(), dataset=dataset)
         # Load DEM with extended bounds (allow download if not cached)
@@ -286,22 +651,26 @@ async def get_dem_image(
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
 
-        data_manager = DataManager()
         loop = asyncio.get_event_loop()
         use_synthetic = False
-        dem = None
+        raster_result = None
         try:
             # Increase timeout for large DEMs, but add progress logging
             logger.info("Starting DEM load in thread pool...")
             with ThreadPoolExecutor() as executor:
-                dem = await asyncio.wait_for(
+                raster_result = await asyncio.wait_for(
                     loop.run_in_executor(
                         executor,
-                        lambda: data_manager.get_dem_for_roi(extended_bbox, dataset=dataset.lower(), download=True, clip=True)
+                        lambda: load_dem_window(
+                            dataset_lower,
+                            extended_bbox,
+                            target_shape=(height, width),
+                            allow_download=True,
+                        ),
                     ),
                     timeout=120.0
                 )
-            logger.info("DEM loaded successfully", shape=dem.shape, dtype=str(dem.dtype))
+            logger.info("DEM loaded successfully", shape=raster_result.array.shape, dtype=str(raster_result.array.dtype))
         except asyncio.TimeoutError:
             logger.warning("DEM loading timed out, generating synthetic visualization for demo mode", bbox=extended_bbox.model_dump())
             use_synthetic = True
@@ -311,8 +680,8 @@ async def get_dem_image(
 
         logger.info("Processing elevation data...")
         # Get elevation data (or synthesize if DEM unavailable)
-        if not use_synthetic and dem is not None:
-            elevation = dem.values.astype(np.float32)
+        if not use_synthetic and raster_result is not None:
+            elevation = raster_result.array.astype(np.float32)
         else:
             # Create a synthetic elevation surface for visualization (fast demo fallback)
             synth_h = max(100, min(height, 600)) if 'height' in locals() else 300
@@ -324,8 +693,8 @@ async def get_dem_image(
             elevation = elevation.astype(np.float32)
 
         # Handle nodata values
-        if not use_synthetic and dem is not None and hasattr(dem, 'attrs') and 'nodata' in dem.attrs:
-            nodata = dem.attrs['nodata']
+        if not use_synthetic and raster_result is not None and raster_result.nodata is not None:
+            nodata = raster_result.nodata
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
 
@@ -436,7 +805,7 @@ async def get_dem_image(
 
         # Get bounds for frontend - use actual DEM bounds when available
         bounds_dict = None
-        if use_synthetic:
+        if use_synthetic or raster_result is None:
             bounds_dict = {
                 "left": float(extended_bbox.lon_min),
                 "right": float(extended_bbox.lon_max),
@@ -444,37 +813,15 @@ async def get_dem_image(
                 "top": float(extended_bbox.lat_max),
             }
 
-        # Try to get bounds from rio accessor first
-        if not use_synthetic and hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
+        # If available, calculate bounds from transform
+        if not use_synthetic and bounds_dict is None and raster_result and raster_result.transform:
             try:
-                bounds = dem.rio.bounds()
-                bounds_dict = {
-                    "left": float(bounds.left),
-                    "right": float(bounds.right),
-                    "bottom": float(bounds.bottom),
-                    "top": float(bounds.top),
-                }
-                logger.debug("Using rio.bounds() for image bounds", bounds=bounds_dict)
-            except Exception as e:
-                logger.warning("Failed to get bounds from rio accessor", error=str(e))
-
-        # If rio bounds failed, try to calculate from transform
-        if not use_synthetic and bounds_dict is None and hasattr(dem, 'rio') and hasattr(dem.rio, 'transform'):
-            try:
-                import rasterio.transform
-                transform = dem.rio.transform()
-                height, width = dem.shape
-                # Calculate bounds from transform: corners of the image
-                # Top-left corner (row=0, col=0)
-                lon_tl, lat_tl = rasterio.transform.xy(transform, 0, 0)
-                # Bottom-right corner (row=height, col=width)
-                lon_br, lat_br = rasterio.transform.xy(transform, height, width)
-                # Top-right corner (row=0, col=width)
-                lon_tr, lat_tr = rasterio.transform.xy(transform, 0, width)
-                # Bottom-left corner (row=height, col=0)
-                lon_bl, lat_bl = rasterio.transform.xy(transform, height, 0)
-
-                # Get min/max from all corners
+                a, b, c, d, e, f = raster_result.transform[:6]
+                rows, cols = elevation.shape
+                lon_tl, lat_tl = c, f
+                lon_tr, lat_tr = c + a * cols, f
+                lon_bl, lat_bl = c, f + e * rows
+                lon_br, lat_br = c + a * cols, f + e * rows
                 lons = [lon_tl, lon_tr, lon_bl, lon_br]
                 lats = [lat_tl, lat_tr, lat_bl, lat_br]
                 bounds_dict = {
@@ -486,22 +833,6 @@ async def get_dem_image(
                 logger.debug("Calculated bounds from transform", bounds=bounds_dict)
             except Exception as e:
                 logger.warning("Failed to calculate bounds from transform", error=str(e))
-
-        # If transform calculation failed, try using coordinate arrays
-        if not use_synthetic and bounds_dict is None and hasattr(dem, 'coords'):
-            try:
-                if 'lon' in dem.coords and 'lat' in dem.coords:
-                    lon_coords = dem.coords['lon'].values
-                    lat_coords = dem.coords['lat'].values
-                    bounds_dict = {
-                        "left": float(np.nanmin(lon_coords)),
-                        "right": float(np.nanmax(lon_coords)),
-                        "bottom": float(np.nanmin(lat_coords)),
-                        "top": float(np.nanmax(lat_coords)),
-                    }
-                    logger.debug("Calculated bounds from coordinate arrays", bounds=bounds_dict)
-            except Exception as e:
-                logger.warning("Failed to calculate bounds from coordinates", error=str(e))
 
         # Final fallback: use requested ROI (not ideal, but better than nothing)
         if bounds_dict is None:
@@ -523,6 +854,12 @@ async def get_dem_image(
 
         # Return image with metadata in headers
         response = Response(content=png_bytes, media_type="image/png")
+        if raster_result is not None:
+            response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+            response.headers["X-Dataset-Used"] = raster_result.dataset_used
+            response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+            if raster_result.fallback_reason:
+                response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
         response.headers["X-Bounds-Left"] = str(bounds_dict["left"])
         response.headers["X-Bounds-Right"] = str(bounds_dict["right"])
         response.headers["X-Bounds-Bottom"] = str(bounds_dict["bottom"])
@@ -726,7 +1063,7 @@ async def get_waypoints_geojson():
 
 @router.get("/visualization/terrain-3d")
 async def get_terrain_3d(
-    dataset: str = Query(..., description="Dataset name (mola, hirise, ctx)"),
+    dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
     roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
     max_points: int = Query(50000, ge=1000, le=200000, description="Maximum number of points for 3D mesh"),
 ):
@@ -738,31 +1075,45 @@ async def get_terrain_3d(
         # Parse ROI
         try:
             lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-            bbox = BoundingBox(
-                lat_min=lat_min,
-                lat_max=lat_max,
-                lon_min=lon_min,
-                lon_max=lon_max,
-            )
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
 
+        try:
+            dataset_lower = normalize_dataset(dataset)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, mola_200m, ctx, hirise")
+
+        lon_min_norm = to_lon360(lon_min)
+        lon_max_norm = to_lon360(lon_max)
+        if lon_max_norm <= lon_min_norm:
+            lon_max_norm = min(360.0, lon_min_norm + max(lon_max - lon_min, 0.01))
+
+        bbox = BoundingBox(
+            lat_min=lat_min,
+            lat_max=lat_max,
+            lon_min=lon_min_norm,
+            lon_max=lon_max_norm,
+        )
+
         # Load DEM (allow download if not cached)
         use_synthetic = False
-        dem = None
+        raster_result = None
         try:
-            data_manager = DataManager()
-            dem = data_manager.get_dem_for_roi(bbox, dataset=dataset.lower(), download=True, clip=True)
+            raster_result = load_dem_window(
+                dataset_lower,
+                bbox,
+                allow_download=True,
+            )
         except Exception as e:
             logger.warning("DEM load failed for 3D terrain, using synthetic surface for demo mode", error=str(e))
             use_synthetic = True
 
         # Get elevation data
-        elevation = dem.values.astype(np.float32) if not use_synthetic else None
+        elevation = raster_result.array.astype(np.float32) if not use_synthetic and raster_result else None
 
         # Handle nodata values
-        if not use_synthetic and hasattr(dem, 'attrs') and 'nodata' in dem.attrs:
-            nodata = dem.attrs['nodata']
+        if not use_synthetic and raster_result and raster_result.nodata is not None:
+            nodata = raster_result.nodata
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
 
@@ -803,31 +1154,15 @@ async def get_terrain_3d(
         lat_min_actual = lat_min
         lat_max_actual = lat_max
 
-        # Try to get actual bounds from DEM
-        if not use_synthetic and hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
+        # Try to get actual bounds from transform
+        if not use_synthetic and raster_result and raster_result.transform:
             try:
-                bounds = dem.rio.bounds()
-                lon_min_actual = float(bounds.left)
-                lon_max_actual = float(bounds.right)
-                lat_min_actual = float(bounds.bottom)
-                lat_max_actual = float(bounds.top)
-                logger.debug("Using rio.bounds() for 3D terrain", bounds=(lon_min_actual, lon_max_actual, lat_min_actual, lat_max_actual))
-            except Exception as e:
-                logger.warning("Failed to get bounds from rio accessor for 3D terrain", error=str(e))
-
-        # If rio bounds failed, try to calculate from transform
-        if not use_synthetic and (lon_min_actual == lon_min and lon_max_actual == lon_max and
-            hasattr(dem, 'rio') and hasattr(dem.rio, 'transform')):
-            try:
-                import rasterio.transform
-                transform = dem.rio.transform()
-                height, width = dem.shape
-                # Calculate bounds from transform
-                lon_tl, lat_tl = rasterio.transform.xy(transform, 0, 0)
-                lon_br, lat_br = rasterio.transform.xy(transform, height, width)
-                lon_tr, lat_tr = rasterio.transform.xy(transform, 0, width)
-                lon_bl, lat_bl = rasterio.transform.xy(transform, height, 0)
-
+                a, b, c, d, e, f = raster_result.transform[:6]
+                height, width = elevation.shape
+                lon_tl, lat_tl = c, f
+                lon_tr, lat_tr = c + a * width, f
+                lon_bl, lat_bl = c, f + e * height
+                lon_br, lat_br = c + a * width, f + e * height
                 lons = [lon_tl, lon_tr, lon_bl, lon_br]
                 lats = [lat_tl, lat_tr, lat_bl, lat_br]
                 lon_min_actual = float(min(lons))
@@ -837,20 +1172,6 @@ async def get_terrain_3d(
                 logger.debug("Calculated 3D terrain bounds from transform", bounds=(lon_min_actual, lon_max_actual, lat_min_actual, lat_max_actual))
             except Exception as e:
                 logger.warning("Failed to calculate 3D terrain bounds from transform", error=str(e))
-
-        # If transform calculation failed, try using coordinate arrays
-        if not use_synthetic and (lon_min_actual == lon_min and lon_max_actual == lon_max and
-            hasattr(dem, 'coords') and 'lon' in dem.coords and 'lat' in dem.coords):
-            try:
-                lon_coords = dem.coords['lon'].values
-                lat_coords = dem.coords['lat'].values
-                lon_min_actual = float(np.nanmin(lon_coords))
-                lon_max_actual = float(np.nanmax(lon_coords))
-                lat_min_actual = float(np.nanmin(lat_coords))
-                lat_max_actual = float(np.nanmax(lat_coords))
-                logger.debug("Calculated 3D terrain bounds from coordinates", bounds=(lon_min_actual, lon_max_actual, lat_min_actual, lat_max_actual))
-            except Exception as e:
-                logger.warning("Failed to calculate 3D terrain bounds from coordinates", error=str(e))
 
         # Create coordinate arrays
         lons = np.linspace(lon_min_actual, lon_max_actual, width)
@@ -870,6 +1191,10 @@ async def get_terrain_3d(
                 "lat_min": float(lat_min_actual),
                 "lat_max": float(lat_max_actual),
             },
+            "dataset_requested": dataset_lower,
+            "dataset_used": raster_result.dataset_used if raster_result else dataset_lower,
+            "is_fallback": raster_result.is_fallback if raster_result else False,
+            "fallback_reason": raster_result.fallback_reason if raster_result else None,
             "elevation_range": {
                 "min": float(np.nanmin(elevation)),
                 "max": float(np.nanmax(elevation)),
@@ -891,7 +1216,7 @@ async def get_terrain_3d(
 @router.get("/visualization/overlay")
 async def get_overlay(
     overlay_type: str = Query(..., description="Overlay type: elevation, solar, hillshade, slope, aspect, roughness, tri"),
-    dataset: str = Query(..., description="Dataset name (mola, hirise, ctx)"),
+    dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
     roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
     colormap: str = Query("terrain", description="Colormap name (terrain, viridis, plasma, etc.)"),
     relief: float = Query(0.0, ge=0.0, le=3.0, description="Relief / hillshade intensity (for elevation overlay)"),
@@ -944,15 +1269,20 @@ async def get_overlay(
         if lat_span <= 0 or lon_span <= 0:
             raise HTTPException(status_code=400, detail="Invalid ROI bounds: max must be greater than min")
 
-        dataset_lower = dataset.lower()
-        if dataset_lower not in {"mola", "ctx", "hirise"}:
-            raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, ctx, hirise")
+        try:
+            dataset_lower = normalize_dataset(dataset)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid dataset. Must be one of: mola, mola_200m, ctx, hirise",
+            )
 
         # Keep interactive overlays bounded to avoid platform 502/timeout responses
         # that browsers often surface as CORS header errors.
-        max_lat_span = 4.0 if dataset_lower == "mola" else 1.2
-        max_lon_span = 4.0 if dataset_lower == "mola" else 1.2
-        max_area_deg2 = 12.0 if dataset_lower == "mola" else 1.5
+        is_low_res = dataset_lower in {"mola", "mola_200m"}
+        max_lat_span = 4.0 if is_low_res else 1.2
+        max_lon_span = 4.0 if is_low_res else 1.2
+        max_area_deg2 = 12.0 if is_low_res else 1.5
         if lat_span > max_lat_span or lon_span > max_lon_span or (lat_span * lon_span) > max_area_deg2:
             raise HTTPException(
                 status_code=413,
@@ -968,23 +1298,36 @@ async def get_overlay(
                 detail="Requested overlay image is too large. Reduce viewport size or zoom level.",
             )
 
+        lon_min_norm = to_lon360(lon_min)
+        lon_max_norm = to_lon360(lon_max)
+        if lon_max_norm <= lon_min_norm:
+            lon_max_norm = min(360.0, lon_min_norm + max(lon_span, 0.01))
+
         # Extend ROI bounds if buffer is specified
         if buffer > 0:
             delta_lat = (lat_max - lat_min) * buffer
-            delta_lon = (lon_max - lon_min) * buffer
+            delta_lon = (lon_max_norm - lon_min_norm) * buffer
             extended_bbox = BoundingBox(
                 lat_min=max(-90, lat_min - delta_lat),
                 lat_max=min(90, lat_max + delta_lat),
-                lon_min=max(0, lon_min - delta_lon),
-                lon_max=min(360, lon_max + delta_lon),
+                lon_min=max(0, lon_min_norm - delta_lon),
+                lon_max=min(360, lon_max_norm + delta_lon),
             )
         else:
-            extended_bbox = original_bbox
+            extended_bbox = BoundingBox(
+                lat_min=lat_min,
+                lat_max=lat_max,
+                lon_min=lon_min_norm,
+                lon_max=lon_max_norm,
+            )
+
+        resolution = resolve_dataset_with_fallback(dataset_lower, extended_bbox)
+        dataset_cache = resolution.dataset_used
 
         data_manager = DataManager()
         dem_cache_buster = "none"
         try:
-            dem_cache_path = data_manager._get_cache_path(dataset.lower(), extended_bbox)
+            dem_cache_path = data_manager._get_cache_path(dataset_cache, extended_bbox)
             if dem_cache_path.exists():
                 dem_cache_buster = str(int(dem_cache_path.stat().st_mtime))
         except Exception:
@@ -995,7 +1338,7 @@ async def get_overlay(
         overlay_cache = OverlayCache()
         cached_path = overlay_cache.get(
             overlay_type,
-            dataset,
+            dataset_cache,
             extended_bbox,
             colormap,
             relief,
@@ -1022,6 +1365,11 @@ async def get_overlay(
             response.headers["X-Bounds-Bottom"] = str(bounds_dict["bottom"])
             response.headers["X-Bounds-Top"] = str(bounds_dict["top"])
             response.headers["X-Overlay-Type"] = overlay_type
+            response.headers["X-Dataset-Requested"] = resolution.dataset_requested
+            response.headers["X-Dataset-Used"] = resolution.dataset_used
+            response.headers["X-Fallback-Used"] = str(resolution.is_fallback).lower()
+            if resolution.fallback_reason:
+                response.headers["X-Fallback-Reason"] = resolution.fallback_reason
             response.headers["Content-Length"] = str(len(png_bytes))
             return response
 
@@ -1032,19 +1380,26 @@ async def get_overlay(
 
         loop = asyncio.get_event_loop()
         use_synthetic = False
+        raster_result = None
         dem = None
 
         # Load DEM
         try:
             with ThreadPoolExecutor() as executor:
-                dem = await asyncio.wait_for(
+                raster_result = await asyncio.wait_for(
                     loop.run_in_executor(
                         executor,
-                        lambda: data_manager.get_dem_for_roi(extended_bbox, dataset=dataset.lower(), download=True, clip=True)
+                        lambda: load_dem_window(
+                            dataset_lower,
+                            extended_bbox,
+                            target_shape=(height, width),
+                            allow_download=True,
+                        )
                     ),
                     timeout=120.0
                 )
-            logger.info("DEM loaded successfully", shape=dem.shape)
+            dem = _build_dem_dataarray(raster_result) if raster_result else None
+            logger.info("DEM loaded successfully", shape=dem.shape if dem is not None else None)
         except asyncio.TimeoutError:
             logger.warning("DEM loading timed out, using synthetic", bbox=extended_bbox.model_dump())
             use_synthetic = True
@@ -1054,10 +1409,10 @@ async def get_overlay(
 
         # Get cell size
         config = get_config()
-        if dataset.lower() in config.data_sources:
-            cell_size_m = config.data_sources[dataset.lower()].resolution_m
-        elif not use_synthetic and dem is not None and hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
-            cell_size_m = float(abs(dem.rio.res[0]))
+        if raster_result and raster_result.resolution_m:
+            cell_size_m = raster_result.resolution_m
+        elif dataset_lower in config.data_sources:
+            cell_size_m = config.data_sources[dataset_lower].resolution_m
         else:
             cell_size_m = 200.0
 
@@ -1138,7 +1493,7 @@ async def get_overlay(
         # Cache the result
         overlay_cache.put(
             overlay_type,
-            dataset,
+            dataset_cache,
             extended_bbox,
             png_bytes,
             colormap,
@@ -1159,6 +1514,12 @@ async def get_overlay(
 
         # Return image with metadata
         response = Response(content=png_bytes, media_type="image/png")
+        if raster_result is not None:
+            response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+            response.headers["X-Dataset-Used"] = raster_result.dataset_used
+            response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+            if raster_result.fallback_reason:
+                response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
         response.headers["X-Bounds-Left"] = str(bounds_dict["left"])
         response.headers["X-Bounds-Right"] = str(bounds_dict["right"])
         response.headers["X-Bounds-Bottom"] = str(bounds_dict["bottom"])
@@ -1176,6 +1537,45 @@ async def get_overlay(
     except Exception as e:
         logger.exception("Failed to generate overlay")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/visualization/dataset-coverage")
+async def get_dataset_coverage(
+    dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
+    bbox: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
+):
+    """Report coverage availability for a dataset within a bounding box."""
+    try:
+        dataset_lower = normalize_dataset(dataset)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, mola_200m, ctx, hirise")
+
+    try:
+        lat_min, lat_max, lon_min, lon_max = map(float, bbox.split(','))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid bbox format: {e}")
+
+    lon_min_norm = to_lon360(lon_min)
+    lon_max_norm = to_lon360(lon_max)
+    if lon_max_norm <= lon_min_norm:
+        lon_max_norm = min(360.0, lon_min_norm + max(lon_max - lon_min, 0.01))
+
+    bbox_obj = BoundingBox(
+        lat_min=lat_min,
+        lat_max=lat_max,
+        lon_min=lon_min_norm,
+        lon_max=lon_max_norm,
+    )
+
+    resolution = resolve_dataset_with_fallback(dataset_lower, bbox_obj)
+    available = resolution.dataset_used == dataset_lower
+
+    return {
+        "dataset": dataset_lower,
+        "available": available,
+        "dataset_used": resolution.dataset_used,
+        "fallback_reason": resolution.fallback_reason,
+    }
 
 
 async def _generate_elevation_overlay(

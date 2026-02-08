@@ -93,7 +93,7 @@ class AnalysisPipeline:
     def run(
         self,
         roi: BoundingBox,
-        dataset: Literal["mola", "hirise", "ctx"] = "mola",
+        dataset: Literal["mola", "mola_200m", "hirise", "ctx"] = "mola",
         threshold: float = 0.7,
         criteria_weights: Optional[dict[str, float]] = None,
         mcdm_method: Literal["weighted_sum", "topsis"] = "weighted_sum",
@@ -536,5 +536,4 @@ class AnalysisPipeline:
         df = pd.DataFrame(sites_data)
         df.to_csv(sites_csv_file, index=False)
         logger.info(f"Saved sites CSV to {sites_csv_file}")
-
 

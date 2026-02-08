@@ -1,4 +1,4 @@
-import { MapContainer, ImageOverlay, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, ImageOverlay, GeoJSON, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
@@ -15,6 +15,9 @@ L.Icon.Default.mergeOptions({
 
 interface ElevationSample {
   dataset: string
+  dataset_used?: string
+  is_fallback?: boolean
+  fallback_reason?: string | null
   lat: number
   lon: number
   lon_360: number
@@ -46,6 +49,13 @@ const normalizeLon360 = (lon: number) => {
   let normalized = lon
   while (normalized < 0) normalized += 360
   while (normalized >= 360) normalized -= 360
+  return normalized
+}
+
+const normalizeLon180 = (lon: number) => {
+  let normalized = lon
+  while (normalized < -180) normalized += 360
+  while (normalized > 180) normalized -= 360
   return normalized
 }
 
@@ -181,6 +191,67 @@ function ElevationProbe({
       }
     },
   })
+
+  return null
+}
+
+function CoverageTracker({
+  dataset,
+  onCoverageChange,
+}: {
+  dataset: string
+  onCoverageChange: (coverage: { datasetUsed: string; isFallback: boolean; fallbackReason?: string | null }) => void
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
+    const fetchCoverage = async () => {
+      const bounds = map.getBounds()
+      const bbox = [
+        bounds.getSouth(),
+        bounds.getNorth(),
+        normalizeLon180(bounds.getWest()),
+        normalizeLon180(bounds.getEast()),
+      ]
+      const params = new URLSearchParams({
+        dataset,
+        bbox: bbox.map((v) => v.toFixed(4)).join(','),
+      })
+      try {
+        const response = await fetch(apiUrl(`/visualization/dataset-coverage?${params.toString()}`), {
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          return
+        }
+        const data = await response.json()
+        if (cancelled) return
+        onCoverageChange({
+          datasetUsed: data.dataset_used || dataset,
+          isFallback: !data.available,
+          fallbackReason: data.fallback_reason,
+        })
+      } catch {
+        // Ignore coverage errors; map still renders.
+      }
+    }
+
+    if (dataset === 'hirise') {
+      fetchCoverage()
+      map.on('moveend zoomend', fetchCoverage)
+    } else {
+      onCoverageChange({ datasetUsed: dataset, isFallback: false })
+    }
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      map.off('moveend zoomend', fetchCoverage)
+    }
+  }, [dataset, map, onCoverageChange])
 
   return null
 }
@@ -327,6 +398,8 @@ export default function TerrainMap({
   const [probeError, setProbeError] = useState<string | null>(null)
   const [probeSample, setProbeSample] = useState<ElevationSample | null>(null)
   const [viewportSample, setViewportSample] = useState<ViewportSample | null>(null)
+  const [coverageStatus, setCoverageStatus] = useState<{ datasetUsed: string; isFallback: boolean; fallbackReason?: string | null } | null>(null)
+  const useLegacyOverlay = import.meta.env.VITE_USE_LEGACY_IMAGE_OVERLAY === 'true'
 
   const handleViewportChange = useCallback((next: ViewportSample) => {
     setViewportSample((prev) => {
@@ -393,23 +466,28 @@ export default function TerrainMap({
   const renderWidth = cappedRender.width
   const renderHeight = cappedRender.height
 
-  const overlayImage = useOverlayImage(renderRoi, dataset, activeOverlayType, {
-    colormap: overlayOptions.colormap || 'terrain',
-    relief: overlayOptions.relief ?? relief,
-    sunAzimuth: overlayOptions.sunAzimuth || 315,
-    sunAltitude: overlayOptions.sunAltitude || 45,
-    width: renderWidth,
-    height: renderHeight,
-    buffer: overlayOptions.buffer ?? 0.05,
-    marsSol: overlayOptions.marsSol,
-    season: overlayOptions.season,
-    dustStormPeriod: overlayOptions.dustStormPeriod
-  });
+  const overlayImage = useOverlayImage(
+    useLegacyOverlay ? renderRoi : null,
+    dataset,
+    useLegacyOverlay ? activeOverlayType : null,
+    {
+      colormap: overlayOptions.colormap || 'terrain',
+      relief: overlayOptions.relief ?? relief,
+      sunAzimuth: overlayOptions.sunAzimuth || 315,
+      sunAltitude: overlayOptions.sunAltitude || 45,
+      width: renderWidth,
+      height: renderHeight,
+      buffer: overlayOptions.buffer ?? 0.05,
+      marsSol: overlayOptions.marsSol,
+      season: overlayOptions.season,
+      dustStormPeriod: overlayOptions.dustStormPeriod,
+    }
+  )
 
-  const displayImageUrl = overlayImage?.url;
-  const displayBounds = overlayImage?.bounds;
-  const displayLoading = overlayImage?.loading;
-  const displayError = overlayImage?.error;
+  const displayImageUrl = overlayImage?.url
+  const displayBounds = overlayImage?.bounds
+  const displayLoading = overlayImage?.loading
+  const displayError = overlayImage?.error
 
   const centerTuple: [number, number] = roi
     ? [
@@ -425,6 +503,16 @@ export default function TerrainMap({
     ? `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}|${dataset}|${activeOverlayType}`
     : `${dataset}|${activeOverlayType}`;
 
+  const supportedTileOverlays = ['elevation', 'solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri']
+  const tileOverlayType = supportedTileOverlays.includes(activeOverlayType) ? activeOverlayType : null
+
+  const roiBounds = roi
+    ? L.latLngBounds(
+        [roi.lat_min, normalizeLon180(roi.lon_min)],
+        [roi.lat_max, normalizeLon180(roi.lon_max)]
+      )
+    : null
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -433,6 +521,9 @@ export default function TerrainMap({
         style={{ height: '100%', width: '100%' }}
         className="bg-black"
         scrollWheelZoom={true}
+        crs={L.CRS.EPSG4326}
+        maxBounds={[[-90, -180], [90, 180]]}
+        worldCopyJump={false}
       >
         <ViewportTracker onViewportChange={handleViewportChange} />
         <ElevationProbe
@@ -451,13 +542,53 @@ export default function TerrainMap({
             setProbeError(message)
           }}
         />
+        {!useLegacyOverlay && (
+          <CoverageTracker dataset={dataset} onCoverageChange={setCoverageStatus} />
+        )}
 
-        {displayImageUrl && displayBounds && (
+        {!useLegacyOverlay && (
+          <>
+            <TileLayer
+              url={apiUrl(`/visualization/tiles/basemap/${dataset}/{z}/{x}/{y}.png`)}
+              tileSize={256}
+              keepBuffer={2}
+              updateWhenIdle={true}
+              minZoom={2}
+              maxZoom={14}
+              noWrap={true}
+            />
+            {tileOverlayType && (
+              <TileLayer
+                url={apiUrl(
+                  `/visualization/tiles/overlay/${tileOverlayType}/${dataset}/{z}/{x}/{y}.png?${new URLSearchParams({
+                    colormap: overlayOptions.colormap || 'terrain',
+                    relief: String(overlayOptions.relief ?? relief),
+                    sun_azimuth: String(overlayOptions.sunAzimuth || 315),
+                    sun_altitude: String(overlayOptions.sunAltitude || 45),
+                    mars_sol: overlayOptions.marsSol ? String(overlayOptions.marsSol) : '',
+                    season: overlayOptions.season || '',
+                    dust_storm_period: overlayOptions.dustStormPeriod || '',
+                  }).toString()}`
+                )}
+                opacity={0.72}
+                tileSize={256}
+                keepBuffer={2}
+                updateWhenIdle={true}
+                minZoom={2}
+                maxZoom={14}
+                noWrap={true}
+              />
+            )}
+          </>
+        )}
+
+        {useLegacyOverlay && displayImageUrl && displayBounds && (
           <>
             <ImageOverlay url={displayImageUrl} bounds={displayBounds} opacity={0.78} />
             <FitBounds bounds={displayBounds} fitKey={fitKey} />
           </>
         )}
+        {!useLegacyOverlay && roiBounds && <FitBounds bounds={roiBounds} fitKey={fitKey} />}
 
         {showSites && (
           <SitesLayer showSites={showSites} onSiteSelect={onSiteSelect} selectedSiteId={selectedSiteId} />
@@ -468,15 +599,26 @@ export default function TerrainMap({
         )}
       </MapContainer>
 
-      {displayLoading && (
+      {useLegacyOverlay && displayLoading && (
         <div className="pointer-events-none absolute top-3 left-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
           Loading map data...
         </div>
       )}
 
-      {displayError && (
+      {useLegacyOverlay && displayError && (
         <div className="absolute top-3 right-3 max-w-[420px] bg-red-950/90 border border-red-700/70 text-red-200 text-xs font-mono px-3 py-2 rounded">
           Map data error: {displayError}
+        </div>
+      )}
+
+      {!useLegacyOverlay && coverageStatus && (
+        <div className="pointer-events-none absolute top-3 left-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+          <div>Requested: {dataset.toUpperCase()}</div>
+          <div>
+            Rendered:{' '}
+            {coverageStatus.datasetUsed.toUpperCase()}
+            {coverageStatus.isFallback ? ' (fallback)' : ''}
+          </div>
         </div>
       )}
 
@@ -488,7 +630,8 @@ export default function TerrainMap({
             <div>LAT: {probeSample.lat.toFixed(4)}</div>
             <div>LON: {probeSample.lon_360.toFixed(4)}</div>
             <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
-            <div>DATASET: {probeSample.dataset.toUpperCase()}</div>
+            <div>DATASET: {(probeSample.dataset_used || probeSample.dataset).toUpperCase()}</div>
+            {probeSample.is_fallback && <div className="text-amber-300">Fallback active</div>}
           </>
         )}
         {!probeLoading && !probeSample && <div>No sample yet</div>}

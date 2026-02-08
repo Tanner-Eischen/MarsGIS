@@ -34,6 +34,7 @@ export interface MarsOverlayDefinition {
   datasets: MarsDataset[]
   backendEndpoint: string
   externalUrl?: string
+  comingSoon?: boolean
   dataType: 'raster' | 'vector'
   resolution?: string
   temporalParams?: {
@@ -69,7 +70,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Solar irradiance potential with dust degradation',
     color: '#FFD700',
     temporalType: 'temporal',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster',
     temporalParams: {
@@ -86,10 +87,11 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Line-of-sight visibility from observer',
     color: '#00FF00',
     temporalType: 'static',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster',
-    resolution: 'Variable'
+    resolution: 'Variable',
+    comingSoon: true
   },
   {
     name: 'comms_risk',
@@ -98,9 +100,10 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Signal occlusion risk probability',
     color: '#FF4500',
     temporalType: 'static',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
-    dataType: 'raster'
+    dataType: 'raster',
+    comingSoon: true
   },
   {
     name: 'dust',
@@ -109,7 +112,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'TES Dust Cover Index - surface dust coverage',
     color: '#8B7355',
     temporalType: 'temporal',
-    datasets: ['mola'],
+    datasets: ['mola', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     externalUrl: 'https://tes.asu.edu/~ruff/DCI/dci.html',
     dataType: 'raster',
@@ -127,7 +130,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: '3D terrain shading',
     color: '#696969',
     temporalType: 'temporal',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster',
     temporalParams: {
@@ -142,7 +145,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Terrain slope in degrees',
     color: '#FF6347',
     temporalType: 'static',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster'
   },
@@ -153,7 +156,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Slope direction/orientation',
     color: '#4169E1',
     temporalType: 'static',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster'
   },
@@ -164,7 +167,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Terrain roughness index',
     color: '#A0522D',
     temporalType: 'static',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster'
   },
@@ -175,7 +178,7 @@ export const MARS_OVERLAY_DEFINITIONS: MarsOverlayDefinition[] = [
     description: 'Terrain Ruggedness Index',
     color: '#8B4513',
     temporalType: 'static',
-    datasets: ['mola', 'hirise', 'ctx'],
+    datasets: ['mola', 'hirise', 'ctx', 'mola_200m'],
     backendEndpoint: '/api/v1/visualization/overlay',
     dataType: 'raster'
   },

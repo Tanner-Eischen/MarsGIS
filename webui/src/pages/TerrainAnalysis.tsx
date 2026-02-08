@@ -199,6 +199,7 @@ export default function TerrainAnalysis({
               className="w-full bg-gray-800 border border-gray-600 text-white px-2 py-1.5 rounded text-xs focus:border-cyan-500 focus:outline-none"
             >
               <option value="mola">MOLA (Global)</option>
+              <option value="mola_200m">MOLA 200m (Global)</option>
               <option value="hirise">HiRISE (High Res)</option>
               <option value="ctx">CTX (Medium Res)</option>
             </select>

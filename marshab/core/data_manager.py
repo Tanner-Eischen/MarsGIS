@@ -58,6 +58,31 @@ class DataManager:
 
         return self.cache_dir / f"{cache_key}.tif"
 
+    def _cache_looks_real(self, cache_path: Path) -> bool:
+        """Heuristic check whether cached DEM is likely real (not tiny synthetic fallback)."""
+        if not cache_path.exists():
+            return False
+
+        # Fast size gate first.
+        try:
+            if cache_path.stat().st_size > 2 * 1024 * 1024:
+                return True
+        except Exception:
+            return False
+
+        try:
+            with rasterio.open(cache_path) as src:
+                tags = src.tags()
+                if tags.get("SOURCE_URL"):
+                    return True
+                # Synthetic fallback tiles are usually very small; real Jezero tile is much denser.
+                if src.width * src.height >= 500_000:
+                    return True
+        except Exception:
+            return False
+
+        return False
+
     def _download_real_mola_tile(self, roi: BoundingBox, dest_path: Path):
         """Attempt to download real MOLA data, handling global file caching and clipping."""
 
@@ -285,6 +310,14 @@ class DataManager:
         cache_path = self._get_cache_path(dataset, roi)
 
         if cache_path.exists() and not force:
+            # Self-heal Jezero cache: if an old synthetic tile exists, upgrade it to curated real DEM.
+            if dataset == "mola" and roi is not None and self._roi_is_jezero_like(roi):
+                if not self._cache_looks_real(cache_path):
+                    logger.info(
+                        "Cached Jezero tile appears synthetic; refreshing curated DEM",
+                        path=str(cache_path),
+                    )
+                    self._download_real_mola_tile(roi, cache_path)
             return cache_path
 
         if dataset == "mola" and roi:

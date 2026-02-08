@@ -61,6 +61,7 @@ class OverlayCache:
         sun_altitude: float = 45.0,
         width: int = 800,
         height: int = 600,
+        cache_buster: str = "",
     ) -> str:
         """Generate cache key for overlay parameters.
 
@@ -81,7 +82,7 @@ class OverlayCache:
         roi_str = f"{roi.lat_min}_{roi.lat_max}_{roi.lon_min}_{roi.lon_max}"
         key_str = (
             f"{overlay_type}_{dataset}_{roi_str}_{colormap}_"
-            f"{relief}_{sun_azimuth}_{sun_altitude}_{width}_{height}"
+            f"{relief}_{sun_azimuth}_{sun_altitude}_{width}_{height}_{cache_buster}"
         )
         return hashlib.md5(key_str.encode()).hexdigest()
 
@@ -110,6 +111,7 @@ class OverlayCache:
         sun_altitude: float = 45.0,
         width: int = 800,
         height: int = 600,
+        cache_buster: str = "",
     ) -> Optional[Path]:
         """Get cached overlay if available.
 
@@ -128,7 +130,16 @@ class OverlayCache:
             Path to cached file if exists, None otherwise
         """
         cache_key = self._get_cache_key(
-            overlay_type, dataset, roi, colormap, relief, sun_azimuth, sun_altitude, width, height
+            overlay_type,
+            dataset,
+            roi,
+            colormap,
+            relief,
+            sun_azimuth,
+            sun_altitude,
+            width,
+            height,
+            cache_buster,
         )
         cache_path = self._get_cache_path(cache_key, overlay_type)
 
@@ -157,6 +168,7 @@ class OverlayCache:
         sun_altitude: float = 45.0,
         width: int = 800,
         height: int = 600,
+        cache_buster: str = "",
     ) -> Path:
         """Store overlay in cache.
 
@@ -176,7 +188,16 @@ class OverlayCache:
             Path to cached file
         """
         cache_key = self._get_cache_key(
-            overlay_type, dataset, roi, colormap, relief, sun_azimuth, sun_altitude, width, height
+            overlay_type,
+            dataset,
+            roi,
+            colormap,
+            relief,
+            sun_azimuth,
+            sun_altitude,
+            width,
+            height,
+            cache_buster,
         )
         cache_path = self._get_cache_path(cache_key, overlay_type)
 
@@ -197,6 +218,7 @@ class OverlayCache:
             "sun_altitude": sun_altitude,
             "width": width,
             "height": height,
+            "cache_buster": cache_buster,
             "size_bytes": len(image_bytes),
             "access_count": 1,
         }

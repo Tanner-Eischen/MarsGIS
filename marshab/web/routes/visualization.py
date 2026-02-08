@@ -808,10 +808,29 @@ async def get_overlay(
         else:
             extended_bbox = original_bbox
 
+        data_manager = DataManager()
+        dem_cache_buster = "none"
+        try:
+            dem_cache_path = data_manager._get_cache_path(dataset.lower(), extended_bbox)
+            if dem_cache_path.exists():
+                dem_cache_buster = str(int(dem_cache_path.stat().st_mtime))
+        except Exception:
+            # Best effort: cache buster stays as "none"
+            pass
+
         # Check cache first
         overlay_cache = OverlayCache()
         cached_path = overlay_cache.get(
-            overlay_type, dataset, extended_bbox, colormap, relief, sun_azimuth, sun_altitude, width, height
+            overlay_type,
+            dataset,
+            extended_bbox,
+            colormap,
+            relief,
+            sun_azimuth,
+            sun_altitude,
+            width,
+            height,
+            dem_cache_buster,
         )
 
         if cached_path and cached_path.exists():
@@ -838,7 +857,6 @@ async def get_overlay(
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
 
-        data_manager = DataManager()
         loop = asyncio.get_event_loop()
         use_synthetic = False
         dem = None
@@ -946,7 +964,17 @@ async def get_overlay(
 
         # Cache the result
         overlay_cache.put(
-            overlay_type, dataset, extended_bbox, png_bytes, colormap, relief, sun_azimuth, sun_altitude, width, height
+            overlay_type,
+            dataset,
+            extended_bbox,
+            png_bytes,
+            colormap,
+            relief,
+            sun_azimuth,
+            sun_altitude,
+            width,
+            height,
+            dem_cache_buster,
         )
 
         logger.info(

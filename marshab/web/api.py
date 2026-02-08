@@ -101,10 +101,14 @@ def create_app() -> FastAPI:
     extra_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
     allow_all = os.getenv("MARSHAB_CORS_ALLOW_ALL", "false").lower() in {"1", "true", "yes"}
     cors_origins = ["*"] if allow_all else [*default_origins, *extra_origins]
+    default_origin_regex = r"^https://([A-Za-z0-9-]+\.)*(vercel\.app|onrender\.com)$"
+    configured_origin_regex = os.getenv("MARSHAB_CORS_ORIGIN_REGEX", "").strip()
+    allow_origin_regex = configured_origin_regex or default_origin_regex
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
+        allow_origin_regex=allow_origin_regex,
         allow_credentials=not allow_all,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["*"],

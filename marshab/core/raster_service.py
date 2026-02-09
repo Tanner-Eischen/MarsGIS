@@ -66,24 +66,49 @@ def to_lon180(lon: float) -> float:
     return lon - 360 if lon > 180 else lon
 
 
+def normalize_lon_bounds(lon_min: float, lon_max: float) -> tuple[float, float]:
+    """Normalize a non-wrapping lon interval into monotonic [0, 360] bounds."""
+    lon_span = lon_max - lon_min
+    if lon_span <= 0:
+        raise ValueError("Longitude span must be positive")
+    if lon_span >= 360.0:
+        return 0.0, 360.0
+    lon_min_360 = to_lon360(lon_min)
+    lon_max_360 = min(360.0, lon_min_360 + lon_span)
+    return lon_min_360, lon_max_360
+
+
+def bbox_to_lon360(bbox: BoundingBox) -> BoundingBox:
+    """Normalize bbox longitude bounds to monotonic [0, 360] without wrapping 360 -> 0."""
+    lon_min_360, lon_max_360 = normalize_lon_bounds(bbox.lon_min, bbox.lon_max)
+    return BoundingBox(
+        lat_min=bbox.lat_min,
+        lat_max=bbox.lat_max,
+        lon_min=lon_min_360,
+        lon_max=lon_max_360,
+    )
+
+
 def compute_tile_bbox_epsg4326(z: int, x: int, y: int) -> BoundingBox:
     """Compute EPSG:4326 tile bbox for a z/x/y tile in geodetic scheme."""
     if z < 0 or x < 0 or y < 0:
         raise ValueError("Invalid tile indices")
-    tiles = 2 ** z
-    if x >= tiles or y >= tiles:
+    x_tiles = 2 ** (z + 1)
+    y_tiles = 2 ** z
+    if x >= x_tiles or y >= y_tiles:
         raise ValueError("Tile indices out of range")
-    lon_span = 360.0 / tiles
-    lat_span = 180.0 / tiles
+    lon_span = 360.0 / x_tiles
+    lat_span = 180.0 / y_tiles
     lon_min = -180.0 + x * lon_span
     lon_max = lon_min + lon_span
     lat_max = 90.0 - y * lat_span
     lat_min = lat_max - lat_span
+    lon_min_360, lon_max_360 = normalize_lon_bounds(lon_min, lon_max)
     return BoundingBox(
         lat_min=lat_min,
         lat_max=lat_max,
-        lon_min=lon_min,
-        lon_max=lon_max,
+        lon_min=lon_min_360,
+        lon_max=lon_max_360,
     )
 
 
@@ -114,12 +139,7 @@ def resolve_dataset_with_fallback(requested: MarsDataset, bbox: BoundingBox) -> 
         )
 
     data_manager = DataManager()
-    roi = BoundingBox(
-        lat_min=bbox.lat_min,
-        lat_max=bbox.lat_max,
-        lon_min=to_lon360(bbox.lon_min),
-        lon_max=to_lon360(bbox.lon_max),
-    )
+    roi = bbox_to_lon360(bbox)
     hirise_cache = data_manager._get_cache_path("hirise", roi)
     if _cache_has_real_data(hirise_cache):
         return DatasetResolutionResult(
@@ -168,12 +188,7 @@ def load_dem_window(
     data_manager = DataManager()
 
     def load_from_cache(dataset_id: MarsDataset):
-        roi_360 = BoundingBox(
-            lat_min=bbox.lat_min,
-            lat_max=bbox.lat_max,
-            lon_min=to_lon360(bbox.lon_min),
-            lon_max=to_lon360(bbox.lon_max),
-        )
+        roi_360 = bbox_to_lon360(bbox)
         cache_path = data_manager._get_cache_path(dataset_id, roi_360)
         if not cache_path.exists():
             raise DataError(f"Dataset cache missing: {dataset_id}")
@@ -182,12 +197,7 @@ def load_dem_window(
         return dem
 
     try:
-        roi_360 = BoundingBox(
-            lat_min=bbox.lat_min,
-            lat_max=bbox.lat_max,
-            lon_min=to_lon360(bbox.lon_min),
-            lon_max=to_lon360(bbox.lon_max),
-        )
+        roi_360 = bbox_to_lon360(bbox)
         if allow_download:
             dem = data_manager.get_dem_for_roi(
                 roi_360,

@@ -81,7 +81,7 @@ export default function MultiResolutionFusion({
   const [datasetInfo, setDatasetInfo] = useState<DatasetInfo | null>(null);
   const [fusionMethods, setFusionMethods] = useState<FusionMethods | null>(null);
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
-  const [primaryDataset, setPrimaryDataset] = useState<string>('mola');
+  const [primaryDataset, setPrimaryDataset] = useState<string>('mola_200m');
   const [blendingMethod, setBlendingMethod] = useState<string>('weighted_average');
   const [upsamplingMethod, setUpsamplingMethod] = useState<string>('bilinear');
   const [downsamplingMethod, setDownsamplingMethod] = useState<string>('average');

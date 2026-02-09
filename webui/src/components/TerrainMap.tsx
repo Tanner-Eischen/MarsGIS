@@ -384,7 +384,7 @@ interface TerrainMapProps {
 
 export default function TerrainMap({
   roi,
-  dataset = 'mola',
+  dataset = 'mola_200m',
   showSites = false,
   showWaypoints = false,
   relief = 0,
@@ -448,8 +448,9 @@ export default function TerrainMap({
     }
   }
   if (renderRoi) {
-    const maxLatSpan = dataset.toLowerCase() === 'mola' ? 2.5 : 0.8
-    const maxLonSpan = dataset.toLowerCase() === 'mola' ? 2.5 : 0.8
+    const isLowRes = dataset.toLowerCase() === 'mola' || dataset.toLowerCase() === 'mola_200m'
+    const maxLatSpan = isLowRes ? 2.5 : 0.8
+    const maxLonSpan = isLowRes ? 2.5 : 0.8
     const [latMin, latMax] = capSpan(renderRoi.lat_min, renderRoi.lat_max, maxLatSpan, -90, 90)
     const [lonMin, lonMax] = capSpan(renderRoi.lon_min, renderRoi.lon_max, maxLonSpan, 0, 360)
     renderRoi = {

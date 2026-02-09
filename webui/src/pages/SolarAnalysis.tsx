@@ -30,7 +30,7 @@ export default function SolarAnalysis({
     lon_min: 77.0,
     lon_max: 77.8,
   })
-  const [localDataset, setLocalDataset] = useState('mola')
+  const [localDataset, setLocalDataset] = useState('mola_200m')
 
   const roi = propRoi || localRoi
   const setRoi = onRoiChange || setLocalRoi

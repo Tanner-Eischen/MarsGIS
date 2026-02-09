@@ -31,7 +31,7 @@ function FitBounds({ bounds }: { bounds: [[number, number], [number, number]] })
 
 export default function SolarHeatmap({
   roi,
-  dataset = 'mola',
+  dataset = 'mola_200m',
   solarPotentialMap,
   shape,
   loading = false,

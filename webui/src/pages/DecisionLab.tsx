@@ -37,7 +37,7 @@ interface SiteScore {
 
 export default function DecisionLab() {
   const [roi, setROI] = useState<ROI | null>({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 })
-  const [dataset, setDataset] = useState('mola')
+  const [dataset, setDataset] = useState('mola_200m')
   const [selectedPreset, setSelectedPreset] = useState<string>('balanced')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [customWeights, setCustomWeights] = useState<Record<string, number>>({})
@@ -172,6 +172,7 @@ export default function DecisionLab() {
                   className="w-full bg-gray-700 p-2 rounded text-white text-sm"
                 >
                   <option value="mola">MOLA</option>
+                  <option value="mola_200m">MOLA 200m</option>
                   <option value="hirise">HiRISE</option>
                   <option value="ctx">CTX</option>
                 </select>

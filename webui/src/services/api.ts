@@ -138,7 +138,7 @@ export const downloadDEM = async (request: DownloadRequest): Promise<DownloadRes
 
 export const analyzeTerrain = async (request: AnalysisRequest): Promise<AnalysisResponse> => {
   const response = await api.post<AnalysisResponse>('/analyze', {
-    dataset: request.dataset || 'mola',
+    dataset: request.dataset || 'mola_200m',
     threshold: request.threshold || 0.7,
     roi: request.roi,
     criteria_weights: request.criteria_weights,

@@ -6,7 +6,7 @@ import { Database, Folder, CheckCircle, Download, Cloud } from 'lucide-react'
 // --- Components for Tabs (Previously Separate Pages) ---
 
 function DataDownloadComponent() {
-  const [dataset, setDataset] = useState('mola')
+  const [dataset, setDataset] = useState('mola_200m')
   const [roi, setRoi] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 })
   const [force, setForce] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -71,6 +71,7 @@ function DataDownloadComponent() {
             className="w-full bg-gray-800/50 border border-gray-700 text-white px-3 py-2 rounded text-sm focus:border-mars-orange focus:outline-none"
           >
             <option value="mola">MOLA (Global 463m)</option>
+            <option value="mola_200m">MOLA 200m (Global)</option>
             <option value="hirise">HiRISE (Local 1m)</option>
             <option value="ctx">CTX (Regional 18m)</option>
           </select>

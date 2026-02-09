@@ -14,7 +14,7 @@ interface Preset {
 export default function MissionLandingWizard() {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [roi, setRoi] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 })
-  const [dataset, setDataset] = useState('mola')
+  const [dataset, setDataset] = useState('mola_200m')
   const [presetId, setPresetId] = useState<string>('balanced')
   const [constraints, setConstraints] = useState({ max_slope_deg: 5.0, min_area_km2: 0.5 })
   const [presets, setPresets] = useState<Preset[]>([])

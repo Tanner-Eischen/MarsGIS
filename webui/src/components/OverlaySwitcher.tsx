@@ -42,7 +42,7 @@ export default function OverlaySwitcher({
   onSunAzimuthChange,
   sunAltitude,
   onSunAltitudeChange,
-  dataset = 'mola',
+  dataset = 'mola_200m',
   roi,
   showLayerList = true,
   showCacheStats = true,

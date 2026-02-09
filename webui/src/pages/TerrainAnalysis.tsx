@@ -30,7 +30,7 @@ export default function TerrainAnalysis({
   const { publishSites } = useGeoPlan()
   
   const [localRoi, setLocalRoi] = useState({ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 })
-  const [localDataset, setLocalDataset] = useState('mola')
+  const [localDataset, setLocalDataset] = useState('mola_200m')
   
   const roi = propRoi || localRoi
   const setRoi = onRoiChange || setLocalRoi

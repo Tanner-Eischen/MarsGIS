@@ -300,7 +300,7 @@ export default function RoverTraverseWizard() {
           <div className="h-96">
             <TerrainMap
               roi={{ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 }}
-              dataset="mola"
+              dataset="mola_200m"
               showSites={true}
               showWaypoints={true}
             />

@@ -90,13 +90,31 @@ async def analyze_terrain(request: AnalysisRequest):
         # Run analysis
         logger.info("Running terrain analysis", roi=bbox.model_dump(), threshold=request.threshold, task_id=task_id)
         pipeline = AnalysisPipeline()
-        results = pipeline.run(
-            roi=bbox,
-            dataset=request.dataset.lower(),
-            threshold=request.threshold,
-            criteria_weights=request.criteria_weights,
-            progress_callback=progress_callback,
-        )
+        dataset_lower = request.dataset.lower()
+        try:
+            results = pipeline.run(
+                roi=bbox,
+                dataset=dataset_lower,
+                threshold=request.threshold,
+                criteria_weights=request.criteria_weights,
+                progress_callback=progress_callback,
+            )
+        except AnalysisError as primary_error:
+            if dataset_lower != "mola_200m":
+                raise
+            logger.warning(
+                "mola_200m analysis failed, retrying with mola",
+                error=str(primary_error),
+                roi=bbox.model_dump(),
+                task_id=task_id,
+            )
+            results = pipeline.run(
+                roi=bbox,
+                dataset="mola",
+                threshold=request.threshold,
+                criteria_weights=request.criteria_weights,
+                progress_callback=progress_callback,
+            )
 
         # Persist outputs for downstream route planning and GeoJSON export endpoints.
         config = get_config()

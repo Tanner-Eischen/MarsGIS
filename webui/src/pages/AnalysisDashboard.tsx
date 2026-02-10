@@ -17,7 +17,7 @@ export default function AnalysisDashboard() {
   // Shared Map State
   const [roi, setRoi] = useState({ lat_min: 18.0, lat_max: 18.6, lon_min: 77.0, lon_max: 77.8 })
   const [dataset, setDataset] = useState('mola_200m')
-  const [overlayType, setOverlayType] = useState<OverlayType>('hillshade')
+  const [overlayType, setOverlayType] = useState<OverlayType>('elevation')
   const [colormap, setColormap] = useState('terrain')
   const [relief, setRelief] = useState(1.0)
   const [sunAzimuth, setSunAzimuth] = useState(315)
@@ -29,7 +29,7 @@ export default function AnalysisDashboard() {
       setOverlayType('solar')
       setColormap('plasma')
     } else if (mode === 'terrain' && overlayType === 'solar') {
-      setOverlayType('hillshade')
+      setOverlayType('elevation')
       setColormap('terrain')
     }
   }, [mode])

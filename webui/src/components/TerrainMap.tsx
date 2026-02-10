@@ -393,7 +393,7 @@ export default function TerrainMap({
   overlayType,
   overlayOptions = {}
 }: TerrainMapProps) {
-  const activeOverlayType = overlayType || 'elevation';
+  const activeOverlayType = overlayType || 'hillshade';
   const [probeLoading, setProbeLoading] = useState(false)
   const [probeError, setProbeError] = useState<string | null>(null)
   const [probeSample, setProbeSample] = useState<ElevationSample | null>(null)
@@ -504,8 +504,17 @@ export default function TerrainMap({
     ? `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}|${dataset}|${activeOverlayType}`
     : `${dataset}|${activeOverlayType}`;
 
-  const supportedTileOverlays = ['elevation', 'solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri']
+  // Basemap is already hillshade; keep overlays for analytical layers only.
+  const supportedTileOverlays = ['solar', 'dust', 'slope', 'aspect', 'roughness', 'tri']
   const tileOverlayType = supportedTileOverlays.includes(activeOverlayType) ? activeOverlayType : null
+  const hillshadeBasemapUrl = apiUrl(
+    `/visualization/tiles/overlay/hillshade/${dataset}/{z}/{x}/{y}.png?${new URLSearchParams({
+      colormap: 'terrain',
+      relief: String(overlayOptions.relief ?? relief),
+      sun_azimuth: String(overlayOptions.sunAzimuth || 315),
+      sun_altitude: String(overlayOptions.sunAltitude || 45),
+    }).toString()}`
+  )
 
   const roiBounds = roi
     ? L.latLngBounds(
@@ -550,7 +559,7 @@ export default function TerrainMap({
         {!useLegacyOverlay && (
           <>
             <TileLayer
-              url={apiUrl(`/visualization/tiles/basemap/${dataset}/{z}/{x}/{y}.png`)}
+              url={hillshadeBasemapUrl}
               tileSize={256}
               keepBuffer={2}
               updateWhenIdle={true}

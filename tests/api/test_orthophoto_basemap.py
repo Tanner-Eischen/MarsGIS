@@ -1,0 +1,72 @@
+from pathlib import Path
+
+import numpy as np
+import rasterio
+from fastapi.testclient import TestClient
+from fastapi.responses import Response
+from rasterio.transform import from_bounds
+
+from marshab.web.api import app
+from marshab.web.routes import visualization
+
+client = TestClient(app)
+
+
+def _write_test_orthophoto(path: Path) -> None:
+    width = 512
+    height = 256
+    xx = np.linspace(0, 255, width, dtype=np.uint8)
+    yy = np.linspace(0, 255, height, dtype=np.uint8)
+
+    red = np.tile(xx, (height, 1))
+    green = np.tile(yy.reshape(-1, 1), (1, width))
+    blue = np.full((height, width), 96, dtype=np.uint8)
+
+    transform = from_bounds(0.0, -90.0, 360.0, 90.0, width, height)
+    with rasterio.open(
+        path,
+        "w",
+        driver="GTiff",
+        width=width,
+        height=height,
+        count=3,
+        dtype="uint8",
+        transform=transform,
+        crs=None,
+    ) as dst:
+        dst.write(red, 1)
+        dst.write(green, 2)
+        dst.write(blue, 3)
+
+
+def test_orthophoto_basemap_renders_from_configured_source(tmp_path, monkeypatch):
+    src_path = tmp_path / "orthophoto.tif"
+    _write_test_orthophoto(src_path)
+    monkeypatch.setenv("MARSHAB_ORTHO_BASEMAP_PATH", str(src_path))
+
+    response = client.get("/api/v1/visualization/tiles/basemap/orthophoto/2/1/1.png")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["x-orthophoto-used"] == "true"
+    assert response.headers["x-orthophoto-source"] == src_path.name
+    assert len(response.content) > 0
+
+
+def test_orthophoto_basemap_falls_back_to_dem_when_path_not_configured(monkeypatch):
+    monkeypatch.delenv("MARSHAB_ORTHO_BASEMAP_PATH", raising=False)
+
+    async def _stub_basemap(*_args, **_kwargs):
+        return Response(content=b"dem-fallback", media_type="image/png")
+
+    monkeypatch.setattr(visualization, "get_basemap_tile", _stub_basemap)
+
+    response = client.get(
+        "/api/v1/visualization/tiles/basemap/orthophoto/0/0/0.png",
+        params={"fallback_dataset": "mola_200m"},
+    )
+
+    assert response.status_code == 200
+    assert response.content == b"dem-fallback"
+    assert response.headers["x-orthophoto-used"] == "false"
+    assert response.headers["x-orthophoto-reason"] == "path_not_configured"

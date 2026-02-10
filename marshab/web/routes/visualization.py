@@ -6,9 +6,12 @@ import json
 import os
 import time
 import urllib.request
+from pathlib import Path
 
 import numpy as np
+import rasterio
 import xarray as xr
+from rasterio.enums import Resampling
 from rasterio.transform import Affine, rowcol
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
@@ -48,6 +51,7 @@ TILE_CACHE = TileCache(
 )
 ENABLE_TILE_BASEMAP = os.getenv("MARSHAB_ENABLE_TILE_BASEMAP", "true").lower() in {"1", "true", "yes"}
 ENABLE_TILE_OVERLAYS = os.getenv("MARSHAB_ENABLE_TILE_OVERLAYS", "true").lower() in {"1", "true", "yes"}
+ORTHO_BASEMAP_PATH_ENV = "MARSHAB_ORTHO_BASEMAP_PATH"
 
 
 def _build_dem_dataarray(raster_result) -> xr.DataArray:
@@ -69,6 +73,112 @@ def _build_dem_dataarray(raster_result) -> xr.DataArray:
 
 def _log_metric(name: str, value: float = 1.0, **fields) -> None:
     logger.info("metric", metric=name, value=value, **fields)
+
+
+def _resolve_fallback_basemap_dataset(dataset: str) -> str:
+    try:
+        dataset_lower = normalize_dataset(dataset)
+    except ValueError:
+        return "mola_200m"
+    return dataset_lower if dataset_lower in {"mola", "mola_200m", "hirise"} else "mola_200m"
+
+
+def _resolve_orthophoto_source_path() -> Path | None:
+    raw_path = os.getenv(ORTHO_BASEMAP_PATH_ENV, "").strip()
+    if not raw_path:
+        return None
+    return Path(raw_path)
+
+
+def _window_bounds_for_orthophoto(bbox: BoundingBox, src: rasterio.io.DatasetReader) -> tuple[float, float, float, float]:
+    # Tile math is in [0, 360] lon. If source is [-180, 180], shift eastern hemisphere windows.
+    left = float(bbox.lon_min)
+    right = float(bbox.lon_max)
+    if -180.1 <= float(src.bounds.left) <= 180.1 and -180.1 <= float(src.bounds.right) <= 180.1:
+        if left >= 180.0 and right >= 180.0:
+            left -= 360.0
+            right -= 360.0
+    return left, float(bbox.lat_min), right, float(bbox.lat_max)
+
+
+def _to_uint8(arr: np.ndarray) -> np.ndarray:
+    if arr.dtype == np.uint8:
+        return arr
+    arr_float = arr.astype(np.float32)
+    valid_mask = np.isfinite(arr_float)
+    if not np.any(valid_mask):
+        return np.zeros(arr.shape, dtype=np.uint8)
+
+    valid_values = arr_float[valid_mask]
+    lo = float(np.percentile(valid_values, 2))
+    hi = float(np.percentile(valid_values, 98))
+    if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
+        lo = float(np.nanmin(valid_values))
+        hi = float(np.nanmax(valid_values))
+    if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
+        return np.zeros(arr.shape, dtype=np.uint8)
+
+    scaled = (arr_float - lo) / (hi - lo)
+    scaled = np.clip(scaled, 0.0, 1.0)
+    return (scaled * 255.0).astype(np.uint8)
+
+
+def _render_blank_tile(tile_size: int = 256) -> bytes:
+    blank = np.zeros((tile_size, tile_size, 3), dtype=np.uint8)
+    img = Image.fromarray(blank, mode="RGB")
+    output = io.BytesIO()
+    img.save(output, format="PNG")
+    return output.getvalue()
+
+
+def _render_orthophoto_tile(source_path: Path, bbox: BoundingBox, tile_size: int = 256) -> bytes:
+    with rasterio.open(source_path) as src:
+        left, bottom, right, top = _window_bounds_for_orthophoto(bbox, src)
+
+        # If tile is fully out of source bounds, return a blank tile quickly.
+        if (
+            right <= float(src.bounds.left)
+            or left >= float(src.bounds.right)
+            or top <= float(src.bounds.bottom)
+            or bottom >= float(src.bounds.top)
+        ):
+            return _render_blank_tile(tile_size)
+
+        window = rasterio.windows.from_bounds(
+            left,
+            bottom,
+            right,
+            top,
+            transform=src.transform,
+        )
+
+        band_count = max(1, min(int(src.count), 3))
+        band_indexes = list(range(1, band_count + 1))
+        data = src.read(
+            band_indexes,
+            window=window,
+            out_shape=(band_count, tile_size, tile_size),
+            resampling=Resampling.bilinear,
+            boundless=True,
+            fill_value=0,
+        )
+
+    if data.shape[0] == 1:
+        gray = _to_uint8(data[0])
+        rgb = np.stack([gray, gray, gray], axis=2)
+    elif data.shape[0] >= 3:
+        r = _to_uint8(data[0])
+        g = _to_uint8(data[1])
+        b = _to_uint8(data[2])
+        rgb = np.stack([r, g, b], axis=2)
+    else:
+        gray = _to_uint8(data[0])
+        rgb = np.stack([gray, gray, gray], axis=2)
+
+    img = Image.fromarray(rgb, mode="RGB")
+    output = io.BytesIO()
+    img.save(output, format="PNG")
+    return output.getvalue()
 
 
 @router.get("/visualization/basemap/{z}/{x}/{y}.png")
@@ -93,6 +203,78 @@ async def get_mars_basemap_tile(z: int, x: int, y: int):
     except Exception as e:
         logger.warning("Basemap tile proxy failed", z=z, x=x, y=y, error=str(e))
         raise HTTPException(status_code=502, detail="Failed to fetch basemap tile")
+
+
+@router.get("/visualization/tiles/basemap/orthophoto/{z}/{x}/{y}.png")
+async def get_orthophoto_basemap_tile(
+    z: int,
+    x: int,
+    y: int,
+    fallback_dataset: str = Query("mola_200m", description="Fallback dataset (mola, mola_200m, hirise)"),
+):
+    """Render tiles from a single configured orthophoto source file.
+
+    Source file is configured via MARSHAB_ORTHO_BASEMAP_PATH.
+    If unset/unavailable, route falls back to DEM basemap tiles.
+    """
+    try:
+        bbox = compute_tile_bbox_epsg4326(z, x, y)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    source_path = _resolve_orthophoto_source_path()
+    fallback_dataset_resolved = _resolve_fallback_basemap_dataset(fallback_dataset)
+
+    if source_path is None or not source_path.exists():
+        response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
+        response.headers["X-Orthophoto-Used"] = "false"
+        response.headers["X-Orthophoto-Reason"] = "path_not_configured"
+        return response
+
+    style_hash = tile_style_hash(
+        {
+            "source_name": source_path.name,
+            "source_mtime": str(int(source_path.stat().st_mtime)),
+            "stretch": "p2_p98",
+        }
+    )
+    cache_key = f"orthophoto::{z}:{x}:{y}:{style_hash}"
+
+    cached = TILE_CACHE.get(cache_key)
+    if cached:
+        response = Response(content=cached, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["X-Orthophoto-Used"] = "true"
+        response.headers["X-Orthophoto-Source"] = source_path.name
+        return response
+
+    disk_path = tile_cache_path("orthophoto", "global", z, x, y, style_hash)
+    disk_cached = read_disk_cache(disk_path, TILE_CACHE.config.ttl_seconds)
+    if disk_cached:
+        TILE_CACHE.set(cache_key, disk_cached)
+        response = Response(content=disk_cached, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["X-Orthophoto-Used"] = "true"
+        response.headers["X-Orthophoto-Source"] = source_path.name
+        return response
+
+    try:
+        png_bytes = _render_orthophoto_tile(source_path, bbox, tile_size=256)
+    except Exception as exc:
+        logger.exception("Orthophoto tile render failed", error=str(exc), source=str(source_path))
+        response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
+        response.headers["X-Orthophoto-Used"] = "false"
+        response.headers["X-Orthophoto-Reason"] = "render_failed"
+        return response
+
+    TILE_CACHE.set(cache_key, png_bytes)
+    write_disk_cache(disk_path, png_bytes)
+
+    response = Response(content=png_bytes, media_type="image/png")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    response.headers["X-Orthophoto-Used"] = "true"
+    response.headers["X-Orthophoto-Source"] = source_path.name
+    return response
 
 
 @router.get("/visualization/tiles/basemap/{dataset}/{z}/{x}/{y}.png")

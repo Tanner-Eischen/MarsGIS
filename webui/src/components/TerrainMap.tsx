@@ -504,17 +504,13 @@ export default function TerrainMap({
     ? `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}|${dataset}|${activeOverlayType}`
     : `${dataset}|${activeOverlayType}`;
 
-  // Use shaded-relief elevation as the base terrain view by default.
+  // Orthophoto is the primary basemap when configured server-side.
   // Keep analytical overlays separate to avoid stacking duplicate terrain layers.
   const supportedTileOverlays = ['solar', 'dust', 'slope', 'aspect', 'roughness', 'tri']
   const tileOverlayType = supportedTileOverlays.includes(activeOverlayType) ? activeOverlayType : null
-  const basemapTileType = activeOverlayType === 'hillshade' ? 'hillshade' : 'elevation'
   const basemapTileUrl = apiUrl(
-    `/visualization/tiles/overlay/${basemapTileType}/${dataset}/{z}/{x}/{y}.png?${new URLSearchParams({
-      colormap: 'terrain',
-      relief: String(overlayOptions.relief ?? relief),
-      sun_azimuth: String(overlayOptions.sunAzimuth || 315),
-      sun_altitude: String(overlayOptions.sunAltitude || 45),
+    `/visualization/tiles/basemap/orthophoto/{z}/{x}/{y}.png?${new URLSearchParams({
+      fallback_dataset: dataset,
     }).toString()}`
   )
 

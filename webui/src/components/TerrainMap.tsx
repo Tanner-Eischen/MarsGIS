@@ -384,7 +384,7 @@ interface TerrainMapProps {
 
 export default function TerrainMap({
   roi,
-  dataset = 'mola_200m',
+  dataset = 'hirise',
   showSites = false,
   showWaypoints = false,
   relief = 0,
@@ -510,7 +510,8 @@ export default function TerrainMap({
   const tileOverlayType = supportedTileOverlays.includes(activeOverlayType) ? activeOverlayType : null
   const basemapTileUrl = apiUrl(
     `/visualization/tiles/basemap/orthophoto/{z}/{x}/{y}.png?${new URLSearchParams({
-      fallback_dataset: dataset,
+      fallback_dataset: 'hirise',
+      allow_dem_fallback: 'false',
     }).toString()}`
   )
 

@@ -45,7 +45,7 @@ interface Terrain3DProps {
 
 export default function Terrain3D({ 
   roi, 
-  dataset = 'mola_200m', 
+  dataset = 'hirise', 
   showSites = false, 
   showWaypoints = false, 
   enableRoverAnimation = false, 

@@ -85,11 +85,29 @@ def _resolve_fallback_basemap_dataset(dataset: str) -> str:
     return dataset_lower if dataset_lower in {"mola", "mola_200m", "hirise"} else "mola_200m"
 
 
+def _discover_default_orthophoto_source() -> Path | None:
+    """Find a HiRISE orthophoto candidate when explicit env config is absent."""
+    config = get_config()
+    cache_dir = config.paths.cache_dir
+    candidates = sorted(cache_dir.glob("hirise*.tif"))
+    if not candidates:
+        return None
+
+    def _score(path: Path) -> tuple[int, float]:
+        try:
+            stat = path.stat()
+            return (int(stat.st_size), stat.st_mtime)
+        except Exception:
+            return (0, 0.0)
+
+    return max(candidates, key=_score)
+
+
 def _resolve_orthophoto_source_path() -> Path | None:
     raw_path = os.getenv(ORTHO_BASEMAP_PATH_ENV, "").strip()
-    if not raw_path:
-        return None
-    return Path(raw_path)
+    if raw_path:
+        return Path(raw_path)
+    return _discover_default_orthophoto_source()
 
 
 def _window_bounds_for_orthophoto(bbox: BoundingBox, src: rasterio.io.DatasetReader) -> tuple[float, float, float, float]:
@@ -391,7 +409,8 @@ async def get_orthophoto_basemap_tile(
     z: int,
     x: int,
     y: int,
-    fallback_dataset: str = Query("mola_200m", description="Fallback dataset (mola, mola_200m, hirise)"),
+    fallback_dataset: str = Query("hirise", description="Fallback dataset (mola, mola_200m, hirise)"),
+    allow_dem_fallback: bool = Query(False, description="Allow DEM fallback when no orthophoto source is available"),
 ):
     """Render tiles from a single configured orthophoto source file.
 
@@ -407,6 +426,8 @@ async def get_orthophoto_basemap_tile(
     fallback_dataset_resolved = _resolve_fallback_basemap_dataset(fallback_dataset)
 
     if source_path is None or not source_path.exists():
+        if not allow_dem_fallback:
+            raise HTTPException(status_code=503, detail="Orthophoto source unavailable; configure HiRISE orthophoto source")
         response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
         response.headers["X-Orthophoto-Used"] = "false"
         response.headers["X-Orthophoto-Reason"] = "path_not_configured"
@@ -445,6 +466,8 @@ async def get_orthophoto_basemap_tile(
         png_bytes = _render_orthophoto_tile(source_path, bbox, tile_size=256)
     except Exception as exc:
         logger.exception("Orthophoto tile render failed", error=str(exc), source=str(source_path))
+        if not allow_dem_fallback:
+            raise HTTPException(status_code=503, detail="Orthophoto render failed for HiRISE source")
         response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
         response.headers["X-Orthophoto-Used"] = "false"
         response.headers["X-Orthophoto-Reason"] = "render_failed"
@@ -1583,7 +1606,7 @@ async def get_terrain_3d(
             "z_exaggeration_limits": {"min": 0.0, "max": 5.0},
             "basemap": {
                 "orthophoto_tile_template": "/api/v1/visualization/tiles/basemap/orthophoto/{z}/{x}/{y}.png",
-                "fallback_tile_template": f"/api/v1/visualization/tiles/basemap/{dataset_lower}/{{z}}/{{x}}/{{y}}.png",
+                "fallback_tile_template": "/api/v1/visualization/tiles/basemap/hirise/{z}/{x}/{y}.png",
             },
             "overlays": {
                 "paths": waypoints_projected["paths"],

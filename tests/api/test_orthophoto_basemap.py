@@ -83,7 +83,36 @@ def test_orthophoto_basemap_renders_from_configured_source(tmp_path, monkeypatch
     assert len(response.content) > 0
 
 
-def test_orthophoto_basemap_falls_back_to_dem_when_path_not_configured(monkeypatch):
+def test_orthophoto_basemap_requires_hirise_source_when_path_not_configured(monkeypatch):
+    monkeypatch.delenv("MARSHAB_ORTHO_BASEMAP_PATH", raising=False)
+
+    async def _stub_basemap(*_args, **_kwargs):
+        return Response(content=b"dem-fallback", media_type="image/png")
+
+    monkeypatch.setattr(visualization, "get_basemap_tile", _stub_basemap)
+
+    response = client.get("/api/v1/visualization/tiles/basemap/orthophoto/0/0/0.png")
+
+    assert response.status_code == 503
+    assert "Orthophoto source unavailable" in response.json()["detail"]
+
+
+def test_orthophoto_basemap_renders_projected_source(tmp_path, monkeypatch):
+    src_path = tmp_path / "orthophoto_3857.tif"
+    _write_projected_test_orthophoto(src_path)
+    monkeypatch.setenv("MARSHAB_ORTHO_BASEMAP_PATH", str(src_path))
+
+    response = client.get("/api/v1/visualization/tiles/basemap/orthophoto/2/1/1.png")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["x-orthophoto-used"] == "true"
+    assert response.headers["x-orthophoto-source"] == src_path.name
+    assert "x-orthophoto-crs" in response.headers
+    assert len(response.content) > 0
+
+
+def test_orthophoto_basemap_can_opt_in_to_dem_fallback(monkeypatch):
     monkeypatch.delenv("MARSHAB_ORTHO_BASEMAP_PATH", raising=False)
 
     async def _stub_basemap(*_args, **_kwargs):
@@ -93,7 +122,7 @@ def test_orthophoto_basemap_falls_back_to_dem_when_path_not_configured(monkeypat
 
     response = client.get(
         "/api/v1/visualization/tiles/basemap/orthophoto/0/0/0.png",
-        params={"fallback_dataset": "mola_200m"},
+        params={"fallback_dataset": "hirise", "allow_dem_fallback": "true"},
     )
 
     assert response.status_code == 200

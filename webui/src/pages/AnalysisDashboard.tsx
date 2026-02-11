@@ -16,7 +16,7 @@ export default function AnalysisDashboard() {
   
   // Shared Map State
   const [roi, setRoi] = useState({ lat_min: 18.0, lat_max: 18.6, lon_min: 77.0, lon_max: 77.8 })
-  const [dataset, setDataset] = useState('mola_200m')
+  const [dataset, setDataset] = useState('hirise')
   const [overlayType, setOverlayType] = useState<OverlayType>('elevation')
   const [colormap, setColormap] = useState('terrain')
   const [relief, setRelief] = useState(1.0)

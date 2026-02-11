@@ -57,3 +57,15 @@ def test_terrain_3d_real_dem_unavailable_payload(monkeypatch):
     _assert_real_dem_payload(payload)
     assert payload["dataset_requested"] == "mola"
     assert payload["dataset_used"] is None
+
+
+def test_terrain_3d_rejects_invalid_roi_bounds():
+    response = client.get("/api/v1/visualization/terrain-3d?dataset=mola&roi=18.6,18.0,77.0,77.8")
+    assert response.status_code == 400
+    assert "lat_min" in str(response.json()["detail"])
+
+
+def test_terrain_3d_rejects_oversized_roi():
+    response = client.get("/api/v1/visualization/terrain-3d?dataset=mola&roi=-10,60,0,200")
+    assert response.status_code == 400
+    assert "span" in str(response.json()["detail"]).lower()

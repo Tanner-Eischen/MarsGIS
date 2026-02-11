@@ -3,7 +3,7 @@ import createPlotlyComponent from 'react-plotly.js/factory';
 import Plotly from 'plotly.js/dist/plotly.min.js';
 import type { PlotlyHTMLElement } from 'plotly.js';
 import { use3DTerrain } from '../hooks/use3DMapData';
-import { useWaypointsGeoJson } from '../hooks/useMapData';
+import { useSitesGeoJson, useWaypointsGeoJson } from '../hooks/useMapData';
 import { RoverPosition } from '../hooks/useRoverAnimation';
 import { useCameraFollow } from '../hooks/useCameraFollow';
 
@@ -56,11 +56,16 @@ export default function Terrain3D({
 }: Terrain3DProps) {
   const { terrainData, metadata, loading: terrainLoading, error: terrainError } = use3DTerrain(roi || null, dataset);
   const waypointsGeoJson = useWaypointsGeoJson(showWaypoints);
+  const sitesGeoJson = useSitesGeoJson(showSites);
 
   const [verticalRelief, setVerticalRelief] = useState(overlayOptions.relief ?? 1.0);
   const [colorScale, setColorScale] = useState(toPlotlyColorScale(overlayOptions.colormap, overlayType));
   const [enableContourLines, setEnableContourLines] = useState(false);
-  
+  const [showMeshLayer, setShowMeshLayer] = useState(true);
+  const [showPathLayer, setShowPathLayer] = useState(true);
+  const [showWaypointLayer, setShowWaypointLayer] = useState(true);
+  const [showSiteLayer, setShowSiteLayer] = useState(true);
+
   const plotRef = useRef<PlotlyHTMLElement | null>(null);
 
   // Use external rover position if provided, otherwise use internal state
@@ -135,7 +140,8 @@ export default function Terrain3D({
     );
   }
 
-  const { x: xGrid, y: yGrid, z: zGrid } = terrainData;
+  const mesh = terrainData.mesh || terrainData;
+  const { x: xGrid, y: yGrid, z: zGrid } = mesh;
 
   const zScaled = zGrid.map(row => row.map(z => (z || 0) * verticalRelief));
 
@@ -159,44 +165,99 @@ export default function Terrain3D({
       }
     }
   };
-  traces.push(surfaceTrace);
+  if (showMeshLayer) traces.push(surfaceTrace);
 
-  if (waypointsGeoJson && Array.isArray(waypointsGeoJson.features)) {
-    const lonAxis = Array.isArray(xGrid) && xGrid.length > 0 ? xGrid[0] : []
-    const latAxis = Array.isArray(yGrid) && yGrid.length > 0 ? yGrid.map((row: number[]) => row[0]) : []
-    const nearestIndex = (arr: number[], val: number) => {
-      if (!arr || arr.length === 0) return 0
-      let idx = 0
-      let best = Math.abs(arr[0] - val)
-      for (let i = 1; i < arr.length; i++) {
-        const d = Math.abs(arr[i] - val)
-        if (d < best) { best = d; idx = i }
-      }
-      return idx
+  const sceneOverlays = terrainData.overlays || null;
+
+  if (sceneOverlays && showPathLayer && Array.isArray(sceneOverlays.paths)) {
+    for (const path of sceneOverlays.paths) {
+      const coords = Array.isArray(path.coordinates) ? path.coordinates : [];
+      if (coords.length < 2) continue;
+      traces.push({
+        type: 'scatter3d',
+        mode: 'lines',
+        x: coords.map((c: number[]) => c[0]),
+        y: coords.map((c: number[]) => c[1]),
+        z: coords.map((c: number[]) => c[2]),
+        line: { color: path.properties?.line_color || '#ff0000', width: 6 },
+        name: path.properties?.route_type || 'route',
+      });
     }
+  } else if (showPathLayer && waypointsGeoJson && Array.isArray(waypointsGeoJson.features)) {
+    const lonAxis = Array.isArray(xGrid) && xGrid.length > 0 ? xGrid[0] : [];
+    const latAxis = Array.isArray(yGrid) && yGrid.length > 0 ? yGrid.map((row: number[]) => row[0]) : [];
+    const nearestIndex = (arr: number[], val: number) => {
+      if (!arr || arr.length === 0) return 0;
+      let idx = 0;
+      let best = Math.abs(arr[0] - val);
+      for (let i = 1; i < arr.length; i++) {
+        const d = Math.abs(arr[i] - val);
+        if (d < best) { best = d; idx = i; }
+      }
+      return idx;
+    };
+
     for (const f of waypointsGeoJson.features) {
       if (f.geometry && f.geometry.type === 'LineString') {
-        const coords = f.geometry.coordinates as number[][]
-        const xs = coords.map(c => c[0])
-        const ys = coords.map(c => c[1])
-        const zs = [] as number[]
-        for (let k = 0; k < coords.length; k++) {
-          const j = nearestIndex(lonAxis as number[], xs[k])
-          const i = nearestIndex(latAxis as number[], ys[k])
-          const zv = zScaled[i] && zScaled[i][j] ? zScaled[i][j] : 0
-          zs.push(zv)
-        }
-        const color = (f.properties && f.properties.line_color) ? f.properties.line_color : '#ff0000'
+        const coords = f.geometry.coordinates as number[][];
+        const xs = coords.map(c => c[0]);
+        const ys = coords.map(c => c[1]);
+        const zs = coords.map((c) => {
+          const j = nearestIndex(lonAxis as number[], c[0]);
+          const i = nearestIndex(latAxis as number[], c[1]);
+          return zScaled[i] && zScaled[i][j] ? zScaled[i][j] : 0;
+        });
         traces.push({
           type: 'scatter3d',
           mode: 'lines',
           x: xs,
           y: ys,
           z: zs,
-          line: { color, width: 6 },
-          name: f.properties && f.properties.route_type ? f.properties.route_type : 'route'
-        })
+          line: { color: f.properties?.line_color || '#ff0000', width: 6 },
+          name: f.properties?.route_type || 'route',
+        });
       }
+    }
+  }
+
+  if (sceneOverlays && showWaypointLayer && Array.isArray(sceneOverlays.waypoints) && sceneOverlays.waypoints.length > 0) {
+    traces.push({
+      type: 'scatter3d',
+      mode: 'markers',
+      x: sceneOverlays.waypoints.map((p: any) => p.lon),
+      y: sceneOverlays.waypoints.map((p: any) => p.lat),
+      z: sceneOverlays.waypoints.map((p: any) => p.z),
+      marker: { size: 3, color: '#f97316' },
+      name: 'Waypoints',
+    });
+  }
+
+  if (sceneOverlays && showSiteLayer && Array.isArray(sceneOverlays.sites) && sceneOverlays.sites.length > 0) {
+    traces.push({
+      type: 'scatter3d',
+      mode: 'markers+text',
+      x: sceneOverlays.sites.map((p: any) => p.lon),
+      y: sceneOverlays.sites.map((p: any) => p.lat),
+      z: sceneOverlays.sites.map((p: any) => p.z),
+      text: sceneOverlays.sites.map((p: any) => `Site ${p.properties?.site_id || ''}`),
+      textposition: 'top center',
+      marker: { size: 6, color: '#22c55e' },
+      name: 'Sites',
+    });
+  } else if (showSiteLayer && sitesGeoJson && Array.isArray(sitesGeoJson.features)) {
+    const points = sitesGeoJson.features.filter((f: any) => f.geometry?.type === 'Point');
+    if (points.length > 0) {
+      traces.push({
+        type: 'scatter3d',
+        mode: 'markers+text',
+        x: points.map((f: any) => f.geometry.coordinates[0]),
+        y: points.map((f: any) => f.geometry.coordinates[1]),
+        z: points.map(() => 0),
+        text: points.map((f: any) => `Site ${f.properties?.site_id || ''}`),
+        textposition: 'top center',
+        marker: { size: 6, color: '#22c55e' },
+        name: 'Sites',
+      });
     }
   }
 
@@ -296,6 +357,12 @@ export default function Terrain3D({
           <div className="flex items-center">
             <input type="checkbox" checked={enableContourLines} onChange={e => setEnableContourLines(e.target.checked)} id="contour-toggle" />
             <label htmlFor="contour-toggle" className="ml-2 text-sm text-gray-300">Show Contours</label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 col-span-2 md:col-span-4">
+            <label className="text-xs text-gray-300"><input type="checkbox" checked={showMeshLayer} onChange={e => setShowMeshLayer(e.target.checked)} className="mr-1"/>Mesh</label>
+            <label className="text-xs text-gray-300"><input type="checkbox" checked={showPathLayer} onChange={e => setShowPathLayer(e.target.checked)} className="mr-1"/>Paths</label>
+            <label className="text-xs text-gray-300"><input type="checkbox" checked={showWaypointLayer} onChange={e => setShowWaypointLayer(e.target.checked)} className="mr-1"/>Waypoints</label>
+            <label className="text-xs text-gray-300"><input type="checkbox" checked={showSiteLayer} onChange={e => setShowSiteLayer(e.target.checked)} className="mr-1"/>Sites</label>
           </div>
       </div>
       <div className="h-[600px] w-full rounded-md overflow-hidden border border-gray-700">

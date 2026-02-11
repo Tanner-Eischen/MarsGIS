@@ -129,3 +129,18 @@ def test_orthophoto_basemap_can_opt_in_to_dem_fallback(monkeypatch):
     assert response.content == b"dem-fallback"
     assert response.headers["x-orthophoto-used"] == "false"
     assert response.headers["x-orthophoto-reason"] == "path_not_configured"
+
+
+def test_orthophoto_basemap_renders_projected_source(tmp_path, monkeypatch):
+    src_path = tmp_path / "orthophoto_3857.tif"
+    _write_projected_test_orthophoto(src_path)
+    monkeypatch.setenv("MARSHAB_ORTHO_BASEMAP_PATH", str(src_path))
+
+    response = client.get("/api/v1/visualization/tiles/basemap/orthophoto/2/1/1.png")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["x-orthophoto-used"] == "true"
+    assert response.headers["x-orthophoto-source"] == src_path.name
+    assert "x-orthophoto-crs" in response.headers
+    assert len(response.content) > 0

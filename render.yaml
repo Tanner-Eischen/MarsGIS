@@ -6,6 +6,10 @@ services:
     dockerContext: .
     dockerCommand: conda run --no-capture-output -n marshab python -m marshab.web.server
     healthCheckPath: /api/v1/health/live
+    disk:
+      name: marshab-data
+      mountPath: /app/data
+      sizeGB: 50
     envVars:
       - key: MARSHAB_DEMO_SEED
         value: "42"
@@ -14,7 +18,7 @@ services:
       - key: MARSHAB_CORS_ORIGINS
         sync: false
       - key: MARSHAB_ORTHO_BASEMAP_PATH
-        sync: false
+        value: /app/data/cache/hirise.tif
   - type: web
     name: marshab-web
     runtime: static

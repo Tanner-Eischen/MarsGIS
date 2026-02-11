@@ -7,12 +7,14 @@ import os
 import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import rasterio
 import xarray as xr
 from rasterio.enums import Resampling
 from rasterio.transform import Affine, rowcol
+from rasterio.warp import transform_bounds
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from PIL import Image
@@ -83,11 +85,29 @@ def _resolve_fallback_basemap_dataset(dataset: str) -> str:
     return dataset_lower if dataset_lower in {"mola", "mola_200m", "hirise"} else "mola_200m"
 
 
+def _discover_default_orthophoto_source() -> Path | None:
+    """Find a HiRISE orthophoto candidate when explicit env config is absent."""
+    config = get_config()
+    cache_dir = config.paths.cache_dir
+    candidates = sorted(cache_dir.glob("hirise*.tif"))
+    if not candidates:
+        return None
+
+    def _score(path: Path) -> tuple[int, float]:
+        try:
+            stat = path.stat()
+            return (int(stat.st_size), stat.st_mtime)
+        except Exception:
+            return (0, 0.0)
+
+    return max(candidates, key=_score)
+
+
 def _resolve_orthophoto_source_path() -> Path | None:
     raw_path = os.getenv(ORTHO_BASEMAP_PATH_ENV, "").strip()
-    if not raw_path:
-        return None
-    return Path(raw_path)
+    if raw_path:
+        return Path(raw_path)
+    return _discover_default_orthophoto_source()
 
 
 def _window_bounds_for_orthophoto(bbox: BoundingBox, src: rasterio.io.DatasetReader) -> tuple[float, float, float, float]:
@@ -98,7 +118,31 @@ def _window_bounds_for_orthophoto(bbox: BoundingBox, src: rasterio.io.DatasetRea
         if left >= 180.0 and right >= 180.0:
             left -= 360.0
             right -= 360.0
+        elif right > 180.0 > left:
+            right -= 360.0
     return left, float(bbox.lat_min), right, float(bbox.lat_max)
+
+
+def _transform_bounds_for_source_crs(
+    left: float,
+    bottom: float,
+    right: float,
+    top: float,
+    src: rasterio.io.DatasetReader,
+) -> tuple[float, float, float, float]:
+    if src.crs is None or src.crs.is_geographic:
+        return left, bottom, right, top
+
+    transformed = transform_bounds(
+        "EPSG:4326",
+        src.crs,
+        left,
+        bottom,
+        right,
+        top,
+        densify_pts=21,
+    )
+    return tuple(float(v) for v in transformed)
 
 
 def _to_uint8(arr: np.ndarray) -> np.ndarray:
@@ -134,6 +178,7 @@ def _render_blank_tile(tile_size: int = 256) -> bytes:
 def _render_orthophoto_tile(source_path: Path, bbox: BoundingBox, tile_size: int = 256) -> bytes:
     with rasterio.open(source_path) as src:
         left, bottom, right, top = _window_bounds_for_orthophoto(bbox, src)
+        left, bottom, right, top = _transform_bounds_for_source_crs(left, bottom, right, top, src)
 
         # If tile is fully out of source bounds, return a blank tile quickly.
         if (
@@ -181,6 +226,160 @@ def _render_orthophoto_tile(source_path: Path, bbox: BoundingBox, tile_size: int
     return output.getvalue()
 
 
+def _parse_roi(roi: str) -> tuple[float, float, float, float]:
+    try:
+        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid ROI format: {exc}")
+
+    if lat_min >= lat_max:
+        raise HTTPException(status_code=400, detail="Invalid ROI: lat_min must be less than lat_max")
+    if not (-90.0 <= lat_min <= 90.0 and -90.0 <= lat_max <= 90.0):
+        raise HTTPException(status_code=400, detail="Invalid ROI: latitude must be within [-90, 90]")
+    if lon_min == lon_max:
+        raise HTTPException(status_code=400, detail="Invalid ROI: longitude span must be non-zero")
+
+    lon_span = abs(lon_max - lon_min)
+    if lon_span > 120.0:
+        raise HTTPException(status_code=400, detail="Invalid ROI: longitude span too large for 3D visualization")
+    if (lat_max - lat_min) > 60.0:
+        raise HTTPException(status_code=400, detail="Invalid ROI: latitude span too large for 3D visualization")
+
+    return lat_min, lat_max, lon_min, lon_max
+
+
+def _sample_mesh_elevation(lon: float, lat: float, lons: np.ndarray, lats: np.ndarray, elevation: np.ndarray) -> float:
+    lon_idx = int(np.argmin(np.abs(lons - lon)))
+    lat_idx = int(np.argmin(np.abs(lats - lat)))
+    return float(elevation[lat_idx, lon_idx])
+
+
+def _load_sites_features() -> list[dict[str, Any]]:
+    import pandas as pd
+
+    config = get_config()
+    output_dir = config.paths.output_dir
+    sites_file = output_dir / "sites.csv"
+    if not sites_file.exists():
+        return []
+
+    sites_df = pd.read_csv(sites_file)
+    features: list[dict[str, Any]] = []
+    for _, row in sites_df.iterrows():
+        lon = float(row.get("lon", 0))
+        lat = float(row.get("lat", 0))
+        if not (-180 <= lon <= 360) or not (-90 <= lat <= 90):
+            continue
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [lon, lat]},
+                "properties": {
+                    "site_id": int(row.get("site_id", 0)),
+                    "rank": int(row.get("rank", 0)),
+                    "suitability_score": float(row.get("suitability_score", 0)),
+                },
+            }
+        )
+    return features
+
+
+def _load_waypoint_features() -> list[dict[str, Any]]:
+    import pandas as pd
+
+    config = get_config()
+    output_dir = config.paths.output_dir
+    files = list(output_dir.glob("waypoints_*.csv"))
+    if not files:
+        return []
+
+    colors = {"safest": "#00ff00", "balanced": "#1e90ff", "direct": "#ffa500"}
+    features: list[dict[str, Any]] = []
+    for fpath in files:
+        try:
+            df = pd.read_csv(fpath)
+        except Exception:
+            continue
+        if len(df) == 0:
+            continue
+
+        coords = []
+        for _, row in df.iterrows():
+            lon = row.get("lon", row.get("longitude"))
+            lat = row.get("lat", row.get("latitude"))
+            if lon is None or lat is None:
+                continue
+            lon_val = float(lon)
+            lat_val = float(lat)
+            if not (-180 <= lon_val <= 360) or not (-90 <= lat_val <= 90):
+                continue
+            coords.append([lon_val, lat_val])
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [lon_val, lat_val]},
+                    "properties": {
+                        "kind": "waypoint",
+                        "waypoint_id": int(row.get("waypoint_id", 0)),
+                    },
+                }
+            )
+        if len(coords) > 1:
+            route_type = fpath.name.split("_")[-1].replace(".csv", "")
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": coords},
+                    "properties": {
+                        "kind": "path",
+                        "route_type": route_type,
+                        "line_color": colors.get(route_type, "#ff0000"),
+                    },
+                }
+            )
+    return features
+
+
+def _project_features_to_mesh(
+    features: list[dict[str, Any]],
+    lons: np.ndarray,
+    lats: np.ndarray,
+    elevation: np.ndarray,
+) -> dict[str, list[dict[str, Any]]]:
+    scene_points: list[dict[str, Any]] = []
+    scene_paths: list[dict[str, Any]] = []
+
+    for feature in features:
+        geometry = feature.get("geometry") or {}
+        geom_type = geometry.get("type")
+        properties = feature.get("properties") or {}
+
+        if geom_type == "Point":
+            lon, lat = geometry.get("coordinates", [None, None])
+            if lon is None or lat is None:
+                continue
+            z = _sample_mesh_elevation(float(lon), float(lat), lons, lats, elevation)
+            scene_points.append(
+                {
+                    "lon": float(lon),
+                    "lat": float(lat),
+                    "z": z,
+                    "properties": properties,
+                }
+            )
+        elif geom_type == "LineString":
+            coords = geometry.get("coordinates") or []
+            projected_coords = []
+            for coord in coords:
+                lon, lat = coord[0], coord[1]
+                z = _sample_mesh_elevation(float(lon), float(lat), lons, lats, elevation)
+                projected_coords.append([float(lon), float(lat), z])
+            if projected_coords:
+                scene_paths.append({"coordinates": projected_coords, "properties": properties})
+
+    return {"points": scene_points, "paths": scene_paths}
+
+
 @router.get("/visualization/basemap/{z}/{x}/{y}.png")
 async def get_mars_basemap_tile(z: int, x: int, y: int):
     """Proxy Mars basemap tiles through same-origin API to avoid browser CORS issues."""
@@ -210,7 +409,8 @@ async def get_orthophoto_basemap_tile(
     z: int,
     x: int,
     y: int,
-    fallback_dataset: str = Query("mola_200m", description="Fallback dataset (mola, mola_200m, hirise)"),
+    fallback_dataset: str = Query("hirise", description="Fallback dataset (mola, mola_200m, hirise)"),
+    allow_dem_fallback: bool = Query(False, description="Allow DEM fallback when no orthophoto source is available"),
 ):
     """Render tiles from a single configured orthophoto source file.
 
@@ -226,6 +426,8 @@ async def get_orthophoto_basemap_tile(
     fallback_dataset_resolved = _resolve_fallback_basemap_dataset(fallback_dataset)
 
     if source_path is None or not source_path.exists():
+        if not allow_dem_fallback:
+            raise HTTPException(status_code=503, detail="Orthophoto source unavailable; configure HiRISE orthophoto source")
         response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
         response.headers["X-Orthophoto-Used"] = "false"
         response.headers["X-Orthophoto-Reason"] = "path_not_configured"
@@ -246,6 +448,7 @@ async def get_orthophoto_basemap_tile(
         response.headers["Cache-Control"] = "public, max-age=86400"
         response.headers["X-Orthophoto-Used"] = "true"
         response.headers["X-Orthophoto-Source"] = source_path.name
+        response.headers["X-Orthophoto-CRS"] = "cached"
         return response
 
     disk_path = tile_cache_path("orthophoto", "global", z, x, y, style_hash)
@@ -256,12 +459,15 @@ async def get_orthophoto_basemap_tile(
         response.headers["Cache-Control"] = "public, max-age=86400"
         response.headers["X-Orthophoto-Used"] = "true"
         response.headers["X-Orthophoto-Source"] = source_path.name
+        response.headers["X-Orthophoto-CRS"] = "cached"
         return response
 
     try:
         png_bytes = _render_orthophoto_tile(source_path, bbox, tile_size=256)
     except Exception as exc:
         logger.exception("Orthophoto tile render failed", error=str(exc), source=str(source_path))
+        if not allow_dem_fallback:
+            raise HTTPException(status_code=503, detail="Orthophoto render failed for HiRISE source")
         response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
         response.headers["X-Orthophoto-Used"] = "false"
         response.headers["X-Orthophoto-Reason"] = "render_failed"
@@ -274,6 +480,7 @@ async def get_orthophoto_basemap_tile(
     response.headers["Cache-Control"] = "public, max-age=86400"
     response.headers["X-Orthophoto-Used"] = "true"
     response.headers["X-Orthophoto-Source"] = source_path.name
+    response.headers["X-Orthophoto-CRS"] = "source"
     return response
 
 
@@ -1249,16 +1456,12 @@ async def get_terrain_3d(
     roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
     max_points: int = Query(50000, ge=1000, le=200000, description="Maximum number of points for 3D mesh"),
 ):
-    """Get DEM data as 3D mesh for Plotly.js visualization.
+    """Get DEM data as 3D scene payload for terrain + overlays.
 
-    Returns elevation data as a JSON object with x, y, z arrays for 3D surface plotting.
+    Returns mesh arrays plus projected path/waypoint/site overlays.
     """
     try:
-        # Parse ROI
-        try:
-            lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid ROI format: {e}")
+        lat_min, lat_max, lon_min, lon_max = _parse_roi(roi)
 
         try:
             dataset_lower = normalize_dataset(dataset)
@@ -1363,20 +1566,53 @@ async def get_terrain_3d(
         lon_grid, lat_grid = np.meshgrid(lons, lats)
 
         # Prepare response data
+        waypoints_features = _load_waypoint_features()
+        sites_features = _load_sites_features()
+        waypoints_projected = _project_features_to_mesh(waypoints_features, lons, lats, elevation)
+        sites_projected = _project_features_to_mesh(sites_features, lons, lats, elevation)
+
         response_data = {
             "x": lon_grid.tolist(),
             "y": lat_grid.tolist(),
             "z": elevation.tolist(),
+            "mesh": {
+                "x": lon_grid.tolist(),
+                "y": lat_grid.tolist(),
+                "z": elevation.tolist(),
+            },
             "bounds": {
                 "lon_min": float(lon_min_actual),
                 "lon_max": float(lon_max_actual),
                 "lat_min": float(lat_min_actual),
                 "lat_max": float(lat_max_actual),
             },
+            "roi_requested": {
+                "lat_min": lat_min,
+                "lat_max": lat_max,
+                "lon_min": lon_min,
+                "lon_max": lon_max,
+            },
+            "roi_effective": {
+                "lat_min": float(lat_min_actual),
+                "lat_max": float(lat_max_actual),
+                "lon_min": float(lon_min_actual),
+                "lon_max": float(lon_max_actual),
+            },
             "dataset_requested": dataset_lower,
             "dataset_used": raster_result.dataset_used if raster_result else dataset_lower,
             "is_fallback": raster_result.is_fallback if raster_result else False,
             "fallback_reason": raster_result.fallback_reason if raster_result else None,
+            "z_exaggeration_default": 1.0,
+            "z_exaggeration_limits": {"min": 0.0, "max": 5.0},
+            "basemap": {
+                "orthophoto_tile_template": "/api/v1/visualization/tiles/basemap/orthophoto/{z}/{x}/{y}.png",
+                "fallback_tile_template": "/api/v1/visualization/tiles/basemap/hirise/{z}/{x}/{y}.png",
+            },
+            "overlays": {
+                "paths": waypoints_projected["paths"],
+                "waypoints": waypoints_projected["points"],
+                "sites": sites_projected["points"],
+            },
             "elevation_range": {
                 "min": float(np.nanmin(elevation)),
                 "max": float(np.nanmax(elevation)),

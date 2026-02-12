@@ -1494,7 +1494,7 @@ async def get_waypoints_geojson():
 async def get_terrain_3d(
     dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
     roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
-    max_points: int = Query(50000, ge=1000, le=200000, description="Maximum number of points for 3D mesh"),
+    max_points: int = Query(15000, ge=1000, le=120000, description="Maximum number of points for 3D mesh"),
 ):
     """Get DEM data as 3D scene payload for terrain + overlays.
 
@@ -1507,6 +1507,27 @@ async def get_terrain_3d(
             dataset_lower = normalize_dataset(dataset)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid dataset. Must be one of: mola, mola_200m, ctx, hirise")
+
+        lat_span = lat_max - lat_min
+        lon_span = abs(lon_max - lon_min)
+        if lat_span <= 0 or lon_span <= 0:
+            raise HTTPException(status_code=400, detail="Invalid ROI bounds: max must be greater than min")
+
+        is_low_res = dataset_lower in {"mola", "mola_200m"}
+        max_lat_span = 4.0 if is_low_res else 1.2
+        max_lon_span = 4.0 if is_low_res else 1.2
+        max_area_deg2 = 12.0 if is_low_res else 1.5
+        if lat_span > max_lat_span or lon_span > max_lon_span or (lat_span * lon_span) > max_area_deg2:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"ROI too large for interactive 3D terrain ({lat_span:.2f} x {lon_span:.2f} deg). "
+                    "Zoom in or reduce ROI."
+                ),
+            )
+
+        # Keep terrain payload responsive on hosted instances.
+        max_points_effective = min(max_points, 35000 if is_low_res else 15000)
 
         lon_min_norm = to_lon360(lon_min)
         lon_max_norm = to_lon360(lon_max)
@@ -1527,7 +1548,8 @@ async def get_terrain_3d(
             raster_result = load_dem_window(
                 dataset_lower,
                 bbox,
-                allow_download=True,
+                # Avoid long data downloads during interactive map requests.
+                allow_download=False,
             )
         except Exception as e:
             logger.warning("DEM load failed for 3D terrain, using synthetic surface for demo mode", error=str(e))
@@ -1547,14 +1569,14 @@ async def get_terrain_3d(
             height, width = elevation.shape
             total_points = height * width
         else:
-            # Generate synthetic grid size based on max_points
-            side = int(np.sqrt(max_points))
+            # Generate synthetic grid size based on bounded max_points
+            side = int(np.sqrt(max_points_effective))
             height, width = side, side
             total_points = height * width
 
         downsample_factor = 1
-        if not use_synthetic and total_points > max_points:
-            downsample_factor = int(np.ceil(np.sqrt(total_points / max_points)))
+        if not use_synthetic and total_points > max_points_effective:
+            downsample_factor = int(np.ceil(np.sqrt(total_points / max_points_effective)))
             elevation = elevation[::downsample_factor, ::downsample_factor]
             height, width = elevation.shape
 
@@ -1612,9 +1634,6 @@ async def get_terrain_3d(
         sites_projected = _project_features_to_mesh(sites_features, lons, lats, elevation)
 
         response_data = {
-            "x": lon_grid.tolist(),
-            "y": lat_grid.tolist(),
-            "z": elevation.tolist(),
             "mesh": {
                 "x": lon_grid.tolist(),
                 "y": lat_grid.tolist(),
@@ -1642,6 +1661,9 @@ async def get_terrain_3d(
             "dataset_used": raster_result.dataset_used if raster_result else dataset_lower,
             "is_fallback": raster_result.is_fallback if raster_result else False,
             "fallback_reason": raster_result.fallback_reason if raster_result else None,
+            "max_points_requested": int(max_points),
+            "max_points_effective": int(max_points_effective),
+            "mesh_shape": {"rows": int(height), "cols": int(width), "downsample_factor": int(downsample_factor)},
             "z_exaggeration_default": 1.0,
             "z_exaggeration_limits": {"min": 0.0, "max": 5.0},
             "basemap": {

@@ -88,8 +88,26 @@ def _resolve_fallback_basemap_dataset(dataset: str) -> str:
 def _discover_default_orthophoto_source() -> Path | None:
     """Find a HiRISE orthophoto candidate when explicit env config is absent."""
     config = get_config()
-    cache_dir = config.paths.cache_dir
-    candidates = sorted(cache_dir.glob("hirise*.tif"))
+
+    # Primary local cache path plus Render persistent-disk mount fallback.
+    candidate_dirs = [config.paths.cache_dir, Path("/app/data/cache")]
+    candidates: list[Path] = []
+    for cache_dir in candidate_dirs:
+        try:
+            candidates.extend(sorted(cache_dir.glob("hirise*.tif")))
+        except Exception:
+            continue
+
+    # De-duplicate candidates that may refer to the same file through symlinks.
+    unique_candidates: dict[str, Path] = {}
+    for candidate in candidates:
+        try:
+            key = str(candidate.resolve())
+        except Exception:
+            key = str(candidate)
+        unique_candidates[key] = candidate
+    candidates = list(unique_candidates.values())
+
     if not candidates:
         return None
 

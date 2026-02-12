@@ -92,6 +92,18 @@ def _discover_default_orthophoto_source() -> Path | None:
     # Primary local cache path plus Render persistent-disk mount fallback.
     candidate_dirs = [config.paths.cache_dir, Path("/app/data/cache")]
     candidates: list[Path] = []
+
+    # Prefer common explicit filenames first (works even when directory globbing fails).
+    explicit_names = ("hirise.tif", "hirise_orthophoto.tif")
+    for cache_dir in candidate_dirs:
+        for filename in explicit_names:
+            candidate = cache_dir / filename
+            try:
+                if candidate.exists():
+                    candidates.append(candidate)
+            except Exception:
+                continue
+
     for cache_dir in candidate_dirs:
         try:
             candidates.extend(sorted(cache_dir.glob("hirise*.tif")))
@@ -151,16 +163,26 @@ def _transform_bounds_for_source_crs(
     if src.crs is None or src.crs.is_geographic:
         return left, bottom, right, top
 
-    transformed = transform_bounds(
-        "EPSG:4326",
-        src.crs,
-        left,
-        bottom,
-        right,
-        top,
-        densify_pts=21,
-    )
-    return tuple(float(v) for v in transformed)
+    try:
+        transformed = transform_bounds(
+            "EPSG:4326",
+            src.crs,
+            left,
+            bottom,
+            right,
+            top,
+            densify_pts=21,
+        )
+        return tuple(float(v) for v in transformed)
+    except Exception as exc:
+        # Render images can carry non-Earth CRS definitions that PROJ cannot resolve.
+        # Fall back to geographic bounds so orthophoto can still render instead of 503.
+        logger.warning(
+            "Orthophoto CRS transform failed; using geographic bounds",
+            error=str(exc),
+            source_crs=str(src.crs),
+        )
+        return left, bottom, right, top
 
 
 def _to_uint8(arr: np.ndarray) -> np.ndarray:

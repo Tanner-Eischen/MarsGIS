@@ -88,6 +88,31 @@ export default function Terrain3D({
     setColorScale(toPlotlyColorScale(overlayOptions.colormap, overlayType));
   }, [overlayOptions.colormap, overlayType]);
 
+  // Keep hook order stable across loading/error/data states.
+  // Resolve rover trace index from current Plotly graph data at runtime.
+  useEffect(() => {
+    if (!roverPosition || !plotRef.current || !enableRoverAnimation || !isAnimating) {
+      return;
+    }
+
+    const graphDiv = plotRef.current as PlotlyHTMLElement & { data?: any[] };
+    const tracesData = Array.isArray(graphDiv.data) ? graphDiv.data : [];
+    const roverTraceIndex = tracesData.findIndex((trace: any) => trace?.name === 'Rover');
+    if (roverTraceIndex < 0) {
+      return;
+    }
+
+    Plotly.restyle(
+      graphDiv,
+      {
+        x: [[roverPosition.lon]],
+        y: [[roverPosition.lat]],
+        z: [[roverPosition.elevation]],
+      },
+      [roverTraceIndex]
+    );
+  }, [roverPosition, enableRoverAnimation, isAnimating]);
+
   if (!roi) {
     return (
       <div className="bg-gray-800 rounded-lg p-6 text-center">
@@ -279,25 +304,6 @@ export default function Terrain3D({
       showlegend: false,
     });
   }
-
-  // Update rover position using Plotly.restyle for performance
-  useEffect(() => {
-    if (roverPosition && plotRef.current && enableRoverAnimation && isAnimating) {
-      // Find rover trace index (should be the last trace)
-      const roverTraceIndex = traces.length - 1;
-      if (roverTraceIndex >= 0 && traces[roverTraceIndex]?.name === 'Rover') {
-        Plotly.restyle(
-          plotRef.current,
-          {
-            x: [[roverPosition.lon]],
-            y: [[roverPosition.lat]],
-            z: [[roverPosition.elevation]],
-          },
-          [roverTraceIndex]
-        );
-      }
-    }
-  }, [roverPosition, enableRoverAnimation, isAnimating, traces.length]);
 
   const layout = {
     title: '3D Terrain Visualization',

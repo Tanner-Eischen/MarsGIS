@@ -4,7 +4,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: conda run --no-capture-output -n marshab python -m marshab.web.server
+    dockerCommand: bash scripts/start_render_api.sh
     healthCheckPath: /api/v1/health/live
     disk:
       name: marshab-data

@@ -8,7 +8,7 @@ const buildApiError = (status: number, payload: any) => ({
   detail: payload?.detail ?? null,
 });
 
-export function use3DTerrain(roi, dataset, maxPoints = 50000) {
+export function use3DTerrain(roi, dataset, maxPoints = 15000) {
   const [terrainData, setTerrainData] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,11 @@ export function use3DTerrain(roi, dataset, maxPoints = 50000) {
       setError(null);
       try {
         const roiStr = `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}`;
-        const url = apiUrl(`/visualization/terrain-3d?dataset=${dataset}&roi=${roiStr}&max_points=${maxPoints}`);
+        const isLowRes = dataset === 'mola' || dataset === 'mola_200m';
+        const effectiveMaxPoints = isLowRes
+          ? Math.min(maxPoints, 35000)
+          : Math.min(maxPoints, 15000);
+        const url = apiUrl(`/visualization/terrain-3d?dataset=${dataset}&roi=${roiStr}&max_points=${effectiveMaxPoints}`);
         const response = await fetch(url);
         const data = await response.json();
         if (!response.ok) {

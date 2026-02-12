@@ -531,6 +531,8 @@ export default function TerrainMap({
         className="bg-black"
         scrollWheelZoom={true}
         crs={L.CRS.EPSG4326}
+        minZoom={0}
+        maxZoom={14}
         maxBounds={[[-90, -180], [90, 180]]}
         worldCopyJump={false}
       >
@@ -562,7 +564,7 @@ export default function TerrainMap({
               tileSize={256}
               keepBuffer={2}
               updateWhenIdle={true}
-              minZoom={2}
+              minZoom={0}
               maxZoom={14}
               noWrap={true}
             />
@@ -583,7 +585,7 @@ export default function TerrainMap({
                 tileSize={256}
                 keepBuffer={2}
                 updateWhenIdle={true}
-                minZoom={2}
+                minZoom={0}
                 maxZoom={14}
                 noWrap={true}
               />
@@ -609,19 +611,19 @@ export default function TerrainMap({
       </MapContainer>
 
       {useLegacyOverlay && displayLoading && (
-        <div className="pointer-events-none absolute top-3 left-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+        <div className="pointer-events-none absolute top-3 left-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
           Loading map data...
         </div>
       )}
 
       {useLegacyOverlay && displayError && (
-        <div className="absolute top-3 right-3 max-w-[420px] bg-red-950/90 border border-red-700/70 text-red-200 text-xs font-mono px-3 py-2 rounded">
+        <div className="absolute top-3 right-3 z-[1000] max-w-[420px] bg-red-950/90 border border-red-700/70 text-red-200 text-xs font-mono px-3 py-2 rounded">
           Map data error: {displayError}
         </div>
       )}
 
       {!useLegacyOverlay && coverageStatus && (
-        <div className="pointer-events-none absolute top-3 left-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+        <div className="pointer-events-none absolute top-3 left-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
           <div>Requested: {dataset.toUpperCase()}</div>
           <div>
             Rendered:{' '}
@@ -631,7 +633,7 @@ export default function TerrainMap({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-3 right-3 bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+      <div className="pointer-events-none absolute bottom-3 right-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
         <div className="font-bold mb-1">DEM Probe (click map)</div>
         {probeLoading && <div>Sampling elevation...</div>}
         {!probeLoading && probeSample && (

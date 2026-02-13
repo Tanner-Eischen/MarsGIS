@@ -168,7 +168,10 @@ export default function Terrain3D({
   const mesh = terrainData.mesh || terrainData;
   const { x: xGrid, y: yGrid, z: zGrid } = mesh;
 
-  const zScaled = zGrid.map(row => row.map(z => (z || 0) * verticalRelief));
+  // Keep all traces in the same elevation coordinate space.
+  // Vertical relief is applied via scene aspect ratio only.
+  const zSurface = zGrid.map((row) => row.map((z) => (Number.isFinite(z) ? z : 0)));
+  const safeRelief = Math.max(verticalRelief, 0.05);
 
   const traces: any[] = [];
 
@@ -176,7 +179,7 @@ export default function Terrain3D({
     type: 'surface',
     x: xGrid,
     y: yGrid,
-    z: zScaled,
+    z: zSurface,
     colorscale: colorScale,
     showscale: true,
     colorbar: { title: 'Elevation (m)', titleside: 'right' },
@@ -230,7 +233,7 @@ export default function Terrain3D({
         const zs = coords.map((c) => {
           const j = nearestIndex(lonAxis as number[], c[0]);
           const i = nearestIndex(latAxis as number[], c[1]);
-          return zScaled[i] && zScaled[i][j] ? zScaled[i][j] : 0;
+          return zSurface[i] && Number.isFinite(zSurface[i][j]) ? zSurface[i][j] : 0;
         });
         traces.push({
           type: 'scatter3d',
@@ -311,7 +314,7 @@ export default function Terrain3D({
       xaxis: { title: 'Longitude ()' },
       yaxis: { title: 'Latitude ()' },
       zaxis: { title: 'Elevation (m)' },
-      aspectratio: { x: 1, y: 1, z: 0.1 * verticalRelief },
+      aspectratio: { x: 1, y: 1, z: 0.1 * safeRelief },
       dragmode: enableRoverAnimation && isAnimating ? false : 'orbit',
       camera: {
         // Camera will be controlled programmatically during animation

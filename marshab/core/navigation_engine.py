@@ -299,12 +299,44 @@ class NavigationEngine:
             site_lon = float(site_row["lon"].iloc[0])
 
             # Create ROI and load DEM
-            roi_size = 0.1
+            # Cap maximum ROI size to prevent excessive computation
+            MAX_ROI_SPAN_DEG = 2.0  # ~200 km on Mars at equator
+            roi_padding = 0.1
+
+            lat_span = abs(site_lat - start_lat)
+            lon_span = abs(site_lon - start_lon)
+            distance_deg = math.sqrt(lat_span**2 + lon_span**2)
+
+            # Fail fast if distance is too large
+            if lat_span > MAX_ROI_SPAN_DEG or lon_span > MAX_ROI_SPAN_DEG:
+                raise NavigationError(
+                    f"Navigation distance too large ({lat_span:.2f}° lat, {lon_span:.2f}° lon). "
+                    f"Maximum supported: {MAX_ROI_SPAN_DEG}° (~200 km). "
+                    f"Suggestion: Use intermediate waypoints or select a closer start position. "
+                    f"Approximate beeline distance: {distance_deg * 59:.0f} km.",
+                    details={
+                        "start_lat": start_lat,
+                        "start_lon": start_lon,
+                        "goal_lat": site_lat,
+                        "goal_lon": site_lon,
+                        "lat_span_deg": lat_span,
+                        "lon_span_deg": lon_span,
+                        "max_span_deg": MAX_ROI_SPAN_DEG
+                    }
+                )
+
             roi = BoundingBox(
-                lat_min=min(start_lat, site_lat) - roi_size,
-                lat_max=max(start_lat, site_lat) + roi_size,
-                lon_min=min(start_lon, site_lon) - roi_size,
-                lon_max=max(start_lon, site_lon) + roi_size
+                lat_min=min(start_lat, site_lat) - roi_padding,
+                lat_max=max(start_lat, site_lat) + roi_padding,
+                lon_min=min(start_lon, site_lon) - roi_padding,
+                lon_max=max(start_lon, site_lon) + roi_padding
+            )
+            
+            logger.info(
+                "Navigation ROI created",
+                lat_span=lat_span,
+                lon_span=lon_span,
+                approx_distance_km=int(distance_deg * 59)
             )
 
             dem = self.data_manager.get_dem_for_roi(roi, dataset="mola", download=True, clip=True)
@@ -593,13 +625,25 @@ class NavigationEngine:
             original_cost_map = cost_map
             original_start_pixel = start_pixel
 
-            # If cost map is very large (> 1000x1000), downsample for pathfinding
-            if cost_map.shape[0] * cost_map.shape[1] > 1000000:
-                downsample_factor = 2  # Downsample by 2x
+            # Adaptive downsampling based on DEM size
+            pixels = cost_map.shape[0] * cost_map.shape[1]
+            
+            if pixels > 5_000_000:      # > 5 megapixels
+                downsample_factor = 4   # ~312k pixels after downsample
+            elif pixels > 2_000_000:    # > 2 megapixels
+                downsample_factor = 3   # ~222k pixels
+            elif pixels > 1_000_000:    # > 1 megapixel
+                downsample_factor = 2   # ~250k pixels
+            else:
+                downsample_factor = 1   # No downsampling
+            
+            if downsample_factor > 1:
                 logger.info(
                     "Downsampling cost map for pathfinding",
                     original_shape=cost_map.shape,
-                    downsample_factor=downsample_factor
+                    original_pixels=pixels,
+                    downsample_factor=downsample_factor,
+                    approx_pixels_after=pixels // (downsample_factor ** 2)
                 )
 
                 # Downsample cost map using max pooling (take worst case in each block)

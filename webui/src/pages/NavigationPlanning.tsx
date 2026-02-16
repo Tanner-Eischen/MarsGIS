@@ -97,6 +97,28 @@ export default function NavigationPlanning() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setTaskId(null)
+    
+    // Validate distance to prevent excessive computation
+    const site = constructionSites.find(s => s.site_id === siteId)
+    if (site) {
+      const latDiff = Math.abs(site.lat - startLat)
+      const lonDiff = Math.abs(site.lon - startLon)
+      const MAX_SPAN = 2.0  // degrees (~200 km on Mars)
+      
+      if (latDiff > MAX_SPAN || lonDiff > MAX_SPAN) {
+        const distanceKm = Math.sqrt(latDiff**2 + lonDiff**2) * 59
+        mutation.reset()
+        mutation.mutate({
+          site_id: -1, // Trigger error immediately without backend call
+          start_lat: startLat,
+          start_lon: startLon,
+          strategy,
+          analysis_dir: analysisDir,
+        } as any)
+        return
+      }
+    }
+    
     mutation.mutate({
       site_id: siteId,
       start_lat: startLat,

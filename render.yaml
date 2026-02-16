@@ -19,6 +19,8 @@ services:
         sync: false
       - key: MARSHAB_ORTHO_BASEMAP_PATH
         value: /opt/render/project/src/data/cache/hirise.tif
+      - key: MARSHAB_GLOBAL_BASEMAP_STYLE
+        value: blendshade
   - type: web
     name: marshab-web
     runtime: static
@@ -29,6 +31,8 @@ services:
         value: https://marshab-api.onrender.com/api/v1
       - key: VITE_WS_URL
         value: wss://marshab-api.onrender.com
+      - key: VITE_GLOBAL_BASEMAP_STYLE
+        value: blendshade
     routes:
       - type: rewrite
         source: /*

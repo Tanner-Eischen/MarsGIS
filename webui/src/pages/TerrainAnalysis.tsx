@@ -81,7 +81,9 @@ export default function TerrainAnalysis({
   })
 
   const handleAIQueryProcessed = (parameters: any) => {
-    console.log("AI Query processed, raw parameters:", parameters);
+    if (import.meta.env.DEV) {
+      console.log("AI Query processed, raw parameters:", parameters);
+    }
     const newRoi = parameters.roi ? {
       lat_min: parameters.roi.min_lat,
       lat_max: parameters.roi.max_lat,

@@ -15,6 +15,16 @@ export function use3DTerrain(roi, dataset, maxPoints = 15000) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[use3DTerrain] Effect triggered', { 
+        lat_min: roi?.lat_min, 
+        lat_max: roi?.lat_max, 
+        lon_min: roi?.lon_min, 
+        lon_max: roi?.lon_max,
+        dataset 
+      });
+    }
+    
     if (!roi) return;
 
     const fetchTerrain = async () => {
@@ -56,7 +66,7 @@ export function use3DTerrain(roi, dataset, maxPoints = 15000) {
     };
 
     fetchTerrain();
-  }, [roi, dataset, maxPoints]);
+  }, [roi?.lat_min, roi?.lat_max, roi?.lon_min, roi?.lon_max, dataset, maxPoints]);
 
   return { terrainData, metadata, loading, error };
 }

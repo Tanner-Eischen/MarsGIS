@@ -23,6 +23,24 @@ export default function AnalysisDashboard() {
   const [sunAzimuth, setSunAzimuth] = useState(315)
   const [sunAltitude, setSunAltitude] = useState(45)
 
+  // Check for pending ROI and 3D mode from navigation
+  useEffect(() => {
+    const pendingRoi = sessionStorage.getItem('pendingRoi')
+    const pending3dMode = sessionStorage.getItem('pending3dMode')
+
+    if (pendingRoi) {
+      try {
+        setRoi(JSON.parse(pendingRoi))
+        sessionStorage.removeItem('pendingRoi')
+      } catch {}
+    }
+
+    if (pending3dMode === 'true') {
+      setMode('3d')
+      sessionStorage.removeItem('pending3dMode')
+    }
+  }, [])
+
   // Sync overlay type with mode
   useEffect(() => {
     if (mode === 'solar' && overlayType !== 'solar') {
@@ -126,29 +144,9 @@ export default function AnalysisDashboard() {
         )}
       </div>
 
-      {/* Main Visualization Area */}
-      <div className="flex-1 relative bg-black">
-        {mode === '3d' ? (
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center h-full w-full bg-gray-900 text-cyan-400 font-mono">
-                Loading 3D module...
-              </div>
-            }
-          >
-            <Terrain3D
-              roi={roi}
-              dataset={dataset}
-              overlayType={overlayType}
-              overlayOptions={{
-                colormap,
-                relief,
-                sunAzimuth,
-                sunAltitude,
-              }}
-            />
-          </Suspense>
-        ) : (
+      {/* Main Visualization Area: side-by-side when 3D mode */}
+      <div className="flex-1 relative bg-black flex">
+        <div className={`relative transition-all duration-300 ${mode === '3d' ? 'w-1/2' : 'w-full'}`}>
           <TerrainMap
             roi={roi}
             dataset={dataset}
@@ -157,19 +155,42 @@ export default function AnalysisDashboard() {
               colormap,
               relief,
               sunAzimuth,
-              sunAltitude
+              sunAltitude,
             }}
             showSites={true}
             showWaypoints={true}
+            onRoiChange={setRoi}
           />
-        )}
-        
-        {/* HUD Overlays */}
-        <div className="absolute top-4 right-4 bg-gray-900/80 backdrop-blur border border-cyan-500/30 p-2 rounded text-xs font-mono text-cyan-400 pointer-events-none">
-          <div>LAT: {(roi.lat_min + roi.lat_max) / 2}°</div>
-          <div>LON: {(roi.lon_min + roi.lon_max) / 2}°</div>
-          <div>ZOOM: 100%</div>
+          {/* HUD anchored to map panel */}
+          <div className="absolute top-4 right-4 z-[1000] bg-gray-900/80 backdrop-blur border border-cyan-500/30 p-2 rounded text-xs font-mono text-cyan-400 pointer-events-none">
+            <div>LAT: {(roi.lat_min + roi.lat_max) / 2}°</div>
+            <div>LON: {(roi.lon_min + roi.lon_max) / 2}°</div>
+            <div>ZOOM: 100%</div>
+          </div>
         </div>
+        {mode === '3d' && (
+          <div className="w-1/2 relative border-l border-gray-700">
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-full w-full bg-gray-900 text-cyan-400 font-mono">
+                  Loading 3D module...
+                </div>
+              }
+            >
+              <Terrain3D
+                roi={roi}
+                dataset={dataset}
+                overlayType={overlayType}
+                overlayOptions={{
+                  colormap,
+                  relief,
+                  sunAzimuth,
+                  sunAltitude,
+                }}
+              />
+            </Suspense>
+          </div>
+        )}
       </div>
     </div>
   )

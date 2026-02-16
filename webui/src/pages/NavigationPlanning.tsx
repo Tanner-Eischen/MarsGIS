@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { planNavigation, NavigationRequest, getExampleROIs, ExampleROIItem } from '../services/api'
+import { planNavigation, NavigationRequest, getExampleROIs, ExampleROIItem, Waypoint } from '../services/api'
 import MLSiteRecommendation from '../components/MLSiteRecommendation'
 import { useGeoPlan } from '../context/GeoPlanContext'
+import TerrainMap from '../components/TerrainMap'
+import { AlertCircle, Box } from 'lucide-react'
 
 // Generate UUID for task tracking
 function generateTaskId(): string {
@@ -13,7 +16,42 @@ function generateTaskId(): string {
   })
 }
 
+// Convert waypoints from meters to approximate lat/lon ROI
+// Mars: ~1 degree latitude ≈ 59.28 km, longitude varies with latitude
+const MARS_METERS_PER_DEGREE_LAT = 59280
+function computeRouteRoi(
+  waypoints: Waypoint[],
+  startLat: number,
+  startLon: number
+): { lat_min: number; lat_max: number; lon_min: number; lon_max: number } | null {
+  if (!waypoints || waypoints.length === 0) return null
+
+  // Validate input coordinates
+  if (!Number.isFinite(startLat) || !Number.isFinite(startLon)) return null
+
+  // Convert meters to approximate lat/lon offsets
+  const metersPerDegreeLon = MARS_METERS_PER_DEGREE_LAT * Math.cos((startLat * Math.PI) / 180)
+
+  const lats = waypoints.map((w) => startLat + w.y_meters / MARS_METERS_PER_DEGREE_LAT)
+  const lons = waypoints.map((w) => startLon + w.x_meters / metersPerDegreeLon)
+
+  // Filter out invalid coordinates
+  const validLats = lats.filter(l => Number.isFinite(l))
+  const validLons = lons.filter(l => Number.isFinite(l))
+
+  if (validLats.length === 0 || validLons.length === 0) return null
+
+  const padding = 0.02 // degrees padding around route
+  return {
+    lat_min: Math.min(...validLats) - padding,
+    lat_max: Math.max(...validLats) + padding,
+    lon_min: Math.min(...validLons) - padding,
+    lon_max: Math.max(...validLons) + padding,
+  }
+}
+
 export default function NavigationPlanning() {
+  const navigate = useNavigate()
   const { landingSites, constructionSites, setRecommendedLandingSiteId } = useGeoPlan()
   const [siteId, setSiteId] = useState(1)
   const [startLat, setStartLat] = useState(40.0)
@@ -23,6 +61,7 @@ export default function NavigationPlanning() {
   const [taskId, setTaskId] = useState<string | null>(null)
   const [examples, setExamples] = useState<ExampleROIItem[]>([])
   const [mlRecs, setMlRecs] = useState<any[] | null>(null)
+  const [waypointsRefreshKey, setWaypointsRefreshKey] = useState(0)
   
   useEffect(() => {
     const sLat = localStorage.getItem('nav.startLat')
@@ -47,10 +86,11 @@ export default function NavigationPlanning() {
       if (data.task_id) {
         setTaskId(data.task_id)
       }
+      // Trigger waypoints GeoJSON refresh after new route is planned
+      setWaypointsRefreshKey((k) => k + 1)
     },
-    onError: (error: any) => {
+    onError: () => {
       setTaskId(null)
-      alert(`Navigation planning failed: ${error.response?.data?.detail || error.message}`)
     },
   })
 
@@ -223,6 +263,19 @@ export default function NavigationPlanning() {
       </button>
       </form>
 
+      {/* Error Display */}
+      {mutation.isError && (
+        <div className="glass-panel p-4 rounded-lg border border-red-500/50 bg-red-900/20">
+          <div className="flex items-center gap-2 text-red-400">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-bold">Navigation Planning Failed</span>
+          </div>
+          <p className="mt-2 text-sm text-red-300">
+            {(mutation.error as any)?.response?.data?.detail || (mutation.error as any)?.message || 'An unexpected error occurred while planning the route. Please check your parameters and try again.'}
+          </p>
+        </div>
+      )}
+
       {mutation.data && (
         <div className="glass-panel p-6 rounded-lg">
           <h3 className="text-lg font-bold mb-4 text-green-400 tracking-wider">
@@ -256,6 +309,43 @@ export default function NavigationPlanning() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {mutation.data && (
+        <div className="glass-panel p-4 rounded-lg">
+          <h3 className="text-sm font-bold text-green-400 uppercase mb-3">ROUTE VISUALIZATION</h3>
+          {mutation.data.waypoints && mutation.data.waypoints.length > 0 ? (
+            <div className="h-[400px] rounded border border-gray-700 overflow-hidden">
+              <TerrainMap
+                roi={computeRouteRoi(mutation.data.waypoints, startLat, startLon)}
+                dataset="mola"
+                showWaypoints={true}
+                showSites={true}
+                waypointsRefreshKey={waypointsRefreshKey}
+              />
+            </div>
+          ) : (
+            <div className="h-[200px] rounded border border-gray-700 flex items-center justify-center bg-gray-900/50">
+              <p className="text-gray-400 text-sm">No waypoints generated for this route</p>
+            </div>
+          )}
+          {mutation.data.waypoints && mutation.data.waypoints.length > 0 && (
+            <button
+              onClick={() => {
+                const roi = computeRouteRoi(mutation.data!.waypoints, startLat, startLon)
+                if (roi) {
+                  sessionStorage.setItem('pendingRoi', JSON.stringify(roi))
+                  sessionStorage.setItem('pending3dMode', 'true')
+                  navigate('/analysis')
+                }
+              }}
+              className="mt-4 flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded font-bold tracking-wider transition-colors"
+            >
+              <Box size={18} />
+              VIEW IN 3D TERRAIN
+            </button>
+          )}
         </div>
       )}
     </div>

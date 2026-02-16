@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../lib/apiBase';
+import EditableRoiRectangle from './EditableRoiRectangle';
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -274,6 +275,19 @@ function FitBounds({ bounds, fitKey }) {
   return null;
 }
 
+function MapResizeHandler() {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize({ animate: false });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 const siteStyle = (isSelected) => ({
   radius: isSelected ? 12 : 8,
   fillColor: isSelected ? '#ffff00' : '#00ff00',
@@ -336,12 +350,13 @@ function SitesLayer({ showSites, onSiteSelect, selectedSiteId }) {
   );
 }
 
-function WaypointsLayer({ showWaypoints, selectedSiteId }) {
-  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints);
+function WaypointsLayer({ showWaypoints, selectedSiteId, refreshKey }: { showWaypoints: boolean; selectedSiteId?: number; refreshKey?: number }) {
+  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints, refreshKey);
   if (!waypointsGeoJson) return null;
 
   return (
     <GeoJSON
+      key={refreshKey}
       data={waypointsGeoJson}
       pointToLayer={(f, l) => pointToLayer(f, l, selectedSiteId)}
       style={(feature) => ({ color: feature?.properties?.line_color || '#ff0000', weight: 2, opacity: 0.8 })}
@@ -354,9 +369,11 @@ interface TerrainMapProps {
   dataset?: string
   showSites?: boolean
   showWaypoints?: boolean
+  waypointsRefreshKey?: number
   relief?: number
   onSiteSelect?: any
   selectedSiteId?: any
+  onRoiChange?: (roi: { lat_min: number; lat_max: number; lon_min: number; lon_max: number }) => void
   overlayType?:
     | 'elevation'
     | 'solar'
@@ -387,9 +404,11 @@ export default function TerrainMap({
   dataset = 'hirise',
   showSites = false,
   showWaypoints = false,
+  waypointsRefreshKey,
   relief = 0,
   onSiteSelect,
   selectedSiteId,
+  onRoiChange,
   overlayType,
   overlayOptions = {}
 }: TerrainMapProps) {
@@ -504,14 +523,16 @@ export default function TerrainMap({
     ? `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}|${dataset}|${activeOverlayType}`
     : `${dataset}|${activeOverlayType}`;
 
-  // Orthophoto is the primary basemap when configured server-side.
+  // Use global local-raster basemap tiles for robust pan/zoom coverage.
   // Keep analytical overlays separate to avoid stacking duplicate terrain layers.
   const supportedTileOverlays = ['solar', 'dust', 'slope', 'aspect', 'roughness', 'tri']
   const tileOverlayType = supportedTileOverlays.includes(activeOverlayType) ? activeOverlayType : null
+  const globalBasemapStyle = (import.meta.env.VITE_GLOBAL_BASEMAP_STYLE || 'blendshade').toLowerCase()
   const basemapTileUrl = apiUrl(
-    `/visualization/tiles/basemap/orthophoto/{z}/{x}/{y}.png?${new URLSearchParams({
-      fallback_dataset: 'hirise',
-      allow_dem_fallback: 'false',
+    `/visualization/tiles/basemap/global/{z}/{x}/{y}.png?${new URLSearchParams({
+      style: globalBasemapStyle,
+      fallback_dataset: 'mola_200m',
+      allow_fallback: 'true',
     }).toString()}`
   )
 
@@ -536,7 +557,11 @@ export default function TerrainMap({
         maxBounds={[[-90, -180], [90, 180]]}
         worldCopyJump={false}
       >
+        <MapResizeHandler />
         <ViewportTracker onViewportChange={handleViewportChange} />
+        {onRoiChange && targetRoi && (
+          <EditableRoiRectangle roi={targetRoi} onRoiChange={onRoiChange} />
+        )}
         <ElevationProbe
           dataset={dataset}
           onPending={() => {
@@ -606,7 +631,7 @@ export default function TerrainMap({
         )}
 
         {showWaypoints && (
-          <WaypointsLayer showWaypoints={showWaypoints} selectedSiteId={selectedSiteId} />
+          <WaypointsLayer showWaypoints={showWaypoints} selectedSiteId={selectedSiteId} refreshKey={waypointsRefreshKey} />
         )}
       </MapContainer>
 

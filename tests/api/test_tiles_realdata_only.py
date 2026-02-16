@@ -3,6 +3,9 @@ from fastapi.testclient import TestClient
 from marshab.exceptions import DataError
 from marshab.web.api import app
 from marshab.web.routes import visualization
+from marshab.web.routes.visualization import basemap as visualization_basemap
+from marshab.web.routes.visualization import overlay_routes as visualization_overlay
+from marshab.web.routes.visualization import terrain as visualization_terrain
 
 client = TestClient(app)
 
@@ -11,8 +14,14 @@ def _force_real_dem_unavailable(monkeypatch):
     def _raise_real_dem(*_args, **_kwargs):
         raise DataError("real_dem_unavailable")
 
-    monkeypatch.setattr(visualization, "load_dem_window", _raise_real_dem)
-    monkeypatch.setattr(visualization, "read_disk_cache", lambda *_args, **_kwargs: None)
+    # Patch at each submodule level since they import load_dem_window directly
+    monkeypatch.setattr(visualization_basemap, "load_dem_window", _raise_real_dem)
+    monkeypatch.setattr(visualization_overlay, "load_dem_window", _raise_real_dem)
+    monkeypatch.setattr(visualization_terrain, "load_dem_window", _raise_real_dem)
+    # Patch read_disk_cache at the submodule levels
+    monkeypatch.setattr(visualization_basemap, "read_disk_cache", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(visualization_overlay, "read_disk_cache", lambda *_args, **_kwargs: None)
+    # Patch tile cache at the _helpers level (shared)
     monkeypatch.setattr(visualization.TILE_CACHE, "get", lambda *_args, **_kwargs: None)
 
 

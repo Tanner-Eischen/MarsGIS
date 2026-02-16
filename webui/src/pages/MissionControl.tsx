@@ -1,17 +1,8 @@
 import { useState } from 'react'
 import NavigationPlanning from './NavigationPlanning'
+import LandingScenarioForm from '../components/LandingScenarioForm'
+import TraverseScenarioForm from '../components/TraverseScenarioForm'
 import { Map, Flag, Activity } from 'lucide-react'
-
-// Placeholder for Mission Scenarios until fully migrated/re-implemented inline
-function MissionScenariosComponent() {
-    return (
-        <div className="glass-panel p-8 rounded-lg text-center text-gray-400">
-            <Flag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-bold text-white mb-2">MISSION_SCENARIOS</h3>
-            <p className="text-sm">Scenario builder is currently under maintenance.</p>
-        </div>
-    )
-}
 
 export default function MissionControl() {
   const [activeTab, setActiveTab] = useState<'planning' | 'scenarios'>('planning')
@@ -58,8 +49,9 @@ export default function MissionControl() {
                 <NavigationPlanning />
             </div>
         ) : (
-            <div className="max-w-7xl mx-auto">
-                <MissionScenariosComponent />
+            <div className="max-w-7xl mx-auto space-y-6">
+                <LandingScenarioForm />
+                <TraverseScenarioForm />
             </div>
         )}
       </div>

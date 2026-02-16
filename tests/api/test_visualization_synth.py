@@ -5,6 +5,7 @@ from marshab.core.raster_service import RasterWindowResult
 from marshab.models import BoundingBox
 from marshab.web.api import app
 from marshab.web.routes import visualization
+from marshab.web.routes.visualization import terrain as visualization_terrain
 
 client = TestClient(app)
 
@@ -21,19 +22,23 @@ def test_terrain_3d_response_shape(monkeypatch):
         nodata=None,
         transform=(0.08, 0.0, 77.0, 0.0, -0.06, 18.6),
     )
-    monkeypatch.setattr(visualization, "load_dem_window", lambda *_args, **_kwargs: fake_result)
+    monkeypatch.setattr(visualization_terrain, "load_dem_window", lambda *_args, **_kwargs: fake_result)
 
     roi = "18.0,18.6,77.0,77.8"
     r = client.get(f"/api/v1/visualization/terrain-3d?dataset=mola&roi={roi}&max_points=10000")
     assert r.status_code == 200
     data = r.json()
-    for key in ("x", "y", "z", "bounds", "elevation_range"):
+    # Response has nested mesh structure with x, y, z
+    assert "mesh" in data
+    for key in ("x", "y", "z"):
+        assert key in data["mesh"]
+    for key in ("bounds", "elevation_range"):
         assert key in data
     for key in ("dataset_requested", "dataset_used", "is_fallback", "fallback_reason"):
         assert key in data
-    assert isinstance(data["x"], list)
-    assert isinstance(data["y"], list)
-    assert isinstance(data["z"], list)
+    assert isinstance(data["mesh"]["x"], list)
+    assert isinstance(data["mesh"]["y"], list)
+    assert isinstance(data["mesh"]["z"], list)
 
 
 def test_terrain_3d_scene_contract_includes_overlays(monkeypatch):
@@ -48,8 +53,8 @@ def test_terrain_3d_scene_contract_includes_overlays(monkeypatch):
         nodata=None,
         transform=(0.08, 0.0, 77.0, 0.0, -0.06, 18.6),
     )
-    monkeypatch.setattr(visualization, "load_dem_window", lambda *_args, **_kwargs: fake_result)
-    monkeypatch.setattr(visualization, "_load_waypoint_features", lambda: [
+    monkeypatch.setattr(visualization_terrain, "load_dem_window", lambda *_args, **_kwargs: fake_result)
+    monkeypatch.setattr(visualization_terrain, "_load_waypoint_features", lambda: [
         {
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [77.2, 18.2]},
@@ -61,7 +66,7 @@ def test_terrain_3d_scene_contract_includes_overlays(monkeypatch):
             "properties": {"kind": "path", "route_type": "balanced"},
         },
     ])
-    monkeypatch.setattr(visualization, "_load_sites_features", lambda: [
+    monkeypatch.setattr(visualization_terrain, "_load_sites_features", lambda: [
         {
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [77.5, 18.3]},

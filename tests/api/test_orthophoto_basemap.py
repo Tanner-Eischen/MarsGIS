@@ -2,12 +2,13 @@ from pathlib import Path
 
 import numpy as np
 import rasterio
-from fastapi.testclient import TestClient
 from fastapi.responses import Response
+from fastapi.testclient import TestClient
 from rasterio.transform import from_bounds
 
 from marshab.web.api import app
 from marshab.web.routes import visualization
+from marshab.web.routes.visualization import basemap as visualization_basemap
 
 client = TestClient(app)
 
@@ -86,6 +87,9 @@ def test_orthophoto_basemap_renders_from_configured_source(tmp_path, monkeypatch
 def test_orthophoto_basemap_requires_hirise_source_when_path_not_configured(monkeypatch):
     monkeypatch.delenv("MARSHAB_ORTHO_BASEMAP_PATH", raising=False)
 
+    # Mock path resolution to ensure no auto-discovered source is found
+    monkeypatch.setattr(visualization_basemap, "_resolve_orthophoto_source_path", lambda: None)
+
     async def _stub_basemap(*_args, **_kwargs):
         return Response(content=b"dem-fallback", media_type="image/png")
 
@@ -115,10 +119,14 @@ def test_orthophoto_basemap_renders_projected_source(tmp_path, monkeypatch):
 def test_orthophoto_basemap_can_opt_in_to_dem_fallback(monkeypatch):
     monkeypatch.delenv("MARSHAB_ORTHO_BASEMAP_PATH", raising=False)
 
+    # Mock path resolution to ensure no auto-discovered source is found
+    monkeypatch.setattr(visualization_basemap, "_resolve_orthophoto_source_path", lambda: None)
+
     async def _stub_basemap(*_args, **_kwargs):
         return Response(content=b"dem-fallback", media_type="image/png")
 
-    monkeypatch.setattr(visualization, "get_basemap_tile", _stub_basemap)
+    # Patch at basemap module level since the function is called within the same module
+    monkeypatch.setattr(visualization_basemap, "get_basemap_tile", _stub_basemap)
 
     response = client.get(
         "/api/v1/visualization/tiles/basemap/orthophoto/0/0/0.png",
@@ -129,18 +137,3 @@ def test_orthophoto_basemap_can_opt_in_to_dem_fallback(monkeypatch):
     assert response.content == b"dem-fallback"
     assert response.headers["x-orthophoto-used"] == "false"
     assert response.headers["x-orthophoto-reason"] == "path_not_configured"
-
-
-def test_orthophoto_basemap_renders_projected_source(tmp_path, monkeypatch):
-    src_path = tmp_path / "orthophoto_3857.tif"
-    _write_projected_test_orthophoto(src_path)
-    monkeypatch.setenv("MARSHAB_ORTHO_BASEMAP_PATH", str(src_path))
-
-    response = client.get("/api/v1/visualization/tiles/basemap/orthophoto/2/1/1.png")
-
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "image/png"
-    assert response.headers["x-orthophoto-used"] == "true"
-    assert response.headers["x-orthophoto-source"] == src_path.name
-    assert "x-orthophoto-crs" in response.headers
-    assert len(response.content) > 0

@@ -147,7 +147,9 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
       cache.delete(lruKey)
       order.shift()
       
-      console.log(`⚠ Cache full, evicting ${lruKey.substring(0, 20)}...`)
+      if (import.meta.env.DEV) {
+        console.log(`⚠ Cache full, evicting ${lruKey.substring(0, 20)}...`)
+      }
     }
   }, [])
 
@@ -195,7 +197,9 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
     // Check cache first
     const cached = cacheRef.current.get(cacheKey)
     if (cached) {
-      console.log(`✓ Loading ${overlayType} from cache`)
+      if (import.meta.env.DEV) {
+        console.log(`✓ Loading ${overlayType} from cache`)
+      }
       updateAccessOrder(cacheKey)
       return cached.data
     }
@@ -228,7 +232,9 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
     abortControllersRef.current.set(overlayType, controller)
 
     try {
-      console.log(`⬇ Fetching ${overlayType} from server...`)
+      if (import.meta.env.DEV) {
+        console.log(`⬇ Fetching ${overlayType} from server...`)
+      }
       
       const roiStr = `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}`
       const params = new URLSearchParams({
@@ -324,14 +330,18 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
         return updated
       })
 
-      console.log(`✓ ${overlayType} loaded and cached`)
+      if (import.meta.env.DEV) {
+        console.log(`✓ ${overlayType} loaded and cached`)
+      }
       return data
 
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log(`✗ ${overlayType} loading cancelled`)
-      } else {
-        console.error(`✗ Error loading ${overlayType}:`, error)
+      if (import.meta.env.DEV) {
+        if (error.name === 'AbortError') {
+          console.log(`✗ ${overlayType} loading cancelled`)
+        } else {
+          console.error(`✗ Error loading ${overlayType}:`, error)
+        }
       }
 
       setLayers(prev => {
@@ -378,19 +388,27 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
     } = {}
   ) => {
     if (activeLayerName === newLayerName) {
-      console.log(`${newLayerName} already active`)
+      if (import.meta.env.DEV) {
+        console.log(`${newLayerName} already active`)
+      }
       return
     }
 
-    console.log(`\n🔄 Switching to ${newLayerName}...`)
+    if (import.meta.env.DEV) {
+      console.log(`\n🔄 Switching to ${newLayerName}...`)
+    }
 
     try {
       const data = await loadLayer(newLayerName, dataset, roi, overlayOptions)
       setActiveLayerName(newLayerName)
-      console.log(`✓ Now displaying ${newLayerName}\n`)
+      if (import.meta.env.DEV) {
+        console.log(`✓ Now displaying ${newLayerName}\n`)
+      }
       return data
     } catch (error) {
-      console.error('Failed to switch layer:', error)
+      if (import.meta.env.DEV) {
+        console.error('Failed to switch layer:', error)
+      }
       throw error
     }
   }, [activeLayerName, loadLayer])
@@ -414,7 +432,9 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
       dustStormPeriod?: string
     } = {}
   ) => {
-    console.log('\n🚀 Preloading all layers...')
+    if (import.meta.env.DEV) {
+      console.log('\n🚀 Preloading all layers...')
+    }
     const layerNames = Array.from(layers.keys())
     
     const promises = layerNames.map(async (name) => {
@@ -423,20 +443,26 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
         try {
           await loadLayer(name, dataset, roi, overlayOptions)
         } catch (error) {
-          console.error(`Failed to preload ${name}:`, error)
+          if (import.meta.env.DEV) {
+            console.error(`Failed to preload ${name}:`, error)
+          }
         }
       }
     })
     
     await Promise.all(promises)
-    console.log('✓ All layers preloaded\n')
+    if (import.meta.env.DEV) {
+      console.log('✓ All layers preloaded\n')
+    }
   }, [layers, loadLayer])
 
   /**
    * Clear cache
    */
   const clearCache = useCallback(() => {
-    console.log('\n🗑️ Clearing cache...')
+    if (import.meta.env.DEV) {
+      console.log('\n🗑️ Clearing cache...')
+    }
     
     // Revoke all blob URLs
     cacheRef.current.forEach(entry => {
@@ -461,7 +487,9 @@ export function useOverlayLayerManager(options: UseOverlayLayerManagerOptions = 
       return updated
     })
     
-    console.log('✓ Cache cleared\n')
+    if (import.meta.env.DEV) {
+      console.log('✓ Cache cleared\n')
+    }
   }, [])
 
   /**

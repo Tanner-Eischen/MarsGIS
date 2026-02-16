@@ -121,7 +121,7 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
   return demImage
 }
 
-function useGeoJson(path: string, enabled: boolean) {
+function useGeoJson(path: string, enabled: boolean, refreshKey?: number) {
   const [data, setData] = useState<any>(null)
 
   useEffect(() => {
@@ -144,7 +144,7 @@ function useGeoJson(path: string, enabled: boolean) {
     }
 
     fetchData()
-  }, [path, enabled])
+  }, [path, enabled, refreshKey])
 
   return data
 }
@@ -153,8 +153,8 @@ export function useSitesGeoJson(enabled: boolean) {
   return useGeoJson('/visualization/sites-geojson', enabled)
 }
 
-export function useWaypointsGeoJson(enabled: boolean) {
-  return useGeoJson('/visualization/waypoints-geojson', enabled)
+export function useWaypointsGeoJson(enabled: boolean, refreshKey?: number) {
+  return useGeoJson('/visualization/waypoints-geojson', enabled, refreshKey)
 }
 
 // Unified overlay hook

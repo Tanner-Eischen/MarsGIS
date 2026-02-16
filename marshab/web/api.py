@@ -44,18 +44,18 @@ async def lifespan(app: FastAPI):
     logger.info("Starting MarsHab web API")
     try:
         config = get_config()
-        print("✓ Config loaded")
+        print("[OK] Config loaded")
         config.paths.create_directories()
-        print("✓ Directories created")
+        print("[OK] Directories created")
 
         # Load plugins
         try:
             from marshab.plugins import load_plugins_from_config
             load_plugins_from_config()
-            print("✓ Plugins loaded")
+            print("[OK] Plugins loaded")
         except Exception as e:
             logger.warning("Failed to load plugins", error=str(e))
-            print(f"⚠ Plugins failed: {e}")
+            print(f"[WARN] Plugins failed: {e}")
 
         print("=" * 60)
         print("MarsHab Web API - Ready!")
@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
         print("API Docs: http://localhost:5000/docs")
         print("=" * 60)
     except Exception as e:
-        print(f"❌ Startup error: {e}")
+        print(f"[ERROR] Startup error: {e}")
         logger.exception("Startup failed")
         raise
 

@@ -30,6 +30,10 @@ class NavigationRequest(BaseModel):
     start_lon: float = Field(..., ge=0, le=360)
     max_waypoint_spacing_m: float = Field(100.0, gt=0)
     max_slope_deg: float = Field(25.0, gt=0, le=90)
+    strategy: PathfindingStrategy = Field(
+        default=PathfindingStrategy.BALANCED,
+        description="Pathfinding strategy"
+    )
     task_id: Optional[str] = Field(None, description="Optional task ID for progress tracking (client-generated)")
 
 
@@ -83,7 +87,8 @@ async def plan_route(request: NavigationRequest):
                         start_lon=request.start_lon,
                         max_waypoint_spacing_m=request.max_waypoint_spacing_m,
                         max_slope_deg=request.max_slope_deg,
-                        progress_callback=progress_callback
+                        progress_callback=progress_callback,
+                        strategy=request.strategy
                     )
                 ),
                 timeout=120.0  # 2 minute timeout for pathfinding
@@ -102,6 +107,13 @@ async def plan_route(request: NavigationRequest):
         default_waypoints_file = analysis_dir / "waypoints.csv"
         waypoints_df.to_csv(site_waypoints_file, index=False)
         waypoints_df.to_csv(default_waypoints_file, index=False)
+
+        # Also write to output_dir for the /visualization/waypoints-geojson endpoint
+        config = get_config()
+        output_dir = config.paths.output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        strategy_waypoints_file = output_dir / f"waypoints_{request.strategy.value}.csv"
+        waypoints_df.to_csv(strategy_waypoints_file, index=False)
 
         if len(waypoints_df) > 0:
             last = waypoints_df.iloc[-1]

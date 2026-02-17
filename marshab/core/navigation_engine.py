@@ -238,7 +238,7 @@ class NavigationEngine:
         analysis_dir: Path,
         start_lat: float,
         start_lon: float,
-        max_waypoint_spacing_m: float = 100.0,
+        max_waypoint_spacing_m: float = 250.0,
         max_slope_deg: float = 25.0,
         progress_callback: Optional[Callable[[str, float, str], None]] = None,
         strategy: Optional[PathfindingStrategy] = None
@@ -722,6 +722,20 @@ class NavigationEngine:
             except NavigationError as e:
                 logger.error("Pathfinding failed", error=str(e))
                 raise
+
+            # Cap waypoint count so routes stay manageable (max 300)
+            MAX_WAYPOINTS = 300
+            if len(waypoint_pixels) > MAX_WAYPOINTS:
+                n_before = len(waypoint_pixels)
+                indices = np.linspace(0, n_before - 1, MAX_WAYPOINTS, dtype=int)
+                indices = np.unique(indices)
+                waypoint_pixels = [waypoint_pixels[i] for i in indices]
+                logger.info(
+                    "Capped waypoints to max",
+                    original_count=n_before,
+                    capped_count=len(waypoint_pixels),
+                    max_waypoints=MAX_WAYPOINTS
+                )
 
             logger.info(f"Found path with {len(waypoint_pixels)} waypoints")
 

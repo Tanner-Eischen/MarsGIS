@@ -162,7 +162,7 @@ export const planNavigation = async (request: NavigationRequest): Promise<Naviga
     analysis_dir: request.analysis_dir || 'data/output',
     start_lat: request.start_lat,
     start_lon: request.start_lon,
-    max_waypoint_spacing_m: request.max_waypoint_spacing_m || 100.0,
+    max_waypoint_spacing_m: request.max_waypoint_spacing_m ?? 250.0,
     max_slope_deg: request.max_slope_deg || 25.0,
   })
   return response.data
@@ -200,7 +200,7 @@ export const planMultipleRoutes = async (request: MultiRouteRequest): Promise<Mu
     start_lat: request.start_lat,
     start_lon: request.start_lon,
     strategies: request.strategies || ['balanced', 'direct'],
-    max_waypoint_spacing_m: request.max_waypoint_spacing_m || 100.0,
+    max_waypoint_spacing_m: request.max_waypoint_spacing_m ?? 250.0,
     max_slope_deg: request.max_slope_deg || 25.0,
     task_id: request.task_id,
   })

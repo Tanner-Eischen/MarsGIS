@@ -28,7 +28,7 @@ class NavigationRequest(BaseModel):
     analysis_dir: str = Field(..., description="Analysis results directory")
     start_lat: float = Field(..., ge=-90, le=90)
     start_lon: float = Field(..., ge=0, le=360)
-    max_waypoint_spacing_m: float = Field(100.0, gt=0)
+    max_waypoint_spacing_m: float = Field(250.0, gt=0, description="Spacing between waypoints (m); larger = fewer waypoints")
     max_slope_deg: float = Field(25.0, gt=0, le=90)
     strategy: PathfindingStrategy = Field(
         default=PathfindingStrategy.BALANCED,
@@ -232,7 +232,7 @@ class MultiRouteRequest(BaseModel):
     start_lat: float
     start_lon: float
     strategies: list[PathfindingStrategy] = Field(default_factory=lambda: [PathfindingStrategy.BALANCED, PathfindingStrategy.DIRECT])
-    max_waypoint_spacing_m: float = Field(100.0, gt=0)
+    max_waypoint_spacing_m: float = Field(250.0, gt=0)
     max_slope_deg: float = Field(25.0, gt=0, le=90)
     task_id: Optional[str] = None
 

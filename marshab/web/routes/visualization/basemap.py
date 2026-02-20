@@ -93,15 +93,17 @@ async def get_global_basemap_tile(
     if source_info is None:
         if not allow_fallback:
             raise HTTPException(status_code=503, detail="Global basemap source unavailable")
+        # Prefer DEM-backed fallback over network tile proxy. Some public tile servers
+        # intermittently return 403/429 to non-browser clients, which would blank the map.
         try:
-            response = await get_mars_basemap_tile(z, x, y)
-            response.headers["X-Global-Basemap-Used"] = "false"
-            response.headers["X-Global-Basemap-Reason"] = "source_unavailable_network_fallback"
-            return response
-        except Exception:
             response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
             response.headers["X-Global-Basemap-Used"] = "false"
             response.headers["X-Global-Basemap-Reason"] = "source_unavailable_dem_fallback"
+            return response
+        except Exception:
+            response = await get_mars_basemap_tile(z, x, y)
+            response.headers["X-Global-Basemap-Used"] = "false"
+            response.headers["X-Global-Basemap-Reason"] = "source_unavailable_network_fallback"
             return response
 
     style_used, source_path = source_info
@@ -147,14 +149,14 @@ async def get_global_basemap_tile(
         if not allow_fallback:
             raise HTTPException(status_code=503, detail="Global basemap render failed")
         try:
-            response = await get_mars_basemap_tile(z, x, y)
-            response.headers["X-Global-Basemap-Used"] = "false"
-            response.headers["X-Global-Basemap-Reason"] = "render_failed_network_fallback"
-            return response
-        except Exception:
             response = await get_basemap_tile(fallback_dataset_resolved, z, x, y)
             response.headers["X-Global-Basemap-Used"] = "false"
             response.headers["X-Global-Basemap-Reason"] = "render_failed_dem_fallback"
+            return response
+        except Exception:
+            response = await get_mars_basemap_tile(z, x, y)
+            response.headers["X-Global-Basemap-Used"] = "false"
+            response.headers["X-Global-Basemap-Reason"] = "render_failed_network_fallback"
             return response
 
     TILE_CACHE.set(cache_key, png_bytes)

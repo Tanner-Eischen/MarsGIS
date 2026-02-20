@@ -39,18 +39,14 @@ function DataDownloadComponent() {
         DATA_ACQUISITION
       </h2>
       
-      {(dataset === 'hirise' || dataset === 'ctx') && (
+      {dataset === 'hirise' && (
         <div className="bg-amber-900/30 border border-amber-700/50 rounded p-4 mb-4 text-xs">
           <h3 className="font-bold text-amber-400 mb-1">MANUAL_DOWNLOAD_REQUIRED</h3>
           <p className="text-amber-200/80 mb-2">
-            High-resolution datasets (HiRISE/CTX) require specific observation IDs.
+            HiRISE requires a specific observation/region; it will not auto-download globally.
           </p>
           <ul className="list-disc list-inside space-y-1 text-amber-300/70">
-            {dataset === 'hirise' ? (
-              <li>Source: <a href="https://www.uahirise.org/hiwish/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">HiRISE PDS</a></li>
-            ) : (
-              <li>Source: <a href="https://ode.rsl.wustl.edu/mars/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">WUSTL ODE</a></li>
-            )}
+            <li>Source: <a href="https://www.uahirise.org/hiwish/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">HiRISE PDS</a></li>
           </ul>
         </div>
       )}
@@ -70,10 +66,9 @@ function DataDownloadComponent() {
             onChange={(e) => setDataset(e.target.value)}
             className="w-full bg-gray-800/50 border border-gray-700 text-white px-3 py-2 rounded text-sm focus:border-mars-orange focus:outline-none"
           >
-            <option value="mola">MOLA (Global 463m)</option>
+            <option value="hirise">HiRISE (1m)</option>
             <option value="mola_200m">MOLA 200m (Global)</option>
-            <option value="hirise">HiRISE (Local 1m)</option>
-            <option value="ctx">CTX (Regional 18m)</option>
+            <option value="mola">MOLA (Global 463m)</option>
           </select>
         </div>
 

@@ -63,13 +63,6 @@ class DataManager:
         if not cache_path.exists():
             return False
 
-        # Fast size gate first.
-        try:
-            if cache_path.stat().st_size > 2 * 1024 * 1024:
-                return True
-        except Exception:
-            return False
-
         try:
             with rasterio.open(cache_path) as src:
                 tags = src.tags()
@@ -78,6 +71,12 @@ class DataManager:
                 # Synthetic fallback tiles are usually very small; real Jezero tile is much denser.
                 if src.width * src.height >= 500_000:
                     return True
+                # Last-resort heuristic: treat large files as likely real, but only if they open cleanly.
+                try:
+                    if cache_path.stat().st_size > 2 * 1024 * 1024:
+                        return True
+                except Exception:
+                    return False
         except Exception:
             return False
 
@@ -90,7 +89,11 @@ class DataManager:
         manual_file = self.cache_dir / "real_mars.tif"
         if manual_file.exists():
             logger.info("Found manually placed real_mars.tif, using it.")
-            shutil.copy(manual_file, dest_path)
+            tmp_path = dest_path.with_suffix(f"{dest_path.suffix}.copy.tmp")
+            shutil.copy(manual_file, tmp_path)
+            if dest_path.exists():
+                dest_path.unlink()
+            tmp_path.replace(dest_path)
             return
 
         # 2. Check for cached GLOBAL file
@@ -106,7 +109,11 @@ class DataManager:
 
                 # Save the clipped DEM to dest_path
                 if hasattr(dem, 'rio'):
-                    dem.rio.to_raster(dest_path)
+                    tmp_path = dest_path.with_suffix(f"{dest_path.suffix}.clip.tmp")
+                    dem.rio.to_raster(tmp_path)
+                    if dest_path.exists():
+                        dest_path.unlink()
+                    tmp_path.replace(dest_path)
                     logger.info(f"Saved clipped MOLA tile to {dest_path}")
                     return
                 else:
@@ -266,7 +273,9 @@ class DataManager:
                 np.random.set_state(np_state)
                 random.setstate(py_state)
 
-        # Save to GeoTIFF using rasterio directly (works even without rioxarray)
+        # Save to GeoTIFF using rasterio directly (works even without rioxarray).
+        # Write to a temp file then atomically replace to avoid readers seeing partial files.
+        tmp_path = dest_path.with_suffix(f"{dest_path.suffix}.synthetic.tmp")
         try:
             transform = from_bounds(
                 roi.lon_min,
@@ -278,7 +287,7 @@ class DataManager:
             )
             dem_array = dem.values.astype("float32")
             with rasterio.open(
-                dest_path,
+                tmp_path,
                 "w",
                 driver="GTiff",
                 height=height_px,
@@ -292,9 +301,18 @@ class DataManager:
                 dst.write(dem_array, 1)
                 # Preserve Mars CRS hint for loaders/tests when CRS registry support is absent.
                 dst.update_tags(CRS_INFO="EPSG:49900")
+            if dest_path.exists():
+                dest_path.unlink()
+            tmp_path.replace(dest_path)
         except Exception as e:
             logger.error("Failed to write synthetic GeoTIFF", error=str(e))
             raise DataError(f"Could not generate synthetic proxy: {e}")
+        finally:
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except Exception:
+                pass
 
     def download_dem(
         self,

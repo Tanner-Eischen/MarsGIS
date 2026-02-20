@@ -18,6 +18,7 @@ import xarray as xr
 from rasterio.transform import Affine, from_bounds
 
 from marshab.config import get_config
+from marshab.core.raster_contracts import REAL_DEM_UNAVAILABLE_ERROR_CODE
 from marshab.exceptions import DataError
 from marshab.models import BoundingBox
 from marshab.processing.dem_loader import DEMLoader
@@ -84,6 +85,7 @@ class DataManager:
 
     def _download_real_mola_tile(self, roi: BoundingBox, dest_path: Path):
         """Attempt to download real MOLA data, handling global file caching and clipping."""
+        allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
 
         # 1. Check for manual 'real_mars.tif' (dev override)
         manual_file = self.cache_dir / "real_mars.tif"
@@ -142,6 +144,15 @@ class DataManager:
         # Or we use synthetic fallback until then.
 
         # 4. Final fallback
+        if not allow_synthetic:
+            raise DataError(
+                REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                details={
+                    "dataset": "mola",
+                    "requires_manual_download": True,
+                    "hint": "Cache global MOLA (463m) or provide real_mars.tif; synthetic fallback disabled.",
+                },
+            )
         logger.warning("Real data not available (Global MOLA not cached). Generating realistic synthetic proxy.")
         self._generate_synthetic_proxy(roi, dest_path)
 
@@ -337,16 +348,35 @@ class DataManager:
         """
         cache_path = self._get_cache_path(dataset, roi)
 
+        allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
+
         if cache_path.exists() and not force:
-            # Self-heal Jezero cache: if an old synthetic tile exists, upgrade it to curated real DEM.
-            if dataset == "mola" and roi is not None and self._roi_is_jezero_like(roi):
-                if not self._cache_looks_real(cache_path):
-                    logger.info(
-                        "Cached Jezero tile appears synthetic; refreshing curated DEM",
-                        path=str(cache_path),
-                    )
-                    self._download_real_mola_tile(roi, cache_path)
-            return cache_path
+            # If synthetic is disallowed, never treat a non-real cache as acceptable.
+            if not allow_synthetic and not self._cache_looks_real(cache_path):
+                try:
+                    cache_path.unlink()
+                except Exception:
+                    pass
+            else:
+                # Validate the cache opens cleanly (guards against partial/corrupt files).
+                try:
+                    with rasterio.open(cache_path) as src:
+                        _ = src.width, src.height
+                except Exception:
+                    try:
+                        cache_path.unlink()
+                    except Exception:
+                        pass
+                else:
+                    # Self-heal Jezero cache: if an old synthetic tile exists, upgrade it to curated real DEM.
+                    if dataset == "mola" and roi is not None and self._roi_is_jezero_like(roi):
+                        if not self._cache_looks_real(cache_path):
+                            logger.info(
+                                "Cached Jezero tile appears synthetic; refreshing curated DEM",
+                                path=str(cache_path),
+                            )
+                            self._download_real_mola_tile(roi, cache_path)
+                    return cache_path
 
         if dataset == "mola" and roi:
             self._download_real_mola_tile(roi, cache_path)
@@ -361,10 +391,19 @@ class DataManager:
 
         # Directory-based logic (HiRISE/CTX) from original code...
         if url.endswith('/'):
-             if roi:
-                 logger.warning(f"Dataset {dataset} requires manual download. Generating proxy for demo.")
-                 self._generate_synthetic_proxy(roi, cache_path)
-                 return cache_path
+            if roi:
+                if not allow_synthetic:
+                    raise DataError(
+                        REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                        details={
+                            "dataset": dataset,
+                            "requires_manual_download": True,
+                            "hint": "Dataset requires manual download; synthetic fallback disabled.",
+                        },
+                    )
+                logger.warning(f"Dataset {dataset} requires manual download. Generating proxy for demo.")
+                self._generate_synthetic_proxy(roi, cache_path)
+                return cache_path
 
         # Standard URL download
         try:
@@ -375,6 +414,16 @@ class DataManager:
         except Exception as e:
             # Fallback to synthetic on failure
             if roi:
+                if not allow_synthetic:
+                    raise DataError(
+                        REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                        details={
+                            "dataset": dataset,
+                            "requires_manual_download": True,
+                            "hint": "Download failed and synthetic fallback is disabled.",
+                            "error": str(e),
+                        },
+                    )
                 logger.error(f"Download failed, falling back to synthetic: {e}")
                 self._generate_synthetic_proxy(roi, cache_path)
                 return cache_path

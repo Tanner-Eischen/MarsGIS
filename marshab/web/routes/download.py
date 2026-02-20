@@ -100,6 +100,10 @@ async def download_dem(request: DownloadRequest, background_tasks: BackgroundTas
 
 class PrewarmRequest(BaseModel):
     roi: list[float] = Field(..., description="[lat_min, lat_max, lon_min, lon_max]")
+    dataset: str = Field(
+        "mola_200m",
+        description="DEM dataset to prewarm (mola_200m preferred; mola is absolute fallback)",
+    )
     tile_deg: float = Field(5.0, gt=0, description="Tile size in degrees")
     force: bool = Field(False, description="Force re-download even if cached")
 
@@ -135,12 +139,22 @@ async def prewarm_mola_tiles(request: PrewarmRequest):
     start = time()
     try:
         data_manager = DataManager()
+        dataset = request.dataset.lower().strip()
+        if dataset not in {"mola_200m", "mola"}:
+            raise HTTPException(status_code=400, detail={"error": "invalid_dataset", "hint": "Use mola_200m or mola"})
         tiles = _tiles_from_roi(request.roi, request.tile_deg)
 
         processed = 0
         for bbox in tiles:
-            # Trigger download/cache by loading DEM
-            _ = data_manager.get_dem_for_roi(bbox, dataset="mola", download=True, clip=True)
+            # Trigger download/cache by loading DEM.
+            # Enforce strict fallback chain: prefer MOLA 200m, absolute fallback to MOLA 463m.
+            try:
+                _ = data_manager.get_dem_for_roi(bbox, dataset=dataset, download=True, clip=True)
+            except DataError:
+                if dataset != "mola":
+                    _ = data_manager.get_dem_for_roi(bbox, dataset="mola", download=True, clip=True)
+                else:
+                    raise
             processed += 1
 
         duration = time() - start

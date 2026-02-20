@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -396,6 +397,7 @@ async def get_overlay(
 
         logger.info("Generating overlay", overlay_type=overlay_type)
         loop = asyncio.get_event_loop()
+        allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
         use_synthetic = False
         raster_result = None
         dem = None
@@ -417,9 +419,19 @@ async def get_overlay(
             dem = _build_dem_dataarray(raster_result) if raster_result else None
             logger.info("DEM loaded successfully", shape=dem.shape if dem is not None else None)
         except asyncio.TimeoutError:
+            if not allow_synthetic:
+                raise DataError(
+                    REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                    details={"dataset": dataset_lower, "hint": "DEM load timed out; synthetic fallback disabled."},
+                )
             logger.warning("DEM loading timed out, using synthetic", bbox=extended_bbox.model_dump())
             use_synthetic = True
         except Exception as e:
+            if not allow_synthetic:
+                raise DataError(
+                    REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                    details={"dataset": dataset_lower, "hint": "DEM load failed; synthetic fallback disabled.", "error": str(e)},
+                )
             logger.warning("DEM load failed, using synthetic", error=str(e))
             use_synthetic = True
 
@@ -540,6 +552,19 @@ async def get_overlay(
 
         return response
 
+    except DataError as exc:
+        if exc.message == REAL_DEM_UNAVAILABLE_ERROR_CODE:
+            payload = build_real_dem_unavailable_payload(
+                detail="Real DEM data is unavailable for the requested overlay.",
+                dataset_requested=dataset_lower,
+                dataset_used=dataset_lower,
+            )
+            return JSONResponse(
+                status_code=REAL_DEM_UNAVAILABLE_STATUS_CODE,
+                content=payload,
+            )
+        logger.exception("Data error while generating overlay", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
     except HTTPException:
         raise
     except Exception as e:

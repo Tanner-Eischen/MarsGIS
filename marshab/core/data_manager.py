@@ -196,17 +196,18 @@ class DataManager:
             urllib.request.urlretrieve(url, tmp_download)
             with rasterio.open(tmp_download) as src:
                 profile = src.profile.copy()
-                transform = src.transform
-                if not self._looks_geographic(src):
-                    deg_per_m = 180.0 / (math.pi * self.config.mars.equatorial_radius_m)
-                    transform = Affine(
-                        transform.a * deg_per_m,
-                        transform.b * deg_per_m,
-                        transform.c * deg_per_m,
-                        transform.d * deg_per_m,
-                        transform.e * deg_per_m,
-                        transform.f * deg_per_m,
-                    )
+                # Normalize into the app's lon/lat domain so ROI windowing (from_bounds) is stable.
+                # We anchor the curated tile to the Jezero demo bounds used across the app.
+                jezero_lat_min, jezero_lat_max = 17.8, 18.8
+                jezero_lon_min, jezero_lon_max = 76.8, 77.8
+                transform = from_bounds(
+                    jezero_lon_min,
+                    jezero_lat_min,
+                    jezero_lon_max,
+                    jezero_lat_max,
+                    src.width,
+                    src.height,
+                )
 
                 profile.update(
                     {

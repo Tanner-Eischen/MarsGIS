@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layers, Settings, BarChart3, Download, Eye, Zap } from 'lucide-react';
-import { apiFetch } from '../lib/apiBase';
+import { apiFetch } from '../../lib/apiBase';
 
 interface FusionRequest {
   roi: {
@@ -94,7 +94,6 @@ export default function MultiResolutionFusion({
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'fusion' | 'comparison' | 'info'>('fusion');
 
-  // Load dataset information on component mount
   React.useEffect(() => {
     loadDatasetInfo();
     loadFusionMethods();
@@ -255,7 +254,6 @@ export default function MultiResolutionFusion({
 
       {(activeTab === 'fusion' || activeTab === 'comparison') && (
         <div className="space-y-4">
-          {/* Dataset Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">
               Select Datasets ({selectedDatasets.length} selected)
@@ -282,7 +280,6 @@ export default function MultiResolutionFusion({
             </div>
           </div>
 
-          {/* Primary Dataset Selection */}
           {selectedDatasets.length > 1 && (
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">Primary Dataset</label>
@@ -300,7 +297,6 @@ export default function MultiResolutionFusion({
             </div>
           )}
 
-          {/* Blending Method */}
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">Blending Method</label>
             <select
@@ -316,7 +312,6 @@ export default function MultiResolutionFusion({
             </select>
           </div>
 
-          {/* Advanced Settings */}
           <div>
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
@@ -329,7 +324,6 @@ export default function MultiResolutionFusion({
 
           {showAdvanced && (
             <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-              {/* Upsampling Method */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">Upsampling Method</label>
                 <select
@@ -345,7 +339,6 @@ export default function MultiResolutionFusion({
                 </select>
               </div>
 
-              {/* Downsampling Method */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">Downsampling Method</label>
                 <select
@@ -361,7 +354,6 @@ export default function MultiResolutionFusion({
                 </select>
               </div>
 
-              {/* Target Resolution */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Target Resolution (meters, optional)
@@ -375,7 +367,6 @@ export default function MultiResolutionFusion({
                 />
               </div>
 
-              {/* Confidence Threshold */}
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Confidence Threshold: {confidenceThreshold}
@@ -391,7 +382,6 @@ export default function MultiResolutionFusion({
                 />
               </div>
 
-              {/* Options */}
               <div className="flex space-x-4">
                 <label className="flex items-center space-x-2">
                   <input
@@ -415,7 +405,6 @@ export default function MultiResolutionFusion({
             </div>
           )}
 
-          {/* Execute Button */}
           <button
             onClick={performFusion}
             disabled={!roi || selectedDatasets.length === 0 || isProcessing}
@@ -434,7 +423,6 @@ export default function MultiResolutionFusion({
             )}
           </button>
 
-          {/* Results */}
           {response && (
             <div className={`p-4 rounded-lg ${response.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
               <div className="flex items-center justify-between mb-2">
@@ -451,7 +439,6 @@ export default function MultiResolutionFusion({
 
               {response.success && (
                 <div className="space-y-3">
-                  {/* Fusion Info */}
                   <div>
                     <h5 className="text-sm font-medium text-gray-900 mb-1">Fusion Information</h5>
                     <div className="text-sm text-gray-600 space-y-1">
@@ -462,7 +449,6 @@ export default function MultiResolutionFusion({
                     </div>
                   </div>
 
-                  {/* Quality Metrics */}
                   <div>
                     <h5 className="text-sm font-medium text-gray-900 mb-1">Quality Metrics</h5>
                     <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
@@ -474,7 +460,6 @@ export default function MultiResolutionFusion({
                     </div>
                   </div>
 
-                  {/* Dataset Info */}
                   {Object.keys(response.dataset_info).length > 0 && (
                     <div>
                       <h5 className="text-sm font-medium text-gray-900 mb-1">Dataset Contributions</h5>

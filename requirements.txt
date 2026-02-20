@@ -1,3 +1,0 @@
-# Render Python runtime fallback: install this package and its declared dependencies.
-pyyaml>=6.0
--e .

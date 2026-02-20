@@ -1,4 +1,4 @@
-"""API routes for multi-resolution data fusion."""
+"""API routes for multi-resolution data fusion. Not mounted by default."""
 
 from typing import Literal, Optional
 
@@ -7,9 +7,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from marshab.core.data_manager import DataManager
-from marshab.core.multi_resolution_fusion import FusionParameters, MultiResolutionFusion
 from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
+
+from .multi_resolution_fusion import FusionParameters, MultiResolutionFusion
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/fusion", tags=["fusion"])
@@ -86,7 +87,6 @@ class FusionMethodsResponse(BaseModel):
 async def get_fusion_info():
     """Get information about available datasets for fusion."""
     try:
-        # Get dataset configurations from fusion service
         fusion_service = MultiResolutionFusion(
             FusionParameters(
                 primary_dataset="mola",
@@ -135,10 +135,7 @@ async def fuse_datasets(request: FusionRequest):
     """Perform multi-resolution data fusion on multiple datasets."""
     try:
         logger.info(f"Starting multi-resolution fusion for datasets: {request.datasets}")
-        logger.info(f"ROI: {request.roi}")
-        logger.info(f"Blending method: {request.blending_method}")
 
-        # Create fusion parameters
         fusion_params = FusionParameters(
             primary_dataset=request.primary_dataset,
             blending_method=request.blending_method,
@@ -149,58 +146,34 @@ async def fuse_datasets(request: FusionRequest):
             noise_reduction=request.noise_reduction
         )
 
-        # Initialize fusion service
         fusion_service = MultiResolutionFusion(fusion_params)
-
-        # Load datasets
         data_manager = DataManager()
 
         for dataset_id in request.datasets:
             try:
-                logger.info(f"Loading dataset: {dataset_id}")
-
-                # Load dataset using data manager
-                if dataset_id == "mola":
-                    data = data_manager.get_mola_data(request.roi)
-                elif dataset_id == "hirise":
-                    data = data_manager.get_hirise_data(request.roi)
-                elif dataset_id == "ctx":
-                    data = data_manager.get_ctx_data(request.roi)
-                else:
-                    raise ValueError(f"Unknown dataset: {dataset_id}")
+                data = data_manager.get_dem_for_roi(
+                    request.roi, dataset=dataset_id, download=True, clip=True
+                )
 
                 if data is None:
-                    logger.warning(f"No data available for dataset {dataset_id} in ROI")
                     continue
 
-                # Add dataset to fusion service
                 fusion_service.add_dataset(dataset_id, data, request.roi)
-                logger.info(f"Successfully loaded dataset {dataset_id}")
 
             except Exception as e:
                 logger.error(f"Error loading dataset {dataset_id}: {e}")
-                # Continue with other datasets if one fails
                 continue
 
-        # Check if any datasets were loaded
         if not fusion_service.datasets:
             raise HTTPException(
                 status_code=404,
                 detail="No datasets could be loaded for the specified ROI"
             )
 
-        # Perform fusion
-        logger.info("Performing data fusion...")
         fused_dataset = fusion_service.fuse_datasets(request.target_resolution)
-
-        # Get quality metrics
-        logger.info("Calculating quality metrics...")
         quality_metrics = fusion_service.get_fusion_quality_metrics()
-
-        # Get dataset information
         dataset_info = fusion_service.get_dataset_info()
 
-        # Prepare response data
         fused_data = {
             "elevation": fused_dataset.values.tolist(),
             "lat": fused_dataset.lat.values.tolist(),
@@ -214,10 +187,8 @@ async def fuse_datasets(request: FusionRequest):
             "target_resolution": request.target_resolution or fusion_service.DATASET_CONFIGS[request.primary_dataset].resolution,
             "primary_dataset": request.primary_dataset,
             "input_datasets": list(fusion_service.datasets.keys()),
-            "fusion_timestamp": logger.name  # Add timestamp if needed
+            "fusion_timestamp": logger.name
         }
-
-        logger.info("Multi-resolution fusion completed successfully")
 
         return FusionResponse(
             success=True,
@@ -238,24 +209,14 @@ async def fuse_datasets(request: FusionRequest):
 async def compare_datasets(request: FusionRequest):
     """Compare multiple datasets without fusion (for analysis)."""
     try:
-        logger.info(f"Comparing datasets: {request.datasets}")
-
-        # Load datasets
         data_manager = DataManager()
         datasets_data = {}
 
         for dataset_id in request.datasets:
             try:
-                logger.info(f"Loading dataset for comparison: {dataset_id}")
-
-                if dataset_id == "mola":
-                    data = data_manager.get_mola_data(request.roi)
-                elif dataset_id == "hirise":
-                    data = data_manager.get_hirise_data(request.roi)
-                elif dataset_id == "ctx":
-                    data = data_manager.get_ctx_data(request.roi)
-                else:
-                    continue
+                data = data_manager.get_dem_for_roi(
+                    request.roi, dataset=dataset_id, download=True, clip=True
+                )
 
                 if data is not None:
                     datasets_data[dataset_id] = {
@@ -281,19 +242,14 @@ async def compare_datasets(request: FusionRequest):
                 detail="No datasets could be loaded for comparison"
             )
 
-        # Calculate comparison metrics
         comparison_metrics = {}
         if len(datasets_data) >= 2:
-            # Simple difference analysis between datasets
             dataset_ids = list(datasets_data.keys())
             for i in range(len(dataset_ids)):
                 for j in range(i + 1, len(dataset_ids)):
                     id1, id2 = dataset_ids[i], dataset_ids[j]
-
-                    # Calculate differences (simplified)
                     data1 = np.array(datasets_data[id1]["elevation"])
                     data2 = np.array(datasets_data[id2]["elevation"])
-
                     if data1.shape == data2.shape:
                         diff = data1 - data2
                         comparison_metrics[f"{id1}_vs_{id2}"] = {
@@ -304,7 +260,7 @@ async def compare_datasets(request: FusionRequest):
 
         return FusionResponse(
             success=True,
-            fused_data=datasets_data,  # Contains individual datasets
+            fused_data=datasets_data,
             fusion_info={
                 "comparison_mode": True,
                 "datasets_compared": list(datasets_data.keys()),
@@ -343,10 +299,4 @@ async def get_fusion_example():
             "edge_preservation": True,
             "noise_reduction": True
         },
-        "notes": "This example fuses MOLA, CTX, and HiRISE data using weighted average blending with 100m target resolution",
-        "expected_output": {
-            "fused_elevation_data": "Combined elevation data from all datasets",
-            "quality_metrics": "Statistical metrics about the fusion quality",
-            "dataset_info": "Information about input datasets and their contributions"
-        }
     }

@@ -1,4 +1,9 @@
-"""Route cost analysis API."""
+"""Route cost analysis API.
+
+Route planning for cost analysis between two sites: uses analysis.routing.plan_route()
+and compute_route_cost(). For navigation waypoints (mission scenarios, nav UI),
+see marshab.web.routes.navigation (NavigationEngine.plan_to_site).
+"""
 
 from pathlib import Path
 from typing import Optional
@@ -10,8 +15,10 @@ from marshab.analysis.route_cost import RouteCostEngine
 from marshab.analysis.routing import compute_route_cost, plan_route
 from marshab.config.preset_loader import PresetLoader
 from marshab.core.data_manager import DataManager
-from marshab.models import BoundingBox
+from marshab.core.raster_service import get_cell_size_from_dem
 from marshab.utils.logging import get_logger
+from marshab.utils.roi import roi_from_two_sites
+from marshab.utils.sites import load_site_coords
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/analysis", tags=["analysis"])
@@ -57,53 +64,24 @@ class RoutePlanResponse(BaseModel):
 async def plan_route_endpoint(request: RoutePlanRequest):
     """Plan route between two sites with constraint awareness."""
     try:
-        # Load sites to get coordinates
-        import pandas as pd
-        sites_csv = Path(request.analysis_dir) / "sites.csv"
-        if not sites_csv.exists():
-            raise HTTPException(
-                status_code=404,
-                detail=f"Sites file not found: {sites_csv}"
-            )
-
-        sites_df = pd.read_csv(sites_csv)
-
-        start_site = sites_df[sites_df["site_id"] == request.start_site_id]
-        end_site = sites_df[sites_df["site_id"] == request.end_site_id]
-
-        if start_site.empty:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Start site {request.start_site_id} not found"
-            )
-        if end_site.empty:
-            raise HTTPException(
-                status_code=404,
-                detail=f"End site {request.end_site_id} not found"
-            )
-
-        start_lat = float(start_site["lat"].iloc[0])
-        start_lon = float(start_site["lon"].iloc[0])
-        end_lat = float(end_site["lat"].iloc[0])
-        end_lon = float(end_site["lon"].iloc[0])
+        # Load site coordinates
+        try:
+            start_lat, start_lon = load_site_coords(request.analysis_dir, request.start_site_id)
+            end_lat, end_lon = load_site_coords(request.analysis_dir, request.end_site_id)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
         # Create ROI around route
-        roi = BoundingBox(
-            lat_min=min(start_lat, end_lat) - 0.1,
-            lat_max=max(start_lat, end_lat) + 0.1,
-            lon_min=min(start_lon, end_lon) - 0.1,
-            lon_max=max(start_lon, end_lon) + 0.1
-        )
+        roi = roi_from_two_sites(start_lat, start_lon, end_lat, end_lon, padding=0.1)
 
         # Load DEM
         data_manager = DataManager()
         dem = data_manager.get_dem_for_roi(roi, dataset="mola", download=True, clip=True)
 
         # Get cell size
-        if hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
-            cell_size_m = float(abs(dem.rio.res[0]))
-        else:
-            cell_size_m = 463.0
+        cell_size_m = get_cell_size_from_dem(dem)
 
         # Convert lat/lon to pixel coordinates
         # This is simplified - would need proper coordinate transformation

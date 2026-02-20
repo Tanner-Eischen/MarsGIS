@@ -1,0 +1,49 @@
+# Git and IDE
+.git
+.gitignore
+.gitattributes
+.cursor
+.venv
+venv
+ENV
+env
+
+# Python dev and test
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+htmlcov
+.coverage
+.tox
+tests/
+*.egg-info
+.eggs
+dist
+build
+
+# Node (API image does not build webui; Render builds it separately)
+webui/node_modules
+webui/dist
+
+# Docs and dev-only files (not needed at runtime)
+docs/
+.pre-commit-config.yaml
+.ruff.toml
+mypy.ini
+test_nav*.json
+docker-compose*.yml
+
+# Data (mounted at runtime on Render; do not bake into image)
+data/raw
+data/processed
+data/cache
+data/output
+*.tif
+*.tiff
+*.geojson
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

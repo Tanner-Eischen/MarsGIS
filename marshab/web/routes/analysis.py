@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 from marshab.config import get_config
 from marshab.core.analysis_pipeline import AnalysisPipeline
 from marshab.exceptions import AnalysisError
-from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
+from marshab.utils.roi import roi_to_bounding_box
 from marshab.web.routes.progress import ProgressTracker, generate_task_id
 
 logger = get_logger(__name__)
@@ -58,16 +58,10 @@ async def analyze_terrain(request: AnalysisRequest):
     """Run terrain analysis for specified region."""
     try:
         # Validate ROI
-        if len(request.roi) != 4:
-            raise HTTPException(status_code=400, detail="ROI must have 4 values: [lat_min, lat_max, lon_min, lon_max]")
-
-        lat_min, lat_max, lon_min, lon_max = request.roi
-        bbox = BoundingBox(
-            lat_min=lat_min,
-            lat_max=lat_max,
-            lon_min=lon_min,
-            lon_max=lon_max,
-        )
+        try:
+            bbox = roi_to_bounding_box(request.roi)
+        except (ValueError, TypeError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
         # Validate dataset
         valid_datasets = ["mola", "mola_200m", "hirise", "ctx"]

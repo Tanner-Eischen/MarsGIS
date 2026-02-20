@@ -83,6 +83,37 @@ docker run --rm -p 5000:5000 marshab:latest python -m marshab.web.server
 3. **Open Browser**: http://localhost:4000
 4. **Follow Demo**: See `DEMO_WORKFLOW.md` for complete step-by-step guide
 
+### Docker quick start
+
+If you use Docker, the image is built with `docker-compose build`. Then:
+
+**Run commands directly:**
+
+```bash
+# Show help
+docker-compose run --rm marshab --help
+
+# Run pipeline
+docker-compose run --rm marshab pipeline --roi "40,41,180,181" --output /app/data/output
+
+# Download DEM
+docker-compose run --rm marshab download mola --roi "40,41,180,181"
+
+# Analyze terrain
+docker-compose run --rm marshab analyze --roi "40,41,180,181" --output /app/data/output
+```
+
+**Interactive dev shell:**
+
+```bash
+docker-compose run --rm dev
+# Inside container: marshab --help, marshab pipeline --roi "40,41,180,181", pytest
+```
+
+**Quick check:** `docker-compose run --rm marshab --version`
+
+Data persists in `./data/cache/`, `./data/output/`, and `./data/processed/` (mounted volumes). Use `--rm` to remove the container after each run.
+
 ### Deterministic Demo Mode
 
 For repeatable portfolio outputs in synthetic fallback mode, set:
@@ -567,6 +598,21 @@ MarsGIS/
 ├── pyproject.toml           # Poetry dependencies
 └── README.md                # This file
 ```
+
+### Poetry Quick Start (Local Development)
+
+The project uses Poetry for dependency management. Dependencies are also available via `environment.yml` (conda). `requirements.txt` is not used.
+
+| Task | Command |
+|------|---------|
+| Install dependencies | `poetry install` |
+| Run CLI | `poetry run marshab --help` |
+| Run web server | `poetry run python -m marshab.web.server` |
+| Run frontend | `cd webui && npm run dev` |
+| Add dependency | `poetry add package-name` |
+| Update dependencies | `poetry update` |
+
+If `poetry` is not on PATH, use the full path or `py -m poetry`. For virtual environment info: `poetry env info`.
 
 ### Running Tests
 

@@ -5,7 +5,7 @@ import re
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
@@ -209,13 +209,39 @@ def create_app() -> FastAPI:
     app.include_router(ml_recommendation.router, prefix="/api/v1", tags=["machine-learning"])
     app.include_router(ai_query.router, prefix="/api/v1", tags=["ai"])
 
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request, exc):
+        """HTTP exception handler with CORS headers."""
+        origin = request.headers.get("origin")
+        headers = {}
+        if allow_all or (origin and (origin in cors_origins or re.match(allow_origin_regex, origin))):
+            headers["Access-Control-Allow-Origin"] = "*" if allow_all else origin
+            headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            headers["Access-Control-Allow-Headers"] = "*"
+            if not allow_all:
+                headers["Access-Control-Allow-Credentials"] = "true"
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=headers,
+        )
+
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
         """Global exception handler."""
         logger.exception("Unhandled exception", exc=exc)
+        origin = request.headers.get("origin")
+        headers = {}
+        if allow_all or (origin and (origin in cors_origins or re.match(allow_origin_regex, origin))):
+            headers["Access-Control-Allow-Origin"] = "*" if allow_all else origin
+            headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            headers["Access-Control-Allow-Headers"] = "*"
+            if not allow_all:
+                headers["Access-Control-Allow-Credentials"] = "true"
         return JSONResponse(
             status_code=500,
             content={"error": "Internal server error", "detail": str(exc)},
+            headers=headers,
         )
 
     return app

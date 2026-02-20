@@ -1,4 +1,9 @@
-"""Navigation planning endpoints."""
+"""Navigation planning endpoints.
+
+Route planning for nav UI / mission scenarios: uses NavigationEngine.plan_to_site()
+to generate waypoints CSV. For route cost analysis between two sites, see
+marshab.web.routes.route_analysis (plan_route_endpoint, compute_route_cost).
+"""
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor

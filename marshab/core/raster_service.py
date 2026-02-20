@@ -150,7 +150,33 @@ def _cache_has_real_data(path) -> bool:
 
 
 def resolve_dataset_with_fallback(requested: MarsDataset, bbox: BoundingBox) -> DatasetResolutionResult:
-    """Resolve dataset with fallback rules for HiRISE coverage."""
+    """
+    Resolve dataset with strict fallback rules.
+
+    Rules:
+    - hirise → mola_200m (if cached/real) → mola (absolute fallback)
+    - mola_200m → mola (if mola_200m not cached/real)
+    - mola stays mola
+    """
+    data_manager = DataManager()
+    roi = bbox_to_lon360(bbox)
+
+    if requested == "mola_200m":
+        mola200_cache = data_manager._get_cache_path("mola_200m", roi)
+        if _cache_has_real_data(mola200_cache):
+            return DatasetResolutionResult(
+                dataset_requested=requested,
+                dataset_used="mola_200m",
+                is_fallback=False,
+                fallback_reason=None,
+            )
+        return DatasetResolutionResult(
+            dataset_requested=requested,
+            dataset_used="mola",
+            is_fallback=True,
+            fallback_reason="mola_200m_unavailable",
+        )
+
     if requested != "hirise":
         return DatasetResolutionResult(
             dataset_requested=requested,
@@ -159,8 +185,6 @@ def resolve_dataset_with_fallback(requested: MarsDataset, bbox: BoundingBox) -> 
             fallback_reason=None,
         )
 
-    data_manager = DataManager()
-    roi = bbox_to_lon360(bbox)
     hirise_cache = data_manager._get_cache_path("hirise", roi)
     if _cache_has_real_data(hirise_cache):
         return DatasetResolutionResult(

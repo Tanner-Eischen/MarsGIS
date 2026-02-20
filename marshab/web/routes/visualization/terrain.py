@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -114,6 +115,15 @@ async def get_elevation_at(
             "elevation_min_m": float(np.nanmin(valid_values)),
             "elevation_max_m": float(np.nanmax(valid_values)),
         }
+    except DataError as exc:
+        if exc.message == REAL_DEM_UNAVAILABLE_ERROR_CODE:
+            payload = build_real_dem_unavailable_payload(
+                detail="Real DEM data is unavailable for the requested sample.",
+                dataset_requested=dataset_lower,
+                dataset_used=dataset_lower,
+            )
+            raise HTTPException(status_code=REAL_DEM_UNAVAILABLE_STATUS_CODE, detail=payload)
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -241,6 +251,7 @@ async def get_dem_image(
 
         logger.info("Loading DEM data...", bbox=extended_bbox.model_dump(), dataset=dataset)
         loop = asyncio.get_event_loop()
+        allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
         use_synthetic = False
         raster_result = None
         try:
@@ -259,9 +270,19 @@ async def get_dem_image(
                 )
             logger.info("DEM loaded successfully", shape=raster_result.array.shape, dtype=str(raster_result.array.dtype))
         except asyncio.TimeoutError:
+            if not allow_synthetic:
+                raise DataError(
+                    REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                    details={"dataset": dataset_lower, "hint": "DEM load timed out; synthetic fallback disabled."},
+                )
             logger.warning("DEM loading timed out, generating synthetic visualization for demo mode", bbox=extended_bbox.model_dump())
             use_synthetic = True
         except Exception as e:
+            if not allow_synthetic:
+                raise DataError(
+                    REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                    details={"dataset": dataset_lower, "hint": "DEM load failed; synthetic fallback disabled.", "error": str(e)},
+                )
             logger.warning("DEM load failed, generating synthetic visualization for demo mode", error=str(e), bbox=extended_bbox.model_dump())
             use_synthetic = True
 
@@ -432,6 +453,19 @@ async def get_dem_image(
 
         return response
 
+    except DataError as exc:
+        if exc.message == REAL_DEM_UNAVAILABLE_ERROR_CODE:
+            payload = build_real_dem_unavailable_payload(
+                detail="Real DEM data is unavailable for the requested ROI.",
+                dataset_requested=dataset_lower,
+                dataset_used=dataset_lower,
+            )
+            return JSONResponse(
+                status_code=REAL_DEM_UNAVAILABLE_STATUS_CODE,
+                content=payload,
+            )
+        logger.exception("Data error while generating DEM image", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc))
     except HTTPException:
         raise
     except Exception as e:

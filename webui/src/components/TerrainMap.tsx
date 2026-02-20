@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { useSitesGeoJson, useWaypointsGeoJson, useOverlayImage } from '../hooks/useMapData';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../lib/apiBase';
+import { Link } from 'react-router-dom'
 import EditableRoiRectangle from './EditableRoiRectangle';
 
 // Fix for default marker icons
@@ -30,6 +31,8 @@ interface ElevationSample {
   elevation_min_m: number
   elevation_max_m: number
 }
+
+type MapDataset = 'hirise' | 'mola_200m' | 'mola'
 
 interface ViewportSample {
   roi: {
@@ -199,9 +202,11 @@ function ElevationProbe({
 function CoverageTracker({
   dataset,
   onCoverageChange,
+  onLoadingChange,
 }: {
   dataset: string
   onCoverageChange: (coverage: { datasetUsed: string; isFallback: boolean; fallbackReason?: string | null }) => void
+  onLoadingChange?: (loading: boolean) => void
 }) {
   const map = useMap()
 
@@ -210,6 +215,7 @@ function CoverageTracker({
     const controller = new AbortController()
 
     const fetchCoverage = async () => {
+      onLoadingChange?.(true)
       const bounds = map.getBounds()
       const bbox = [
         bounds.getSouth(),
@@ -226,6 +232,20 @@ function CoverageTracker({
           signal: controller.signal,
         })
         if (!response.ok) {
+          if (response.status === 503) {
+            try {
+              const data = await response.json()
+              if (!cancelled) {
+                onCoverageChange({
+                  datasetUsed: data.dataset_used || dataset,
+                  isFallback: true,
+                  fallbackReason: data.fallback_reason || data.error || 'real_dem_unavailable',
+                })
+              }
+            } catch {
+              // ignore
+            }
+          }
           return
         }
         const data = await response.json()
@@ -237,6 +257,8 @@ function CoverageTracker({
         })
       } catch {
         // Ignore coverage errors; map still renders.
+      } finally {
+        onLoadingChange?.(false)
       }
     }
 
@@ -245,6 +267,7 @@ function CoverageTracker({
       map.on('moveend zoomend', fetchCoverage)
     } else {
       onCoverageChange({ datasetUsed: dataset, isFallback: false })
+      onLoadingChange?.(false)
     }
 
     return () => {
@@ -366,7 +389,8 @@ function WaypointsLayer({ showWaypoints, selectedSiteId, refreshKey }: { showWay
 
 interface TerrainMapProps {
   roi: any
-  dataset?: string
+  dataset?: MapDataset | string
+  onDatasetChange?: (dataset: MapDataset) => void
   showSites?: boolean
   showWaypoints?: boolean
   waypointsRefreshKey?: number
@@ -402,6 +426,7 @@ interface TerrainMapProps {
 export default function TerrainMap({
   roi,
   dataset = 'hirise',
+  onDatasetChange,
   showSites = false,
   showWaypoints = false,
   waypointsRefreshKey,
@@ -413,11 +438,16 @@ export default function TerrainMap({
   overlayOptions = {}
 }: TerrainMapProps) {
   const activeOverlayType = overlayType || 'elevation';
+  const datasetLower = String(dataset || 'hirise').toLowerCase()
   const [probeLoading, setProbeLoading] = useState(false)
   const [probeError, setProbeError] = useState<string | null>(null)
   const [probeSample, setProbeSample] = useState<ElevationSample | null>(null)
   const [viewportSample, setViewportSample] = useState<ViewportSample | null>(null)
   const [coverageStatus, setCoverageStatus] = useState<{ datasetUsed: string; isFallback: boolean; fallbackReason?: string | null } | null>(null)
+  const [coverageLoading, setCoverageLoading] = useState(false)
+  const [tilePending, setTilePending] = useState({ basemap: 0, overlay: 0 })
+  const [tileErrorCount, setTileErrorCount] = useState(0)
+  const [lastTileErrorAt, setLastTileErrorAt] = useState<number | null>(null)
   const useLegacyOverlay = import.meta.env.VITE_USE_LEGACY_IMAGE_OVERLAY === 'true'
 
   const handleViewportChange = useCallback((next: ViewportSample) => {
@@ -467,7 +497,7 @@ export default function TerrainMap({
     }
   }
   if (renderRoi) {
-    const isLowRes = dataset.toLowerCase() === 'mola' || dataset.toLowerCase() === 'mola_200m'
+    const isLowRes = datasetLower === 'mola' || datasetLower === 'mola_200m'
     const maxLatSpan = isLowRes ? 2.5 : 0.8
     const maxLonSpan = isLowRes ? 2.5 : 0.8
     const [latMin, latMax] = capSpan(renderRoi.lat_min, renderRoi.lat_max, maxLatSpan, -90, 90)
@@ -543,6 +573,31 @@ export default function TerrainMap({
       )
     : null
 
+  const totalPendingTiles = tilePending.basemap + tilePending.overlay
+  const showActivity = probeLoading || coverageLoading || displayLoading || totalPendingTiles > 0
+  const activityLabel = probeLoading
+    ? 'Sampling elevation…'
+    : coverageLoading
+      ? 'Checking dataset coverage…'
+      : displayLoading
+        ? 'Fetching overlay…'
+        : totalPendingTiles > 0
+          ? `Loading map tiles… (${totalPendingTiles})`
+          : null
+
+  const bumpTilePending = useCallback((kind: 'basemap' | 'overlay', delta: number) => {
+    setTilePending((prev) => {
+      const next = { ...prev }
+      next[kind] = Math.max(0, next[kind] + delta)
+      return next
+    })
+  }, [])
+
+  const recordTileError = useCallback(() => {
+    setTileErrorCount((v) => v + 1)
+    setLastTileErrorAt(Date.now())
+  }, [])
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -579,7 +634,11 @@ export default function TerrainMap({
           }}
         />
         {!useLegacyOverlay && (
-          <CoverageTracker dataset={dataset} onCoverageChange={setCoverageStatus} />
+          <CoverageTracker
+            dataset={dataset}
+            onCoverageChange={setCoverageStatus}
+            onLoadingChange={setCoverageLoading}
+          />
         )}
 
         {!useLegacyOverlay && (
@@ -592,6 +651,14 @@ export default function TerrainMap({
               minZoom={0}
               maxZoom={14}
               noWrap={true}
+              eventHandlers={{
+                tileloadstart: () => bumpTilePending('basemap', 1),
+                tileload: () => bumpTilePending('basemap', -1),
+                tileerror: () => {
+                  bumpTilePending('basemap', -1)
+                  recordTileError()
+                },
+              }}
             />
             {tileOverlayType && (
               <TileLayer
@@ -613,6 +680,14 @@ export default function TerrainMap({
                 minZoom={0}
                 maxZoom={14}
                 noWrap={true}
+                eventHandlers={{
+                  tileloadstart: () => bumpTilePending('overlay', 1),
+                  tileload: () => bumpTilePending('overlay', -1),
+                  tileerror: () => {
+                    bumpTilePending('overlay', -1)
+                    recordTileError()
+                  },
+                }}
               />
             )}
           </>
@@ -655,6 +730,51 @@ export default function TerrainMap({
             {coverageStatus.datasetUsed.toUpperCase()}
             {coverageStatus.isFallback ? ' (fallback)' : ''}
           </div>
+        </div>
+      )}
+
+      {!useLegacyOverlay && (
+        <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end">
+          {onDatasetChange && (
+            <div className="bg-gray-900/85 border border-cyan-700/60 text-cyan-200 text-xs font-mono px-3 py-2 rounded">
+              <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Dataset</div>
+              <select
+                value={(datasetLower === 'hirise' || datasetLower === 'mola_200m' || datasetLower === 'mola') ? (datasetLower as MapDataset) : 'mola_200m'}
+                onChange={(e) => onDatasetChange(e.target.value as MapDataset)}
+                className="pointer-events-auto bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-xs focus:border-cyan-500 focus:outline-none"
+              >
+                <option value="hirise">HiRISE (1m)</option>
+                <option value="mola_200m">MOLA 200m (global)</option>
+                <option value="mola">MOLA 463m (global)</option>
+              </select>
+              <div className="mt-1 text-[10px] text-cyan-300/80">
+                <Link to="/settings" className="pointer-events-auto underline hover:text-white">
+                  Data settings / downloads
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {showActivity && activityLabel && (
+            <div className="pointer-events-none bg-gray-900/85 border border-gray-700/60 text-gray-100 text-xs font-mono px-3 py-2 rounded flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
+              <div>{activityLabel}</div>
+            </div>
+          )}
+
+          {tileErrorCount > 0 && lastTileErrorAt && Date.now() - lastTileErrorAt < 12_000 && (
+            <div className="bg-red-950/85 border border-red-700/60 text-red-200 text-xs font-mono px-3 py-2 rounded max-w-[360px]">
+              <div className="text-[10px] uppercase tracking-wide text-red-300/90 mb-1">Tile load issues</div>
+              <div>Some map tiles failed to load.</div>
+              <div className="text-[10px] text-red-200/80 mt-1">
+                If this persists, open{' '}
+                <Link to="/settings" className="pointer-events-auto underline hover:text-white">
+                  Settings → Data Management
+                </Link>{' '}
+                and download MOLA 200m / MOLA for this area.
+              </div>
+            </div>
+          )}
         </div>
       )}
 

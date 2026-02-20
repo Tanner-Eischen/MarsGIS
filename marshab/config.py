@@ -8,6 +8,7 @@ from typing import Optional
 import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import PydanticBaseSettingsSource
 
 from marshab.models import CriteriaWeights
 
@@ -139,6 +140,24 @@ class Config(BaseSettings):
         case_sensitive=False,
         extra="allow"  # Allow extra fields from YAML
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """
+        Prefer environment variables over init values (e.g., YAML-loaded dict).
+
+        This is important for deployments where a checked-in YAML config provides
+        defaults, but the runtime (Render, Docker, etc.) must be able to override
+        specific settings like paths and CORS via env vars.
+        """
+        return (env_settings, init_settings, dotenv_settings, file_secret_settings)
 
     @classmethod
     def from_yaml(cls, path: Path) -> "Config":

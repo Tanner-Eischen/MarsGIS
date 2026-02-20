@@ -8,7 +8,7 @@ services:
     healthCheckPath: /api/v1/health/live
     disk:
       name: marshab-data
-      mountPath: /opt/render/project/src/data
+      mountPath: /app/data
       sizeGB: 50
     envVars:
       - key: MARSHAB_DEMO_SEED
@@ -18,7 +18,7 @@ services:
       - key: MARSHAB_CORS_ORIGINS
         sync: false
       - key: MARSHAB_ORTHO_BASEMAP_PATH
-        value: /opt/render/project/src/data/cache/hirise.tif
+        value: /app/data/cache/hirise.tif
       - key: MARSHAB_GLOBAL_BASEMAP_STYLE
         value: blendshade
   - type: web

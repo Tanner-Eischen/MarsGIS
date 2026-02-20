@@ -27,9 +27,14 @@ ENV/
 env/
 .env
 
-# IDEs
+# IDEs and editor state
 .vscode/
 .idea/
+.cursor/
+
+# Ad-hoc test payloads (root)
+test_nav*.json
+ruff_*.txt
 *.swp
 *.swo
 *~

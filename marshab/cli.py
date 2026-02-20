@@ -20,8 +20,8 @@ from marshab.mission.scenarios import (
     run_landing_site_scenario,
     run_rover_traverse_scenario,
 )
-from marshab.models import BoundingBox
 from marshab.utils.logging import configure_logging, get_logger
+from marshab.utils.roi import roi_to_bounding_box
 
 # Disable Rich help to avoid compatibility issues
 app = typer.Typer(
@@ -83,14 +83,8 @@ def _download_dem(dataset: str, roi: str, force: bool):
 
     # Parse ROI
     try:
-        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-        bbox = BoundingBox(
-            lat_min=lat_min,
-            lat_max=lat_max,
-            lon_min=lon_min,
-            lon_max=lon_max
-        )
-    except Exception as e:
+        bbox = roi_to_bounding_box(roi)
+    except (ValueError, TypeError) as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
 
@@ -125,14 +119,8 @@ def _analyze_terrain(roi: str, dataset: str, output: Path, threshold: float):
 
     # Parse ROI
     try:
-        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-        bbox = BoundingBox(
-            lat_min=lat_min,
-            lat_max=lat_max,
-            lon_min=lon_min,
-            lon_max=lon_max
-        )
-    except Exception as e:
+        bbox = roi_to_bounding_box(roi)
+    except (ValueError, TypeError) as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
 
@@ -237,14 +225,8 @@ def pipeline(
 
     # Parse ROI
     try:
-        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-        bbox = BoundingBox(
-            lat_min=lat_min,
-            lat_max=lat_max,
-            lon_min=lon_min,
-            lon_max=lon_max
-        )
-    except Exception as e:
+        bbox = roi_to_bounding_box(roi)
+    except (ValueError, TypeError) as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
 
@@ -382,9 +364,8 @@ def run_landing_scenario(
 ):
     """Run landing site selection scenario."""
     try:
-        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-        bbox = BoundingBox(lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
-    except Exception as e:
+        bbox = roi_to_bounding_box(roi)
+    except (ValueError, TypeError) as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
 
@@ -441,9 +422,8 @@ def export_suitability(
 ):
     """Export suitability scores as GeoTIFF."""
     try:
-        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(','))
-        bbox = BoundingBox(lat_min=lat_min, lat_max=lat_max, lon_min=lon_min, lon_max=lon_max)
-    except Exception as e:
+        bbox = roi_to_bounding_box(roi)
+    except (ValueError, TypeError) as e:
         console.print(f"[red]Invalid ROI format: {e}[/red]")
         raise typer.Exit(1)
 

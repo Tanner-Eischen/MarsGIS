@@ -13,8 +13,8 @@ from marshab.mission.scenarios import (
     run_landing_site_scenario,
     run_rover_traverse_scenario,
 )
-from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
+from marshab.utils.roi import roi_to_bounding_box
 
 logger = get_logger(__name__)
 
@@ -70,14 +70,9 @@ async def create_landing_scenario(request: LandingScenarioRequest):
     try:
         # Parse ROI
         try:
-            roi = BoundingBox(
-                lat_min=request.roi["lat_min"],
-                lat_max=request.roi["lat_max"],
-                lon_min=request.roi["lon_min"],
-                lon_max=request.roi["lon_max"],
-            )
-        except KeyError as e:
-            raise HTTPException(status_code=400, detail=f"Missing ROI field: {e}")
+            roi = roi_to_bounding_box(request.roi)
+        except (ValueError, TypeError, KeyError) as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
         # Parse constraints
         max_slope_deg = None

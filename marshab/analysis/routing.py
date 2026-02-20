@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 import xarray as xr
 
+from marshab.core.raster_service import get_cell_size_from_dem
 from marshab.processing.pathfinding import AStarPathfinder, smooth_path
 from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface
 from marshab.utils.logging import get_logger
@@ -144,12 +145,7 @@ def plan_route(
 
     # Calculate cell size if not provided
     if cell_size_m is None:
-        # Estimate from DEM bounds
-        if hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
-            cell_size_m = float(abs(dem.rio.res[0]))
-        else:
-            # Fallback estimate
-            cell_size_m = 463.0  # MOLA default
+        cell_size_m = get_cell_size_from_dem(dem)
 
     # Analyze terrain
     terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
@@ -262,10 +258,7 @@ def compute_route_cost(
     elevation = dem.values.astype(np.float32)
 
     # Get cell size
-    if hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
-        cell_size_m = float(abs(dem.rio.res[0]))
-    else:
-        cell_size_m = 463.0
+    cell_size_m = get_cell_size_from_dem(dem)
 
     # Analyze terrain along route
     terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)

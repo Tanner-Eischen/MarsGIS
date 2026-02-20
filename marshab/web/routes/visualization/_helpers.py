@@ -21,6 +21,7 @@ from marshab.core.raster_service import normalize_dataset, to_lon360
 from marshab.core.tile_cache import TileCache, TileCacheConfig
 from marshab.models import BoundingBox
 from marshab.utils.logging import get_logger
+from marshab.utils.roi import roi_to_bounding_box
 
 logger = get_logger(__name__)
 
@@ -399,22 +400,18 @@ def _render_global_basemap_tile(source_path: Path, bbox: BoundingBox, tile_size:
 
 
 def _parse_roi(roi: str) -> tuple[float, float, float, float]:
+    """Parse ROI string to (lat_min, lat_max, lon_min, lon_max) with validation."""
     try:
-        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(","))
-    except Exception as exc:
+        bbox = roi_to_bounding_box(roi)
+    except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=f"Invalid ROI format: {exc}")
-    if lat_min >= lat_max:
-        raise HTTPException(status_code=400, detail="Invalid ROI: lat_min must be less than lat_max")
-    if not (-90.0 <= lat_min <= 90.0 and -90.0 <= lat_max <= 90.0):
-        raise HTTPException(status_code=400, detail="Invalid ROI: latitude must be within [-90, 90]")
-    if lon_min == lon_max:
-        raise HTTPException(status_code=400, detail="Invalid ROI: longitude span must be non-zero")
-    lon_span = abs(lon_max - lon_min)
+    # Additional 3D viz limits
+    lon_span = abs(bbox.lon_max - bbox.lon_min)
     if lon_span > 120.0:
         raise HTTPException(status_code=400, detail="Invalid ROI: longitude span too large for 3D visualization")
-    if (lat_max - lat_min) > 60.0:
+    if (bbox.lat_max - bbox.lat_min) > 60.0:
         raise HTTPException(status_code=400, detail="Invalid ROI: latitude span too large for 3D visualization")
-    return lat_min, lat_max, lon_min, lon_max
+    return bbox.to_tuple()
 
 
 def _sample_mesh_elevation(lon: float, lat: float, lons: np.ndarray, lats: np.ndarray, elevation: np.ndarray) -> float:

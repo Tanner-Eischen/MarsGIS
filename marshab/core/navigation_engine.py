@@ -10,6 +10,8 @@ import xarray as xr
 from marshab.config import PathfindingStrategy, get_config
 from marshab.core.data_manager import DataManager
 from marshab.exceptions import NavigationError
+from marshab.utils.roi import roi_from_two_sites
+from marshab.utils.sites import load_site_coords
 from marshab.models import BoundingBox, SiteCandidate, SiteOrigin
 from marshab.processing.coordinates import CoordinateTransformer
 from marshab.processing.pathfinding import AStarPathfinder
@@ -278,25 +280,15 @@ class NavigationEngine:
                 # Fallback to direct DEM loading (backward compatibility)
                 logger.warning("Pickle file not found, falling back to direct DEM loading")
 
-                # Load site location from CSV
-            sites_csv = analysis_dir / "sites.csv"
-            if not sites_csv.exists():
-                raise NavigationError(
-                    f"Sites file not found: {sites_csv}",
-                    details={"analysis_dir": str(analysis_dir)}
+            # Load site location from CSV
+            try:
+                site_lat, site_lon, goal_elevation = load_site_coords(
+                    analysis_dir, site_id, include_elevation=True
                 )
-
-            sites_df = pd.read_csv(sites_csv)
-            site_row = sites_df[sites_df["site_id"] == site_id]
-
-            if site_row.empty:
-                raise NavigationError(
-                    f"Site {site_id} not found in analysis results",
-                    details={"available_sites": sites_df["site_id"].tolist()}
-                )
-
-            site_lat = float(site_row["lat"].iloc[0])
-            site_lon = float(site_row["lon"].iloc[0])
+            except FileNotFoundError as e:
+                raise NavigationError(str(e), details={"analysis_dir": str(analysis_dir)})
+            except ValueError as e:
+                raise NavigationError(str(e), details={"site_id": site_id})
 
             # Create ROI and load DEM
             # Cap maximum ROI size to prevent excessive computation
@@ -325,12 +317,7 @@ class NavigationEngine:
                     }
                 )
 
-            roi = BoundingBox(
-                lat_min=min(start_lat, site_lat) - roi_padding,
-                lat_max=max(start_lat, site_lat) + roi_padding,
-                lon_min=min(start_lon, site_lon) - roi_padding,
-                lon_max=max(start_lon, site_lon) + roi_padding
-            )
+            roi = roi_from_two_sites(start_lat, start_lon, site_lat, site_lon, padding=roi_padding)
             
             logger.info(
                 "Navigation ROI created",
@@ -353,26 +340,7 @@ class NavigationEngine:
             terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
             metrics = terrain_analyzer.analyze(dem)
 
-            # Convert sites from DataFrame to SiteCandidate objects
-            sites = []
-            for _, row in sites_df.iterrows():
-                from marshab.models import SiteCandidate
-                site = SiteCandidate(
-                    site_id=int(row["site_id"]),
-                    geometry_type=row.get("geometry_type", "POINT"),
-                    area_km2=float(row["area_km2"]),
-                    lat=float(row["lat"]),
-                    lon=float(row["lon"]),
-                    mean_slope_deg=float(row["mean_slope_deg"]),
-                    mean_roughness=float(row["mean_roughness"]),
-                    mean_elevation_m=float(row["mean_elevation_m"]),
-                    suitability_score=float(row["suitability_score"]),
-                    rank=int(row["rank"])
-                )
-                sites.append(site)
-
-            # Get goal site coordinates
-            goal_lat, goal_lon, goal_elevation = self._get_site_coordinates(site_id, sites)
+            goal_lat, goal_lon = site_lat, site_lon
 
             logger.info(
                 "Route parameters",

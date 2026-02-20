@@ -51,6 +51,27 @@ def normalize_dataset(dataset: str) -> MarsDataset:
     return dataset_lower  # type: ignore[return-value]
 
 
+def get_cell_size_from_dem(dem, default: float = 463.0) -> float:
+    """Get cell size in meters from DEM (xarray DataArray or rasterio dataset).
+
+    Args:
+        dem: xarray DataArray with rio accessor, or object with .rio.res
+        default: Fallback when resolution cannot be determined (MOLA default)
+
+    Returns:
+        Cell size in meters (positive)
+    """
+    if hasattr(dem, "rio") and hasattr(dem.rio, "res"):
+        res = dem.rio.res
+        if res is not None and len(res) >= 1:
+            return float(abs(res[0]))
+    if hasattr(dem, "attrs") and isinstance(dem.attrs, dict):
+        res = dem.attrs.get("resolution_m")
+        if res is not None:
+            return float(res)
+    return default
+
+
 def to_lon360(lon: float) -> float:
     """Normalize longitude to [0, 360)."""
     while lon < 0:

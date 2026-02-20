@@ -124,7 +124,12 @@ class DataManager:
 
         # 3. If ROI is near Jezero, attempt curated high-resolution tile download.
         # This provides a much better map than synthetic fallback for portfolio demos.
-        if self._roi_is_jezero_like(roi):
+        enable_curated_jezero = os.getenv("MARSHAB_ENABLE_CURATED_JEZERO_DEM", "false").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
+        if enable_curated_jezero and self._roi_is_jezero_like(roi):
             try:
                 logger.info("Attempting curated Jezero DEM download for MOLA request")
                 self._download_curated_jezero_tile(dest_path)

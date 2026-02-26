@@ -76,7 +76,7 @@ async def get_global_basemap_tile(
     y: int,
     style: str = Query(DEFAULT_GLOBAL_BASEMAP_STYLE, description="Global basemap style (blendshade, clrshade, shade)"),
     fallback_dataset: str = Query("mola_200m", description="Fallback DEM dataset when local global basemap is unavailable"),
-    allow_fallback: bool = Query(True, description="Allow network/DEM fallback when local global basemap is unavailable"),
+    allow_fallback: bool = Query(False, description="Allow network/DEM fallback when local global basemap is unavailable"),
 ):
     """Render tiles from bundled global Mars basemap GeoTIFFs."""
     if not ENABLE_TILE_BASEMAP:

@@ -562,7 +562,7 @@ export default function TerrainMap({
     `/visualization/tiles/basemap/global/{z}/{x}/{y}.png?${new URLSearchParams({
       style: globalBasemapStyle,
       fallback_dataset: 'mola_200m',
-      allow_fallback: 'true',
+      allow_fallback: 'false',
     }).toString()}`
   )
 

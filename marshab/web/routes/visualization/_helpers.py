@@ -41,6 +41,7 @@ ENABLE_TILE_OVERLAYS = os.getenv("MARSHAB_ENABLE_TILE_OVERLAYS", "true").lower()
 ORTHO_BASEMAP_PATH_ENV = "MARSHAB_ORTHO_BASEMAP_PATH"
 GLOBAL_BASEMAP_PATH_ENV = "MARSHAB_GLOBAL_BASEMAP_PATH"
 GLOBAL_BASEMAP_STYLE_ENV = "MARSHAB_GLOBAL_BASEMAP_STYLE"
+MOLA_COG_PATH_ENV = "MARSHAB_MOLA_COG_PATH"
 DEFAULT_GLOBAL_BASEMAP_STYLE = "blendshade"
 GLOBAL_BASEMAP_STYLE_FILES: dict[str, str] = {
     "blendshade": "Mars_HRSC_MOLA_BlendShade_Global_200mp_v2.tif",
@@ -140,6 +141,18 @@ def _resolve_global_basemap_source(style: str | None = None) -> tuple[str, Path]
         override_path = Path(env_override)
         if override_path.exists():
             return ("custom", override_path)
+        logger.warning(
+            "Configured global basemap path does not exist",
+            env=GLOBAL_BASEMAP_PATH_ENV,
+            path=str(override_path),
+        )
+
+    # If style-specific source files are not provisioned, use local MOLA COG.
+    mola_cog = (os.getenv(MOLA_COG_PATH_ENV) or "").strip()
+    if mola_cog:
+        mola_cog_path = Path(mola_cog)
+        if mola_cog_path.exists():
+            return ("mola_cog", mola_cog_path)
     resolved_style = _normalize_global_basemap_style(style)
     fallback_order = [resolved_style] + [
         s for s in [DEFAULT_GLOBAL_BASEMAP_STYLE, "clrshade", "shade"] if s != resolved_style

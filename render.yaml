@@ -21,16 +21,20 @@ services:
         value: /app/data/cache/hirise.tif
       - key: MARSHAB_GLOBAL_BASEMAP_STYLE
         value: blendshade
+      - key: MARSHAB_GLOBAL_BASEMAP_PATH
+        value: /app/data/cache/mola_global_463m.cog.tif
       - key: MARSHAB_MOLA_COG_PATH
         value: /app/data/cache/mola_global_463m.cog.tif
       - key: MARSHAB_MOLA_COG_URL
         value: https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif
       - key: MARSHAB_MOLA_COG_BOOTSTRAP_MODE
-        value: background
+        value: blocking
       - key: MARSHAB_MOLA_COG_REQUIRED
-        value: "false"
+        value: "true"
       - key: MARSHAB_PREWARM_COG
         value: "true"
+      - key: MARSHAB_ALLOW_SYNTHETIC_TILES
+        value: "false"
   - type: web
     name: marshab-web
     runtime: static

@@ -22,9 +22,15 @@ services:
       - key: MARSHAB_GLOBAL_BASEMAP_STYLE
         value: blendshade
       - key: MARSHAB_MOLA_COG_PATH
-        value: /app/data/datasets/mola/Mars_MGS_MOLA_DEM_mosaic_global_463m.cog.tif
+        value: /app/data/cache/mola_global_463m.cog.tif
       - key: MARSHAB_MOLA_COG_URL
         value: https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif
+      - key: MARSHAB_MOLA_COG_BOOTSTRAP_MODE
+        value: background
+      - key: MARSHAB_MOLA_COG_REQUIRED
+        value: "false"
+      - key: MARSHAB_PREWARM_COG
+        value: "true"
   - type: web
     name: marshab-web
     runtime: static

@@ -30,6 +30,19 @@ MIN_EXPECTED_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB
 
 
+def _normalize_sha256(raw_value: str) -> str:
+    """Normalize SHA256 env value and accept optional `sha256:` prefix."""
+    value = (raw_value or "").strip().lower()
+    if value.startswith("sha256:"):
+        value = value.split(":", 1)[1].strip()
+    if not value:
+        return ""
+    if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+        logger.warning("Ignoring invalid MARSHAB_MOLA_COG_SHA256 value", value=value[:16] + "...")
+        return ""
+    return value
+
+
 def _compute_sha256(path: Path) -> str:
     """Compute SHA256 hash of file."""
     h = hashlib.sha256()
@@ -60,6 +73,19 @@ def _stream_download(url: str, dest_path: Path) -> int:
     return total
 
 
+def _warn_if_html_release_url(url: str) -> None:
+    """Warn when URL looks like a GitHub HTML page rather than binary asset."""
+    lowered = url.lower()
+    if "github.com" not in lowered:
+        return
+    if "/releases/tag/" in lowered or "/releases/latest" in lowered:
+        logger.warning(
+            "MOLA URL looks like a GitHub HTML page, not a direct binary asset",
+            url=url,
+            expected_pattern="https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>",
+        )
+
+
 def ensure_mola_cog_present() -> None:
     """Ensure MOLA COG exists locally; download if missing.
 
@@ -87,7 +113,7 @@ def ensure_mola_cog_present() -> None:
                 logger.info("Using MOLA URL from config", url=url)
         except Exception as e:
             logger.debug("Could not load config for MOLA URL fallback", error=str(e))
-    expected_sha256 = (os.getenv("MARSHAB_MOLA_COG_SHA256") or "").strip().lower()
+    expected_sha256 = _normalize_sha256(os.getenv("MARSHAB_MOLA_COG_SHA256", ""))
 
     if cog_path.exists():
         if expected_sha256:
@@ -121,6 +147,8 @@ def ensure_mola_cog_present() -> None:
     except OSError as e:
         logger.warning("Could not remove stale partial file", path=str(partial_path), error=str(e))
 
+    _warn_if_html_release_url(url)
+
     urls_to_try = [url]
     if url != USGS_MOLA_URL:
         try:
@@ -140,7 +168,27 @@ def ensure_mola_cog_present() -> None:
             if partial_path.exists():
                 partial_path.unlink()
             total = _stream_download(attempt_url, partial_path)
-            break
+
+            if total < MIN_EXPECTED_SIZE_BYTES:
+                raise RuntimeError(
+                    f"Downloaded file too small ({total} bytes) - likely HTML error page. "
+                    f"Expected at least {MIN_EXPECTED_SIZE_BYTES} bytes."
+                )
+
+            if expected_sha256:
+                actual = _compute_sha256(partial_path)
+                if actual != expected_sha256:
+                    raise RuntimeError(
+                        "MOLA COG SHA256 mismatch after download. "
+                        f"Expected {expected_sha256[:16]}..., got {actual[:16]}..."
+                    )
+                logger.info("Downloaded file verified via SHA256")
+
+            if cog_path.exists():
+                cog_path.unlink()
+            partial_path.rename(cog_path)
+            logger.info("MOLA COG ready", path=str(cog_path), size_bytes=total)
+            return
         except Exception as e:
             last_error = e
             try:
@@ -148,35 +196,8 @@ def ensure_mola_cog_present() -> None:
             except OSError:
                 pass
             logger.warning("Download failed, trying fallback", url=attempt_url, error=str(e))
-    else:
-        raise RuntimeError(f"MOLA COG download failed: {last_error}") from last_error
 
-    if total < MIN_EXPECTED_SIZE_BYTES:
-        try:
-            partial_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-        raise RuntimeError(
-            f"Downloaded file too small ({total} bytes) - likely HTML error page. "
-            f"Expected at least {MIN_EXPECTED_SIZE_BYTES} bytes."
-        )
-
-    if expected_sha256:
-        actual = _compute_sha256(partial_path)
-        if actual != expected_sha256:
-            try:
-                partial_path.unlink(missing_ok=True)
-            except OSError:
-                pass
-            raise RuntimeError(
-                f"MOLA COG SHA256 mismatch after download. Expected {expected_sha256[:16]}..., got {actual[:16]}..."
-            )
-        logger.info("Downloaded file verified via SHA256")
-
-    if cog_path.exists():
-        cog_path.unlink()
-    partial_path.rename(cog_path)
-    logger.info("MOLA COG ready", path=str(cog_path), size_bytes=total)
+    raise RuntimeError(f"MOLA COG download failed: {last_error}") from last_error
 
 
 def prewarm_cog() -> None:

@@ -73,6 +73,43 @@ class TestBootstrapCog:
         assert dest.stat().st_size >= MIN_EXPECTED_SIZE_BYTES
         assert not dest.with_suffix(dest.suffix + ".partial").exists()
 
+    def test_falls_back_when_primary_download_is_too_small(self, monkeypatch, tmp_path):
+        """Retries fallback URLs when primary returns tiny/HTML-like payload."""
+        dest = tmp_path / "test_fallback.cog.tif"
+        monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(dest))
+        monkeypatch.setenv("MARSHAB_MOLA_COG_URL", "https://github.com/example/repo/releases/tag/v1.0.0")
+        monkeypatch.delenv("MARSHAB_MOLA_COG_SHA256", raising=False)
+
+        calls: list[str] = []
+
+        def mock_urlopen(req, timeout=60):
+            _ = timeout
+            url = getattr(req, "full_url", str(req))
+            calls.append(url)
+            # First attempt mimics HTML page payload; fallback attempt is valid sized data.
+            size = 1024 if len(calls) == 1 else MIN_EXPECTED_SIZE_BYTES + 2048
+            body = _make_mock_response(size)
+
+            class MockResp:
+                def read(self, size=-1):
+                    return body.read(size) if size > 0 else body.read()
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    pass
+
+            return MockResp()
+
+        with patch("marshab.core.datasets.bootstrap_cog.urllib.request.urlopen", mock_urlopen):
+            ensure_mola_cog_present()
+
+        assert dest.exists()
+        assert dest.stat().st_size >= MIN_EXPECTED_SIZE_BYTES
+        assert len(calls) >= 2
+        assert not dest.with_suffix(dest.suffix + ".partial").exists()
+
     def test_verifies_sha256_when_configured(self, monkeypatch, tmp_path):
         """Verifies SHA256 when MARSHAB_MOLA_COG_SHA256 is set."""
         dest = tmp_path / "test.cog.tif"
@@ -106,6 +143,40 @@ class TestBootstrapCog:
 
         assert dest.exists()
         assert not dest.with_suffix(dest.suffix + ".partial").exists()
+
+    def test_accepts_sha256_prefix_format(self, monkeypatch, tmp_path):
+        """Accepts MARSHAB_MOLA_COG_SHA256 values prefixed with sha256:."""
+        dest = tmp_path / "prefixed_sha.cog.tif"
+        monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(dest))
+        monkeypatch.setenv("MARSHAB_MOLA_COG_URL", "https://example.com/fake.cog.tif")
+
+        known_content = b"y" * (MIN_EXPECTED_SIZE_BYTES + 512)
+        import hashlib
+
+        expected_hash = hashlib.sha256(known_content).hexdigest().lower()
+        monkeypatch.setenv("MARSHAB_MOLA_COG_SHA256", f"sha256:{expected_hash}")
+
+        mock_body = BytesIO(known_content)
+
+        def mock_urlopen(req, timeout=60):
+            _ = req, timeout
+
+            class MockResp:
+                def read(self, size=-1):
+                    return mock_body.read(size)
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    pass
+
+            return MockResp()
+
+        with patch("marshab.core.datasets.bootstrap_cog.urllib.request.urlopen", mock_urlopen):
+            ensure_mola_cog_present()
+
+        assert dest.exists()
 
     def test_skips_when_path_not_set(self, monkeypatch):
         """Skips bootstrap when MARSHAB_MOLA_COG_PATH not set."""

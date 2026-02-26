@@ -2,8 +2,10 @@
 
 import os
 import re
+import threading
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +36,34 @@ from .routes import (
 logger = get_logger(__name__)
 
 
+def _env_truthy(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).lower() in {"1", "true", "yes"}
+
+
+def _run_mola_cog_bootstrap(background: bool = False) -> None:
+    """Run MOLA bootstrap either blocking or in a background daemon thread."""
+    from marshab.core.datasets.bootstrap_cog import ensure_mola_cog_present, prewarm_cog
+
+    def _work() -> None:
+        ensure_mola_cog_present()
+        if _env_truthy("MARSHAB_PREWARM_COG", "false"):
+            prewarm_cog()
+
+    if background:
+        def _background_work() -> None:
+            try:
+                _work()
+            except Exception as exc:
+                logger.warning("Background MOLA COG bootstrap failed", error=str(exc))
+
+        thread = threading.Thread(target=_background_work, name="mola-cog-bootstrap", daemon=True)
+        thread.start()
+        logger.info("Started background MOLA COG bootstrap", thread=thread.name)
+        return
+
+    _work()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
@@ -48,18 +78,45 @@ async def lifespan(app: FastAPI):
         config.paths.create_directories()
         print("[OK] Directories created")
 
-        from marshab.core.datasets.bootstrap_cog import ensure_mola_cog_present, prewarm_cog
+        bootstrap_mode = os.getenv("MARSHAB_MOLA_COG_BOOTSTRAP_MODE", "blocking").strip().lower()
+        cog_required = _env_truthy("MARSHAB_MOLA_COG_REQUIRED", "false")
+        cog_path = (os.getenv("MARSHAB_MOLA_COG_PATH") or "").strip()
+        cog_exists = bool(cog_path and Path(cog_path).exists())
 
-        ensure_mola_cog_present()
-        print("[OK] MOLA COG ready")
-
-        if os.getenv("MARSHAB_PREWARM_COG", "false").lower() in {"1", "true", "yes"}:
+        if not cog_path:
+            print("[INFO] MARSHAB_MOLA_COG_PATH not set; skipping COG bootstrap")
+        elif cog_exists:
+            print("[OK] MOLA COG ready")
+            if _env_truthy("MARSHAB_PREWARM_COG", "false"):
+                try:
+                    _run_mola_cog_bootstrap(background=False)
+                    print("[OK] COG prewarm complete")
+                except Exception as e:
+                    logger.warning("COG prewarm failed (non-fatal)", error=str(e))
+                    print(f"[WARN] COG prewarm failed: {e}")
+        elif bootstrap_mode == "skip":
+            logger.info("Skipping MOLA COG bootstrap by configuration", mode=bootstrap_mode)
+            print("[WARN] MOLA COG bootstrap skipped (mode=skip)")
+        elif bootstrap_mode == "background":
             try:
-                prewarm_cog()
-                print("[OK] COG prewarm complete")
+                _run_mola_cog_bootstrap(background=True)
+                print("[OK] MOLA COG bootstrap started in background")
             except Exception as e:
-                logger.warning("COG prewarm failed (non-fatal)", error=str(e))
-                print(f"[WARN] COG prewarm failed: {e}")
+                if cog_required:
+                    raise
+                logger.warning("Background MOLA COG bootstrap failed to start", error=str(e))
+                print(f"[WARN] MOLA COG bootstrap failed to start: {e}")
+        else:
+            try:
+                _run_mola_cog_bootstrap(background=False)
+                print("[OK] MOLA COG ready")
+                if _env_truthy("MARSHAB_PREWARM_COG", "false"):
+                    print("[OK] COG prewarm complete")
+            except Exception as e:
+                if cog_required:
+                    raise
+                logger.warning("MOLA COG bootstrap failed (continuing startup)", error=str(e), mode=bootstrap_mode)
+                print(f"[WARN] MOLA COG bootstrap failed (non-fatal): {e}")
 
         # Load plugins
         try:

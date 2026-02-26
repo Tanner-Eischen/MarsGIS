@@ -3,6 +3,11 @@
 Ensures MARSHAB_MOLA_COG_PATH exists. If missing, streams download from
 MARSHAB_MOLA_COG_URL to *.partial, verifies SHA256 (optional), then atomically
 renames. Designed for Render persistent disk deployments.
+
+URL resolution order:
+1. MARSHAB_MOLA_COG_URL env var
+2. config.data_sources.mola.url from marshab_config.yaml
+3. USGS public URL (fallback when primary fails, e.g. private GitHub 404)
 """
 
 from __future__ import annotations
@@ -15,6 +20,9 @@ from pathlib import Path
 from marshab.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+# Public USGS fallback when env and config both fail
+USGS_MOLA_URL = "https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif"
 
 # Minimum expected size (bytes) for MOLA COG - guards HTML error pages
 # MOLA 463m global is ~900MB; allow smaller but reject obviously wrong
@@ -70,6 +78,15 @@ def ensure_mola_cog_present() -> None:
 
     cog_path = Path(cog_path_str)
     url = (os.getenv("MARSHAB_MOLA_COG_URL") or "").strip()
+    if not url:
+        try:
+            from marshab.config import get_config
+            cfg = get_config()
+            if "mola" in cfg.data_sources:
+                url = cfg.data_sources["mola"].url
+                logger.info("Using MOLA URL from config", url=url)
+        except Exception as e:
+            logger.debug("Could not load config for MOLA URL fallback", error=str(e))
     expected_sha256 = (os.getenv("MARSHAB_MOLA_COG_SHA256") or "").strip().lower()
 
     if cog_path.exists():
@@ -104,15 +121,35 @@ def ensure_mola_cog_present() -> None:
     except OSError as e:
         logger.warning("Could not remove stale partial file", path=str(partial_path), error=str(e))
 
-    logger.info("Downloading MOLA COG", url=url, dest=str(cog_path))
-    try:
-        total = _stream_download(url, partial_path)
-    except Exception as e:
+    urls_to_try = [url]
+    if url != USGS_MOLA_URL:
         try:
-            partial_path.unlink(missing_ok=True)
-        except OSError:
+            from marshab.config import get_config
+            cfg = get_config()
+            if "mola" in cfg.data_sources and cfg.data_sources["mola"].url not in urls_to_try:
+                urls_to_try.append(cfg.data_sources["mola"].url)
+        except Exception:
             pass
-        raise RuntimeError(f"MOLA COG download failed: {e}") from e
+        if USGS_MOLA_URL not in urls_to_try:
+            urls_to_try.append(USGS_MOLA_URL)
+
+    last_error = None
+    for attempt_url in urls_to_try:
+        logger.info("Downloading MOLA COG", url=attempt_url, dest=str(cog_path))
+        try:
+            if partial_path.exists():
+                partial_path.unlink()
+            total = _stream_download(attempt_url, partial_path)
+            break
+        except Exception as e:
+            last_error = e
+            try:
+                partial_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            logger.warning("Download failed, trying fallback", url=attempt_url, error=str(e))
+    else:
+        raise RuntimeError(f"MOLA COG download failed: {last_error}") from last_error
 
     if total < MIN_EXPECTED_SIZE_BYTES:
         try:

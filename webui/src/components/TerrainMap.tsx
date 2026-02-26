@@ -646,8 +646,10 @@ export default function TerrainMap({
             <TileLayer
               url={basemapTileUrl}
               tileSize={256}
-              keepBuffer={2}
+              keepBuffer={1}
               updateWhenIdle={true}
+              updateWhenZooming={false}
+              updateInterval={300}
               minZoom={0}
               maxZoom={14}
               noWrap={true}
@@ -675,8 +677,10 @@ export default function TerrainMap({
                 )}
                 opacity={0.72}
                 tileSize={256}
-                keepBuffer={2}
+                keepBuffer={1}
                 updateWhenIdle={true}
+                updateWhenZooming={false}
+                updateInterval={300}
                 minZoom={0}
                 maxZoom={14}
                 noWrap={true}

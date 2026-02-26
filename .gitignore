@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+.mypy_cache/
+.ruff_cache/
 *.py[cod]
 *$py.class
 *.so
@@ -26,6 +28,8 @@ venv/
 ENV/
 env/
 .env
+.env.local
+.env.*.local
 
 # IDEs and editor state
 .vscode/
@@ -39,11 +43,13 @@ ruff_*.txt
 *.swo
 *~
 
+# Temp and download artifacts
+.tmp/
+*.crdownload
+*.partial
+
 # Data files (git-ignored)
-data/raw/**
-data/processed/**
-data/cache/**
-data/output/**
+data/
 *.tif
 *.tiff
 *.geojson
@@ -54,6 +60,9 @@ data/output/**
 !webui/tsconfig.json
 !webui/tsconfig.node.json
 !webui/vercel.json
+
+# ML model outputs (trained at runtime)
+models/
 
 # Testing
 .coverage

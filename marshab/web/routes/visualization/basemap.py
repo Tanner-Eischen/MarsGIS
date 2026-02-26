@@ -7,6 +7,7 @@ import urllib.request
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 from marshab.core.data_manager import DataManager
 from marshab.core.raster_contracts import (
@@ -55,13 +56,16 @@ async def get_mars_basemap_tile(z: int, x: int, y: int):
     tile_url = MARS_BASEMAP_TILE_URL.format(z=z, x=x, y=y)
     req = urllib.request.Request(tile_url, headers={"User-Agent": "MarsHab/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            tile_bytes = resp.read()
-            if not tile_bytes:
-                raise HTTPException(status_code=404, detail="Tile not found")
-            response = Response(content=tile_bytes, media_type="image/png")
-            response.headers["Cache-Control"] = "public, max-age=86400"
-            return response
+        def _fetch_tile_bytes() -> bytes:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return resp.read()
+
+        tile_bytes = await run_in_threadpool(_fetch_tile_bytes)
+        if not tile_bytes:
+            raise HTTPException(status_code=404, detail="Tile not found")
+        response = Response(content=tile_bytes, media_type="image/png")
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -143,7 +147,7 @@ async def get_global_basemap_tile(
         return response
 
     try:
-        png_bytes = _render_global_basemap_tile(source_path, bbox, tile_size=256)
+        png_bytes = await run_in_threadpool(_render_global_basemap_tile, source_path, bbox, 256)
     except Exception as exc:
         logger.exception("Global basemap tile render failed", error=str(exc), source=str(source_path))
         if not allow_fallback:
@@ -226,7 +230,7 @@ async def get_orthophoto_basemap_tile(
         return response
 
     try:
-        png_bytes = _render_orthophoto_tile(source_path, bbox, tile_size=256)
+        png_bytes = await run_in_threadpool(_render_orthophoto_tile, source_path, bbox, 256)
     except Exception as exc:
         logger.exception("Orthophoto tile render failed", error=str(exc), source=str(source_path))
         if not allow_dem_fallback:
@@ -327,11 +331,13 @@ async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
     _log_metric("tile.cache.miss", 1, kind="basemap")
     start = time.time()
     try:
-        raster_result = load_dem_window(
-            dataset_lower,
-            bbox,
-            target_shape=(256, 256),
-            allow_download=True,
+        raster_result = await run_in_threadpool(
+            lambda: load_dem_window(
+                dataset_lower,
+                bbox,
+                target_shape=(256, 256),
+                allow_download=True,
+            )
         )
         dem = _build_dem_dataarray(raster_result)
         png_bytes, _bounds, _elev_min, _elev_max = await generate_elevation_overlay(

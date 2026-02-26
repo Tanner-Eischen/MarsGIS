@@ -14,6 +14,7 @@ from typing import Literal, Optional
 
 import numpy as np
 import rasterio
+from rasterio.enums import Resampling
 import xarray as xr
 from rasterio.transform import Affine, from_bounds
 
@@ -31,6 +32,11 @@ DEFAULT_JEZERO_DEM_URL = (
     "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/"
     "JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif"
 )
+
+GLOBAL_DEM_FILENAMES: dict[str, str] = {
+    "mola": "mars_mola_global.tif",
+    "mola_200m": "mars_mola_200m_global.tif",
+}
 
 
 class DataManager:
@@ -83,48 +89,100 @@ class DataManager:
 
         return False
 
+    def _global_dem_path(self, dataset: Literal["mola", "mola_200m"]) -> Path:
+        return self.cache_dir / GLOBAL_DEM_FILENAMES[dataset]
+
+    def _ensure_internal_overviews(self, path: Path) -> None:
+        """Best-effort overview builder for faster windowed reads."""
+        try:
+            with rasterio.open(path, "r+") as dst:
+                factors = [2, 4, 8, 16]
+                dst.build_overviews(factors, Resampling.average)
+                dst.update_tags(ns="rio_overview", resampling="average")
+        except Exception as exc:
+            logger.warning("Could not build DEM overviews", path=str(path), error=str(exc))
+
+    def _download_global_dem_if_missing(
+        self,
+        dataset: Literal["mola", "mola_200m"],
+        force: bool = False,
+    ) -> Path:
+        """
+        Ensure canonical global DEM exists on disk and return its path.
+
+        For `mola`, supports manual cache overrides via `real_mars.tif`.
+        """
+        global_path = self._global_dem_path(dataset)
+        if global_path.exists() and not force:
+            return global_path
+
+        if dataset == "mola":
+            manual_file = self.cache_dir / "real_mars.tif"
+            if manual_file.exists():
+                logger.info("Using manual real_mars.tif as canonical global MOLA source")
+                tmp_path = global_path.with_suffix(".global.copy.tmp.tif")
+                shutil.copy(manual_file, tmp_path)
+                if global_path.exists():
+                    global_path.unlink()
+                tmp_path.replace(global_path)
+                self._ensure_internal_overviews(global_path)
+                return global_path
+
+        if dataset not in self.config.data_sources:
+            raise DataError(f"Unknown dataset: {dataset}")
+
+        source = self.config.data_sources[dataset]
+        url = source.url
+        if url.endswith("/"):
+            raise DataError(
+                REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                details={
+                    "dataset": dataset,
+                    "requires_manual_download": True,
+                    "hint": "Dataset URL is directory-based and cannot auto-download global DEM.",
+                },
+            )
+
+        logger.info("Downloading canonical global DEM", dataset=dataset, url=url, path=str(global_path))
+        tmp_path = global_path.with_suffix(".global.tmp.tif")
+        urllib.request.urlretrieve(url, tmp_path)
+        if global_path.exists():
+            global_path.unlink()
+        tmp_path.replace(global_path)
+        self._ensure_internal_overviews(global_path)
+        return global_path
+
+    def _clip_roi_from_global_dem(self, global_path: Path, roi: BoundingBox, dest_path: Path) -> bool:
+        """Clip ROI from canonical global DEM into per-ROI cache path."""
+        if not global_path.exists():
+            return False
+        try:
+            dem = self.loader.load(global_path, roi=roi)
+            if hasattr(dem, "rio"):
+                tmp_path = dest_path.with_suffix(f"{dest_path.suffix}.clip.tmp")
+                dem.rio.to_raster(tmp_path)
+                if dest_path.exists():
+                    dest_path.unlink()
+                tmp_path.replace(dest_path)
+                return True
+        except Exception as exc:
+            logger.warning("Global DEM ROI clip failed", path=str(global_path), error=str(exc))
+        return False
+
     def _download_real_mola_tile(self, roi: BoundingBox, dest_path: Path):
         """Attempt to download real MOLA data, handling global file caching and clipping."""
         allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
 
-        # 1. Check for manual 'real_mars.tif' (dev override)
-        manual_file = self.cache_dir / "real_mars.tif"
-        if manual_file.exists():
-            logger.info("Found manually placed real_mars.tif, using it.")
-            tmp_path = dest_path.with_suffix(f"{dest_path.suffix}.copy.tmp")
-            shutil.copy(manual_file, tmp_path)
-            if dest_path.exists():
-                dest_path.unlink()
-            tmp_path.replace(dest_path)
-            return
+        # 1) Try canonical global MOLA source first (download-on-demand enabled).
+        try:
+            global_path = self._download_global_dem_if_missing("mola", force=False)
+            if self._clip_roi_from_global_dem(global_path, roi, dest_path):
+                logger.info("Saved clipped MOLA tile from canonical global DEM", path=str(dest_path))
+                return
+        except Exception as e:
+            logger.warning("Canonical global MOLA unavailable for ROI clip", error=str(e))
 
-        # 2. Check for cached GLOBAL file
-        global_filename = "mars_mola_global.tif"
-        global_path = self.cache_dir / global_filename
-
-        if global_path.exists():
-            logger.info(f"Clipping ROI from global MOLA data: {global_path}")
-            dem = None  # Initialize dem variable
-            try:
-                # Load and clip using DEMLoader (handles windowed reading)
-                dem = self.loader.load(global_path, roi=roi)
-
-                # Save the clipped DEM to dest_path
-                if hasattr(dem, 'rio'):
-                    tmp_path = dest_path.with_suffix(f"{dest_path.suffix}.clip.tmp")
-                    dem.rio.to_raster(tmp_path)
-                    if dest_path.exists():
-                        dest_path.unlink()
-                    tmp_path.replace(dest_path)
-                    logger.info(f"Saved clipped MOLA tile to {dest_path}")
-                    return
-                else:
-                    logger.warning("Loaded DEM missing rio accessor, cannot save to raster.")
-            except Exception as e:
-                logger.error(f"Failed to clip/save MOLA tile: {e}")
-                # Fallback to synthetic
-
-        # 3. If ROI is near Jezero, attempt curated high-resolution tile download.
+        # 2. If ROI is near Jezero, attempt curated high-resolution tile download.
         # This provides a much better map than synthetic fallback for portfolio demos.
         enable_curated_jezero = os.getenv("MARSHAB_ENABLE_CURATED_JEZERO_DEM", "false").lower() in {
             "1",
@@ -139,11 +197,7 @@ class DataManager:
             except Exception as e:
                 logger.warning("Curated Jezero DEM download failed", error=str(e))
 
-        # NOTE: We do NOT auto-download the 2GB global file here during a tile request.
-        # It causes timeouts. The user must initiate global download via Data Settings.
-        # Or we use synthetic fallback until then.
-
-        # 4. Final fallback
+        # 3. Final fallback
         if not allow_synthetic:
             raise DataError(
                 REAL_DEM_UNAVAILABLE_ERROR_CODE,
@@ -382,6 +436,32 @@ class DataManager:
         if dataset == "mola" and roi:
             self._download_real_mola_tile(roi, cache_path)
             return cache_path
+
+        if dataset == "mola_200m":
+            # Canonical global MOLA 200m source with ROI clipping.
+            try:
+                global_200m = self._download_global_dem_if_missing("mola_200m", force=force)
+                if roi:
+                    if self._clip_roi_from_global_dem(global_200m, roi, cache_path):
+                        return cache_path
+                    raise DataError("Failed to clip ROI from canonical global MOLA 200m DEM")
+                return global_200m
+            except Exception as e:
+                if roi and allow_synthetic:
+                    logger.warning("MOLA 200m global unavailable; generating synthetic proxy", error=str(e))
+                    self._generate_synthetic_proxy(roi, cache_path)
+                    return cache_path
+                if roi and not allow_synthetic:
+                    raise DataError(
+                        REAL_DEM_UNAVAILABLE_ERROR_CODE,
+                        details={
+                            "dataset": dataset,
+                            "requires_manual_download": True,
+                            "hint": "Canonical global MOLA 200m unavailable and synthetic fallback disabled.",
+                            "error": str(e),
+                        },
+                    )
+                raise
 
         # Existing logic for fallback/other datasets
         if dataset not in self.config.data_sources:

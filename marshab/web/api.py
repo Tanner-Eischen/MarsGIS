@@ -48,6 +48,19 @@ async def lifespan(app: FastAPI):
         config.paths.create_directories()
         print("[OK] Directories created")
 
+        from marshab.core.datasets.bootstrap_cog import ensure_mola_cog_present, prewarm_cog
+
+        ensure_mola_cog_present()
+        print("[OK] MOLA COG ready")
+
+        if os.getenv("MARSHAB_PREWARM_COG", "false").lower() in {"1", "true", "yes"}:
+            try:
+                prewarm_cog()
+                print("[OK] COG prewarm complete")
+            except Exception as e:
+                logger.warning("COG prewarm failed (non-fatal)", error=str(e))
+                print(f"[WARN] COG prewarm failed: {e}")
+
         # Load plugins
         try:
             from marshab.plugins import load_plugins_from_config

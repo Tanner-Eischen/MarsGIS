@@ -12,9 +12,19 @@ import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse, Response
 from PIL import Image
-from rasterio.transform import Affine, rowcol
+from rasterio.io import MemoryFile
+from rasterio.transform import Affine, from_bounds, rowcol
 
 from marshab.config import get_config
+from marshab.core.data_manager import DataManager
+from marshab.core.dem_window_cache import (
+    DemWindowCacheConfig,
+    DemWindowMemoryCache,
+    dem_window_cache_key,
+    dem_window_cache_path,
+    read_dem_window_disk_cache,
+    write_dem_window_disk_cache,
+)
 from marshab.core.raster_contracts import (
     REAL_DEM_UNAVAILABLE_ERROR_CODE,
     REAL_DEM_UNAVAILABLE_RESPONSE_DOC,
@@ -34,6 +44,64 @@ from ._helpers import (
 )
 
 router = APIRouter()
+
+DEM_WINDOW_CACHE = DemWindowMemoryCache(
+    DemWindowCacheConfig(
+        max_entries=int(os.getenv("MARSHAB_DEM_WINDOW_CACHE_MAX", "512")),
+        ttl_seconds=int(os.getenv("MARSHAB_DEM_WINDOW_CACHE_TTL", str(12 * 60 * 60))),
+    )
+)
+
+
+def _parse_roi_bounds(roi: str) -> tuple[float, float, float, float]:
+    try:
+        lat_min, lat_max, lon_min, lon_max = map(float, roi.split(","))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid ROI format: {exc}")
+    if lat_max <= lat_min or lon_max <= lon_min:
+        raise HTTPException(status_code=400, detail="Invalid ROI bounds: max must be greater than min")
+    return lat_min, lat_max, lon_min, lon_max
+
+
+def _bbox_from_roi_with_buffer(
+    roi: str,
+    buffer: float,
+) -> tuple[BoundingBox, float, float, float, float]:
+    lat_min, lat_max, lon_min, lon_max = _parse_roi_bounds(roi)
+    lon_min_norm = to_lon360(lon_min)
+    lon_max_norm = to_lon360(lon_max)
+    lon_span = lon_max - lon_min
+    if lon_max_norm <= lon_min_norm:
+        lon_max_norm = min(360.0, lon_min_norm + max(lon_span, 0.01))
+    if buffer > 0:
+        delta_lat = (lat_max - lat_min) * buffer
+        delta_lon = (lon_max_norm - lon_min_norm) * buffer
+        bbox = BoundingBox(
+            lat_min=max(-90, lat_min - delta_lat),
+            lat_max=min(90, lat_max + delta_lat),
+            lon_min=max(0, lon_min_norm - delta_lon),
+            lon_max=min(360, lon_max_norm + delta_lon),
+        )
+    else:
+        bbox = BoundingBox(
+            lat_min=lat_min,
+            lat_max=lat_max,
+            lon_min=lon_min_norm,
+            lon_max=lon_max_norm,
+        )
+    return bbox, lat_min, lat_max, lon_min, lon_max
+
+
+def _dem_signature_for_cache(dataset_used: str, bbox: BoundingBox) -> str:
+    """Return cache-busting signature tied to source DEM mtime when possible."""
+    try:
+        dm = DataManager()
+        cache_path = dm._get_cache_path(dataset_used, bbox)
+        if cache_path.exists():
+            return str(int(cache_path.stat().st_mtime))
+    except Exception:
+        pass
+    return "none"
 
 
 @router.get("/visualization/elevation-at")
@@ -171,6 +239,143 @@ async def get_waypoints_file(navigation_id: str):
     except Exception as e:
         logger.exception("Failed to get waypoints file")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/visualization/dem-window.tif",
+    responses=REAL_DEM_UNAVAILABLE_RESPONSE_DOC,
+)
+async def get_dem_window_tif(
+    dataset: str = Query(..., description="Dataset name (mola, mola_200m, hirise, ctx)"),
+    roi: str = Query(..., description="ROI as 'lat_min,lat_max,lon_min,lon_max'"),
+    width: int = Query(800, ge=64, le=4096, description="Raster width in pixels"),
+    height: int = Query(600, ge=64, le=4096, description="Raster height in pixels"),
+    buffer: float = Query(0.0, ge=0.0, le=5.0, description="Buffer factor to extend ROI"),
+):
+    """Return preserved elevation as a float32 GeoTIFF window."""
+    try:
+        try:
+            dataset_lower = normalize_dataset(dataset)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid dataset. Must be one of: mola, mola_200m, ctx, hirise",
+            )
+
+        if width * height > 8_000_000:
+            raise HTTPException(status_code=413, detail="Requested DEM window too large")
+
+        bbox, _lat_min, _lat_max, _lon_min, _lon_max = _bbox_from_roi_with_buffer(roi, buffer)
+        allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
+
+        raster_result = load_dem_window(
+            dataset_lower,
+            bbox,
+            target_shape=(height, width),
+            allow_download=True,
+        )
+
+        if (
+            not allow_synthetic
+            and raster_result.dataset_used in {"mola", "mola_200m"}
+            and raster_result.is_fallback
+            and raster_result.fallback_reason in {"mola_200m_unavailable", "hirise_unavailable"}
+        ):
+            # Keep strict no-synthetic behavior explicit for window API.
+            pass
+
+        dem_sig = _dem_signature_for_cache(raster_result.dataset_used, bbox)
+        cache_key = dem_window_cache_key(raster_result.dataset_used, bbox, width, height, dem_sig)
+        cached_bytes = DEM_WINDOW_CACHE.get(cache_key)
+        if cached_bytes is None:
+            disk_path = dem_window_cache_path(cache_key)
+            cached_bytes = read_dem_window_disk_cache(disk_path, DEM_WINDOW_CACHE.config.ttl_seconds)
+            if cached_bytes is not None:
+                DEM_WINDOW_CACHE.set(cache_key, cached_bytes)
+
+        if cached_bytes is not None:
+            response = Response(content=cached_bytes, media_type="image/tiff")
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+            response.headers["X-Dataset-Used"] = raster_result.dataset_used
+            response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+            if raster_result.fallback_reason:
+                response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
+            response.headers["X-Dem-Signature"] = dem_sig
+            return response
+
+        arr = raster_result.array.astype(np.float32)
+        nodata = raster_result.nodata
+        if nodata is not None:
+            arr = np.where(np.isfinite(arr), arr, nodata).astype(np.float32)
+        else:
+            arr = np.where(np.isfinite(arr), arr, np.nan).astype(np.float32)
+
+        transform_values = raster_result.transform
+        if isinstance(transform_values, (list, tuple)) and len(transform_values) >= 6:
+            transform = Affine(*transform_values[:6])
+        else:
+            transform = from_bounds(
+                bbox.lon_min,
+                bbox.lat_min,
+                bbox.lon_max,
+                bbox.lat_max,
+                width,
+                height,
+            )
+
+        with MemoryFile() as memfile:
+            with memfile.open(
+                driver="GTiff",
+                width=width,
+                height=height,
+                count=1,
+                dtype="float32",
+                transform=transform,
+                crs=None,
+                nodata=nodata,
+                compress="lzw",
+            ) as dst:
+                dst.write(arr, 1)
+                dst.update_tags(
+                    CRS_INFO="EPSG:49900",
+                    DATASET_REQUESTED=raster_result.dataset_requested,
+                    DATASET_USED=raster_result.dataset_used,
+                    FALLBACK_USED=str(raster_result.is_fallback).lower(),
+                    FALLBACK_REASON=raster_result.fallback_reason or "",
+                )
+            tif_bytes = memfile.read()
+
+        DEM_WINDOW_CACHE.set(cache_key, tif_bytes)
+        write_dem_window_disk_cache(dem_window_cache_path(cache_key), tif_bytes)
+
+        response = Response(content=tif_bytes, media_type="image/tiff")
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+        response.headers["X-Dataset-Used"] = raster_result.dataset_used
+        response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+        if raster_result.fallback_reason:
+            response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
+        response.headers["X-Dem-Signature"] = dem_sig
+        response.headers["Content-Length"] = str(len(tif_bytes))
+        return response
+    except DataError as exc:
+        if exc.message == REAL_DEM_UNAVAILABLE_ERROR_CODE:
+            payload = build_real_dem_unavailable_payload(
+                detail="Real DEM data is unavailable for the requested window.",
+                dataset_requested=dataset,
+                dataset_used=dataset,
+            )
+            return JSONResponse(
+                status_code=REAL_DEM_UNAVAILABLE_STATUS_CODE,
+                content=payload,
+            )
+        raise HTTPException(status_code=500, detail=str(exc))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to generate DEM GeoTIFF window")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/visualization/dem-image")

@@ -165,7 +165,14 @@ export default function Terrain3D({
     );
   }
 
-  const mesh = terrainData.mesh || terrainData;
+  const mesh = ((terrainData as any).mesh || terrainData) as { x: number[][]; y: number[][]; z: number[][] } | null;
+  if (!mesh) {
+    return (
+      <div className="bg-gray-800 rounded-lg p-6 text-center">
+        <p className="text-gray-400">No terrain mesh available</p>
+      </div>
+    );
+  }
   const { x: xGrid, y: yGrid, z: zGrid } = mesh;
 
   // Keep all traces in the same elevation coordinate space.

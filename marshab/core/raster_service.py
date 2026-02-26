@@ -6,6 +6,7 @@ import hashlib
 import os
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -229,6 +230,27 @@ def load_dem_window(
     """Load DEM window with consistent dataset resolution + fallback behavior."""
     dataset_normalized = normalize_dataset(dataset)
     resolution = resolve_dataset_with_fallback(dataset_normalized, bbox)
+
+    # Prefer local COG when configured and MOLA is the resolved dataset
+    cog_path = os.getenv("MARSHAB_MOLA_COG_PATH")
+    if cog_path and Path(cog_path).exists() and resolution.dataset_used == "mola":
+        from marshab.core.cog_reader import read_cog_window
+
+        roi_360 = bbox_to_lon360(bbox)
+        result = read_cog_window(cog_path, roi_360, target_shape)
+        # Override dataset_requested to reflect what caller asked for
+        return RasterWindowResult(
+            array=result.array,
+            bbox_used=result.bbox_used,
+            dataset_requested=resolution.dataset_requested,
+            dataset_used=result.dataset_used,
+            is_fallback=result.is_fallback,
+            fallback_reason=result.fallback_reason,
+            resolution_m=result.resolution_m,
+            nodata=result.nodata,
+            transform=result.transform,
+        )
+
     config = get_config()
     data_manager = DataManager()
 

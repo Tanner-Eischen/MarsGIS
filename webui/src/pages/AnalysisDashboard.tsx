@@ -151,6 +151,7 @@ export default function AnalysisDashboard() {
             roi={roi}
             dataset={dataset}
             onDatasetChange={setDataset}
+            autoFitRoi={false}
             overlayType={overlayType}
             overlayOptions={{
               colormap,

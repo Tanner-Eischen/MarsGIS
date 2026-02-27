@@ -429,6 +429,7 @@ interface TerrainMapProps {
   roi: any
   dataset?: MapDataset | string
   onDatasetChange?: (dataset: MapDataset) => void
+  autoFitRoi?: boolean
   showSites?: boolean
   showWaypoints?: boolean
   waypointsRefreshKey?: number
@@ -465,6 +466,7 @@ export default function TerrainMap({
   roi,
   dataset = 'hirise',
   onDatasetChange,
+  autoFitRoi = true,
   showSites = false,
   showWaypoints = false,
   waypointsRefreshKey,
@@ -488,9 +490,9 @@ export default function TerrainMap({
   const [lastTileErrorAt, setLastTileErrorAt] = useState<number | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const [viewState, setViewState] = useState<MapViewState>({
-    lat: roi ? (Number(roi.lat_min) + Number(roi.lat_max)) / 2 : 0,
-    lon: roi ? normalizeLon180((Number(roi.lon_min) + Number(roi.lon_max)) / 2) : 0,
-    zoom: 6,
+    lat: autoFitRoi && roi ? (Number(roi.lat_min) + Number(roi.lat_max)) / 2 : 0,
+    lon: autoFitRoi && roi ? normalizeLon180((Number(roi.lon_min) + Number(roi.lon_max)) / 2) : 0,
+    zoom: autoFitRoi ? 6 : 1,
   })
   const useLegacyOverlay = import.meta.env.VITE_USE_LEGACY_IMAGE_OVERLAY === 'true'
 
@@ -583,7 +585,7 @@ export default function TerrainMap({
   const displayLoading = overlayImage?.loading
   const displayError = overlayImage?.error
 
-  const centerTuple: [number, number] = roi
+  const centerTuple: [number, number] = autoFitRoi && roi
     ? [
         (roi.lat_min + roi.lat_max) / 2,
         (() => {
@@ -591,7 +593,7 @@ export default function TerrainMap({
           return lon > 180 ? lon - 360 : lon;
         })(),
       ]
-    : [0, 180];
+    : [0, 0];
 
   const fitKey = roi
     ? `${roi.lat_min},${roi.lat_max},${roi.lon_min},${roi.lon_max}|${dataset}|${activeOverlayType}`
@@ -673,7 +675,7 @@ export default function TerrainMap({
     <div className="relative h-full w-full">
       <MapContainer
         center={centerTuple}
-        zoom={6}
+        zoom={autoFitRoi ? 6 : 1}
         zoomControl={false}
         style={{ height: '100%', width: '100%' }}
         className="bg-black"
@@ -768,7 +770,7 @@ export default function TerrainMap({
             <FitBounds bounds={displayBounds} fitKey={fitKey} />
           </>
         )}
-        {!useLegacyOverlay && roiBounds && <FitBounds bounds={roiBounds} fitKey={fitKey} />}
+        {!useLegacyOverlay && autoFitRoi && roiBounds && <FitBounds bounds={roiBounds} fitKey={fitKey} />}
 
         {showSites && (
           <SitesLayer showSites={showSites} onSiteSelect={onSiteSelect} selectedSiteId={selectedSiteId} />

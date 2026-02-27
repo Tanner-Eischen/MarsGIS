@@ -14,9 +14,9 @@ from typing import Literal, Optional
 
 import numpy as np
 import rasterio
-from rasterio.enums import Resampling
 import xarray as xr
-from rasterio.transform import Affine, from_bounds
+from rasterio.enums import Resampling
+from rasterio.transform import from_bounds
 
 from marshab.config import get_config
 from marshab.core.raster_contracts import REAL_DEM_UNAVAILABLE_ERROR_CODE
@@ -32,6 +32,8 @@ DEFAULT_JEZERO_DEM_URL = (
     "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/"
     "JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif"
 )
+DOWNLOAD_USER_AGENT = "MarsHab/1.0"
+DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 
 GLOBAL_DEM_FILENAMES: dict[str, str] = {
     "mola": "mars_mola_global.tif",
@@ -92,6 +94,14 @@ class DataManager:
     def _global_dem_path(self, dataset: Literal["mola", "mola_200m"]) -> Path:
         return self.cache_dir / GLOBAL_DEM_FILENAMES[dataset]
 
+    def _download_file(self, url: str, dest_path: Path, timeout_s: int = 120) -> None:
+        """Download URL to destination using request headers expected by public data hosts."""
+        req = urllib.request.Request(url, headers={"User-Agent": DOWNLOAD_USER_AGENT})
+        with urllib.request.urlopen(req, timeout=timeout_s) as response:
+            with open(dest_path, "wb") as out:
+                shutil.copyfileobj(response, out, length=DOWNLOAD_CHUNK_SIZE)
+                out.flush()
+
     def _ensure_internal_overviews(self, path: Path) -> None:
         """Best-effort overview builder for faster windowed reads."""
         try:
@@ -145,7 +155,7 @@ class DataManager:
 
         logger.info("Downloading canonical global DEM", dataset=dataset, url=url, path=str(global_path))
         tmp_path = global_path.with_suffix(".global.tmp.tif")
-        urllib.request.urlretrieve(url, tmp_path)
+        self._download_file(url, tmp_path, timeout_s=300)
         if global_path.exists():
             global_path.unlink()
         tmp_path.replace(global_path)
@@ -173,18 +183,9 @@ class DataManager:
         """Attempt to download real MOLA data, handling global file caching and clipping."""
         allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
 
-        # 1) Try canonical global MOLA source first (download-on-demand enabled).
-        try:
-            global_path = self._download_global_dem_if_missing("mola", force=False)
-            if self._clip_roi_from_global_dem(global_path, roi, dest_path):
-                logger.info("Saved clipped MOLA tile from canonical global DEM", path=str(dest_path))
-                return
-        except Exception as e:
-            logger.warning("Canonical global MOLA unavailable for ROI clip", error=str(e))
-
-        # 2. If ROI is near Jezero, attempt curated high-resolution tile download.
-        # This provides a much better map than synthetic fallback for portfolio demos.
-        enable_curated_jezero = os.getenv("MARSHAB_ENABLE_CURATED_JEZERO_DEM", "false").lower() in {
+        # 1) For Jezero ROI, prefer curated local tile over a multi-GB global fetch.
+        # Keep this enabled by default so local analysis works out-of-the-box.
+        enable_curated_jezero = os.getenv("MARSHAB_ENABLE_CURATED_JEZERO_DEM", "true").lower() in {
             "1",
             "true",
             "yes",
@@ -196,6 +197,15 @@ class DataManager:
                 return
             except Exception as e:
                 logger.warning("Curated Jezero DEM download failed", error=str(e))
+
+        # 2) Try canonical global MOLA source.
+        try:
+            global_path = self._download_global_dem_if_missing("mola", force=False)
+            if self._clip_roi_from_global_dem(global_path, roi, dest_path):
+                logger.info("Saved clipped MOLA tile from canonical global DEM", path=str(dest_path))
+                return
+        except Exception as e:
+            logger.warning("Canonical global MOLA unavailable for ROI clip", error=str(e))
 
         # 3. Final fallback
         if not allow_synthetic:
@@ -247,7 +257,7 @@ class DataManager:
         tmp_normalized = dest_path.with_suffix(".normalized.tmp.tif")
 
         try:
-            urllib.request.urlretrieve(url, tmp_download)
+            self._download_file(url, tmp_download, timeout_s=120)
             with rasterio.open(tmp_download) as src:
                 profile = src.profile.copy()
                 # Normalize into the app's lon/lat domain so ROI windowing (from_bounds) is stable.
@@ -489,7 +499,7 @@ class DataManager:
         # Standard URL download
         try:
             temp_path = cache_path.with_suffix(".tmp")
-            urllib.request.urlretrieve(url, temp_path)
+            self._download_file(url, temp_path, timeout_s=300)
             shutil.move(str(temp_path), str(cache_path))
             return cache_path
         except Exception as e:

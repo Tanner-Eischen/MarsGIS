@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import shutil
 import urllib.request
 from pathlib import Path
 
@@ -26,6 +27,8 @@ DEFAULT_URL = (
 DEFAULT_OUT = Path("data/cache/mola_lat18_lon77.tif")
 MARS_RADIUS_M = 3396190.0
 DEG_PER_M = 180.0 / (math.pi * MARS_RADIUS_M)
+DOWNLOAD_USER_AGENT = "MarsHab/1.0"
+DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 
 
 def _looks_geographic(src: rasterio.DatasetReader) -> bool:
@@ -40,6 +43,15 @@ def _looks_geographic(src: rasterio.DatasetReader) -> bool:
         and 0.0 <= b.left <= 360.0
         and 0.0 <= b.right <= 360.0
     )
+
+
+def _download_file(url: str, dest_path: Path, timeout_s: int = 120) -> None:
+    """Download file with explicit user-agent to avoid public-host 403 blocks."""
+    req = urllib.request.Request(url, headers={"User-Agent": DOWNLOAD_USER_AGENT})
+    with urllib.request.urlopen(req, timeout=timeout_s) as response:
+        with open(dest_path, "wb") as out:
+            shutil.copyfileobj(response, out, length=DOWNLOAD_CHUNK_SIZE)
+            out.flush()
 
 
 def _normalize_to_geo_degrees(src_path: Path, out_path: Path, source_url: str) -> None:
@@ -115,7 +127,7 @@ def main() -> None:
 
     if args.force_download or not args.out.exists():
         print(f"Downloading DEM from: {args.url}")
-        urllib.request.urlretrieve(args.url, download_tmp)
+        _download_file(args.url, download_tmp)
         source_path = download_tmp
     else:
         print(f"Using existing DEM file: {args.out}")

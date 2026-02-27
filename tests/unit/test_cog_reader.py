@@ -4,6 +4,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import rasterio
+from rasterio.transform import from_bounds
 
 from marshab.core.cog_reader import read_cog_window
 from marshab.models import BoundingBox
@@ -99,3 +101,48 @@ class TestCogReader:
         assert result.is_fallback is False
         assert result.fallback_reason is None
         assert result.resolution_m == 463.0
+
+    def test_projected_mars_cog_window_returns_valid_data(self, tmp_path):
+        """Projected Mars equirectangular rasters should sample valid data via lon/lat bbox."""
+        path = tmp_path / "mars_projected_test.tif"
+        width, height = 720, 360
+        left, bottom, right, top = (
+            -10669675.197320545,
+            -5334837.598660273,
+            10669675.197320545,
+            5334837.598660273,
+        )
+        transform = from_bounds(left, bottom, right, top, width, height)
+        mars_eqc_wkt = (
+            'PROJCS["Equirectangular Mars",'
+            'GEOGCS["GCS_Mars",DATUM["D_Mars",SPHEROID["Mars_localRadius",3396190,0]],'
+            'PRIMEM["Reference_Meridian",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],'
+            'PROJECTION["Equirectangular"],PARAMETER["standard_parallel_1",0],'
+            'PARAMETER["central_meridian",0],PARAMETER["false_easting",0],PARAMETER["false_northing",0],'
+            'UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
+        )
+
+        yy, xx = np.meshgrid(np.arange(height, dtype=np.float32), np.arange(width, dtype=np.float32), indexing="ij")
+        data = (xx + yy).astype(np.float32)
+
+        with rasterio.open(
+            path,
+            "w",
+            driver="GTiff",
+            width=width,
+            height=height,
+            count=1,
+            dtype="float32",
+            transform=transform,
+            crs=mars_eqc_wkt,
+            nodata=-32768.0,
+        ) as dst:
+            dst.write(data, 1)
+
+        # Jezero-like window in lon/lat degrees (wide enough for this coarse test raster).
+        bbox = BoundingBox(lat_min=17.0, lat_max=18.0, lon_min=76.0, lon_max=77.0)
+        result = read_cog_window(str(path), bbox)
+
+        assert result.array.size > 0
+        valid = np.isfinite(result.array) & (result.array != result.nodata)
+        assert np.any(valid)

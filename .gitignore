@@ -45,6 +45,7 @@ ruff_*.txt
 
 # Temp and download artifacts
 .tmp/
+artifacts/
 *.crdownload
 *.partial
 

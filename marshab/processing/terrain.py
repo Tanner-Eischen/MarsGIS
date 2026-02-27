@@ -181,7 +181,8 @@ class TerrainAnalyzer:
         self,
         dem: np.ndarray,
         azimuth: float = 315.0,
-        altitude: float = 45.0
+        altitude: float = 45.0,
+        z_factor: float = 1.0,
     ) -> np.ndarray:
         """Calculate hillshade for visualization.
 
@@ -189,6 +190,7 @@ class TerrainAnalyzer:
             dem: Elevation array
             azimuth: Sun azimuth in degrees (0=North, 90=East)
             altitude: Sun altitude angle in degrees
+            z_factor: Vertical exaggeration multiplier for terrain gradients
 
         Returns:
             Hillshade values 0-255 (uint8)
@@ -215,6 +217,16 @@ class TerrainAnalyzer:
                 shape=dem.shape
             )
             return np.zeros_like(dem, dtype=np.uint8)
+
+        # Apply vertical exaggeration to terrain gradients.
+        try:
+            zf = float(z_factor)
+        except (TypeError, ValueError):
+            zf = 1.0
+        if not np.isfinite(zf) or zf <= 0.0:
+            zf = 1.0
+        dy *= zf
+        dx *= zf
 
         # Calculate slope and aspect
         slope_rad = np.arctan(np.sqrt(dx**2 + dy**2))
@@ -467,4 +479,3 @@ def generate_cost_surface(
     )
 
     return cost
-

@@ -54,7 +54,7 @@ export default function OverlaySwitcher({
   const cacheStats = overlayContext.getCacheStats()
 
   const showColormap = overlayType !== 'hillshade'
-  const showRelief = overlayType === 'elevation'
+  const showRelief = overlayType === 'elevation' || overlayType === 'hillshade'
   const showSunAngles = overlayType === 'solar' || overlayType === 'hillshade' || overlayType === 'dust'
 
   const activeOverlayDef = getOverlayDefinition(overlayType)

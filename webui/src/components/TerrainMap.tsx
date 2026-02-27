@@ -45,6 +45,12 @@ interface ViewportSample {
   height: number
 }
 
+interface MapViewState {
+  lat: number
+  lon: number
+  zoom: number
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const roundTo = (value: number, step: number) => Math.round(value / step) * step
 const MAX_OVERLAY_PIXELS = 2_000_000
@@ -311,6 +317,38 @@ function MapResizeHandler() {
   return null;
 }
 
+function MapViewTracker({
+  onViewChange,
+  mapRef,
+}: {
+  onViewChange: (view: MapViewState) => void
+  mapRef: { current: L.Map | null }
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    mapRef.current = map
+    const updateView = () => {
+      const center = map.getCenter()
+      onViewChange({
+        lat: center.lat,
+        lon: normalizeLon180(center.lng),
+        zoom: map.getZoom(),
+      })
+    }
+
+    updateView()
+    map.on('moveend zoomend resize', updateView)
+
+    return () => {
+      map.off('moveend zoomend resize', updateView)
+      if (mapRef.current === map) mapRef.current = null
+    }
+  }, [map, mapRef, onViewChange])
+
+  return null
+}
+
 const siteStyle = (isSelected) => ({
   radius: isSelected ? 12 : 8,
   fillColor: isSelected ? '#ffff00' : '#00ff00',
@@ -448,6 +486,12 @@ export default function TerrainMap({
   const [tilePending, setTilePending] = useState({ basemap: 0, overlay: 0 })
   const [tileErrorCount, setTileErrorCount] = useState(0)
   const [lastTileErrorAt, setLastTileErrorAt] = useState<number | null>(null)
+  const mapRef = useRef<L.Map | null>(null)
+  const [viewState, setViewState] = useState<MapViewState>({
+    lat: roi ? (Number(roi.lat_min) + Number(roi.lat_max)) / 2 : 0,
+    lon: roi ? normalizeLon180((Number(roi.lon_min) + Number(roi.lon_max)) / 2) : 0,
+    zoom: 6,
+  })
   const useLegacyOverlay = import.meta.env.VITE_USE_LEGACY_IMAGE_OVERLAY === 'true'
 
   const handleViewportChange = useCallback((next: ViewportSample) => {
@@ -555,8 +599,31 @@ export default function TerrainMap({
 
   // Use global local-raster basemap tiles for robust pan/zoom coverage.
   // Keep analytical overlays separate to avoid stacking duplicate terrain layers.
-  const supportedTileOverlays = ['solar', 'dust', 'slope', 'aspect', 'roughness', 'tri']
-  const tileOverlayType = supportedTileOverlays.includes(activeOverlayType) ? activeOverlayType : null
+  const supportedTileOverlays = ['solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri'] as const
+  const tileOverlayType = supportedTileOverlays.includes(activeOverlayType as (typeof supportedTileOverlays)[number])
+    ? activeOverlayType
+    : null
+  const overlayTileParams = tileOverlayType
+    ? (() => {
+        const params = new URLSearchParams()
+        if (tileOverlayType !== 'hillshade') {
+          params.set('colormap', overlayOptions.colormap || 'terrain')
+        }
+        if (tileOverlayType === 'solar' || tileOverlayType === 'hillshade' || tileOverlayType === 'dust') {
+          params.set('sun_azimuth', String(overlayOptions.sunAzimuth || 315))
+          params.set('sun_altitude', String(overlayOptions.sunAltitude || 45))
+        }
+        if (tileOverlayType === 'hillshade') {
+          params.set('relief', String(overlayOptions.relief ?? relief))
+        }
+        if (tileOverlayType === 'solar' || tileOverlayType === 'dust') {
+          if (overlayOptions.marsSol !== undefined) params.set('mars_sol', String(overlayOptions.marsSol))
+          if (overlayOptions.season) params.set('season', overlayOptions.season)
+          if (overlayOptions.dustStormPeriod) params.set('dust_storm_period', overlayOptions.dustStormPeriod)
+        }
+        return params.toString()
+      })()
+    : ''
   const globalBasemapStyle = (import.meta.env.VITE_GLOBAL_BASEMAP_STYLE || 'blendshade').toLowerCase()
   const basemapTileUrl = apiUrl(
     `/visualization/tiles/basemap/global/{z}/{x}/{y}.png?${new URLSearchParams({
@@ -576,13 +643,13 @@ export default function TerrainMap({
   const totalPendingTiles = tilePending.basemap + tilePending.overlay
   const showActivity = probeLoading || coverageLoading || displayLoading || totalPendingTiles > 0
   const activityLabel = probeLoading
-    ? 'Sampling elevation…'
+    ? 'Sampling elevation...'
     : coverageLoading
-      ? 'Checking dataset coverage…'
+      ? 'Checking dataset coverage...'
       : displayLoading
-        ? 'Fetching overlay…'
+        ? 'Fetching overlay...'
         : totalPendingTiles > 0
-          ? `Loading map tiles… (${totalPendingTiles})`
+          ? `Loading map tiles... (${totalPendingTiles})`
           : null
 
   const bumpTilePending = useCallback((kind: 'basemap' | 'overlay', delta: number) => {
@@ -598,11 +665,16 @@ export default function TerrainMap({
     setLastTileErrorAt(Date.now())
   }, [])
 
+  const zoomPercent = Math.max(1, Math.round((viewState.zoom / 6) * 100))
+  const requestedDatasetName = String(dataset).toUpperCase()
+  const renderedDatasetName = (coverageStatus?.datasetUsed || dataset).toUpperCase()
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
         center={centerTuple}
         zoom={6}
+        zoomControl={false}
         style={{ height: '100%', width: '100%' }}
         className="bg-black"
         scrollWheelZoom={true}
@@ -614,6 +686,7 @@ export default function TerrainMap({
       >
         <MapResizeHandler />
         <ViewportTracker onViewportChange={handleViewportChange} />
+        <MapViewTracker onViewChange={setViewState} mapRef={mapRef} />
         {onRoiChange && targetRoi && (
           <EditableRoiRectangle roi={targetRoi} onRoiChange={onRoiChange} />
         )}
@@ -665,15 +738,7 @@ export default function TerrainMap({
             {tileOverlayType && (
               <TileLayer
                 url={apiUrl(
-                  `/visualization/tiles/overlay/${tileOverlayType}/${dataset}/{z}/{x}/{y}.png?${new URLSearchParams({
-                    colormap: overlayOptions.colormap || 'terrain',
-                    relief: String(overlayOptions.relief ?? relief),
-                    sun_azimuth: String(overlayOptions.sunAzimuth || 315),
-                    sun_altitude: String(overlayOptions.sunAltitude || 45),
-                    mars_sol: overlayOptions.marsSol ? String(overlayOptions.marsSol) : '',
-                    season: overlayOptions.season || '',
-                    dust_storm_period: overlayOptions.dustStormPeriod || '',
-                  }).toString()}`
+                  `/visualization/tiles/overlay/${tileOverlayType}/${dataset}/{z}/{x}/{y}.png?${overlayTileParams}`
                 )}
                 opacity={0.72}
                 tileSize={256}
@@ -726,19 +791,37 @@ export default function TerrainMap({
         </div>
       )}
 
-      {!useLegacyOverlay && coverageStatus && (
-        <div className="pointer-events-none absolute top-3 left-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
-          <div>Requested: {dataset.toUpperCase()}</div>
-          <div>
-            Rendered:{' '}
-            {coverageStatus.datasetUsed.toUpperCase()}
-            {coverageStatus.isFallback ? ' (fallback)' : ''}
-          </div>
-        </div>
-      )}
-
       {!useLegacyOverlay && (
         <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end">
+          <div className="pointer-events-auto bg-gray-900/85 border border-cyan-700/60 text-cyan-200 text-xs font-mono px-3 py-2 rounded min-w-[210px]">
+            <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Navigation</div>
+            <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => mapRef.current?.zoomIn()}
+                  className="h-7 w-7 rounded border border-cyan-600/70 bg-gray-800 text-cyan-100 hover:bg-cyan-900/40"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mapRef.current?.zoomOut()}
+                  className="h-7 w-7 rounded border border-cyan-600/70 bg-gray-800 text-cyan-100 hover:bg-cyan-900/40"
+                  aria-label="Zoom out"
+                >
+                  -
+                </button>
+              </div>
+              <div className="leading-5">
+                <div>LAT: {viewState.lat.toFixed(6)} deg</div>
+                <div>LON: {normalizeLon360(viewState.lon).toFixed(6)} deg</div>
+                <div>ZOOM: {zoomPercent}%</div>
+              </div>
+            </div>
+          </div>
+
           {onDatasetChange && (
             <div className="bg-gray-900/85 border border-cyan-700/60 text-cyan-200 text-xs font-mono px-3 py-2 rounded">
               <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Dataset</div>
@@ -773,7 +856,7 @@ export default function TerrainMap({
               <div className="text-[10px] text-red-200/80 mt-1">
                 If this persists, open{' '}
                 <Link to="/settings" className="pointer-events-auto underline hover:text-white">
-                  Settings → Data Management
+                  Settings to Data Management
                 </Link>{' '}
                 and download MOLA 200m / MOLA for this area.
               </div>
@@ -783,19 +866,31 @@ export default function TerrainMap({
       )}
 
       <div className="pointer-events-none absolute bottom-3 right-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
-        <div className="font-bold mb-1">DEM Probe (click map)</div>
-        {probeLoading && <div>Sampling elevation...</div>}
-        {!probeLoading && probeSample && (
-          <>
-            <div>LAT: {probeSample.lat.toFixed(4)}</div>
-            <div>LON: {probeSample.lon_360.toFixed(4)}</div>
-            <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
-            <div>DATASET: {(probeSample.dataset_used || probeSample.dataset).toUpperCase()}</div>
-            {probeSample.is_fallback && <div className="text-amber-300">Fallback active</div>}
-          </>
+        <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Map Source</div>
+        <div>Requested: {requestedDatasetName}</div>
+        <div>
+          Rendered: {renderedDatasetName}
+          {coverageStatus?.isFallback ? ' (fallback)' : ''}
+        </div>
+        {!!coverageStatus?.fallbackReason && (
+          <div className="text-[10px] text-amber-300/90 mt-1">Reason: {coverageStatus.fallbackReason}</div>
         )}
-        {!probeLoading && !probeSample && <div>No sample yet</div>}
-        {probeError && <div className="text-red-300 mt-1">Error: {probeError}</div>}
+
+        <div className="mt-2 pt-2 border-t border-cyan-800/60">
+          <div className="font-bold mb-1">Elevation Extraction (click map)</div>
+          {probeLoading && <div>Sampling elevation...</div>}
+          {!probeLoading && probeSample && (
+            <>
+              <div>LAT: {probeSample.lat.toFixed(4)}</div>
+              <div>LON: {probeSample.lon_360.toFixed(4)}</div>
+              <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
+              <div>DATASET: {(probeSample.dataset_used || probeSample.dataset).toUpperCase()}</div>
+              {probeSample.is_fallback && <div className="text-amber-300">Fallback active</div>}
+            </>
+          )}
+          {!probeLoading && !probeSample && <div>No sample yet</div>}
+          {probeError && <div className="text-red-300 mt-1">Error: {probeError}</div>}
+        </div>
       </div>
     </div>
   );

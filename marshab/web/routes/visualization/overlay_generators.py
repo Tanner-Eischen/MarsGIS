@@ -342,7 +342,7 @@ async def generate_dust_overlay(bbox, width, height, colormap, use_synthetic, lo
 
 
 async def generate_hillshade_overlay(
-    dem, bbox, cell_size_m, sun_azimuth, sun_altitude, width, height, use_synthetic, loop
+    dem, bbox, cell_size_m, sun_azimuth, sun_altitude, relief, width, height, use_synthetic, loop
 ):
     """Generate hillshade overlay."""
     if use_synthetic:
@@ -358,13 +358,15 @@ async def generate_hillshade_overlay(
             if nodata is not None:
                 elevation[elevation == nodata] = np.nan
 
-    def calc_hillshade(elev_arr, cell_size, az, alt):
+    def calc_hillshade(elev_arr, cell_size, az, alt, rel):
         analyzer = TerrainAnalyzer(cell_size_m=cell_size)
-        return analyzer.calculate_hillshade(elev_arr, az, alt)
+        # Map UI/API relief range [0,3] to z-factor [1,4] for hillshade exaggeration.
+        z_factor = 1.0 + max(0.0, float(rel))
+        return analyzer.calculate_hillshade(elev_arr, az, alt, z_factor=z_factor)
 
     with ThreadPoolExecutor() as executor:
         hillshade = await loop.run_in_executor(
-            executor, calc_hillshade, elevation, cell_size_m, sun_azimuth, sun_altitude
+            executor, calc_hillshade, elevation, cell_size_m, sun_azimuth, sun_altitude, relief
         )
 
     if hillshade.shape[0] != height or hillshade.shape[1] != width:

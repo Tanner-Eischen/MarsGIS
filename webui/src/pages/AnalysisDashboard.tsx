@@ -162,12 +162,7 @@ export default function AnalysisDashboard() {
             showWaypoints={true}
             onRoiChange={setRoi}
           />
-          {/* HUD anchored to map panel */}
-          <div className="absolute top-4 right-4 z-[1000] bg-gray-900/80 backdrop-blur border border-cyan-500/30 p-2 rounded text-xs font-mono text-cyan-400 pointer-events-none">
-            <div>LAT: {(roi.lat_min + roi.lat_max) / 2}°</div>
-            <div>LON: {(roi.lon_min + roi.lon_max) / 2}°</div>
-            <div>ZOOM: 100%</div>
-          </div>
+
         </div>
         {mode === '3d' && (
           <div className="w-1/2 relative border-l border-gray-700">

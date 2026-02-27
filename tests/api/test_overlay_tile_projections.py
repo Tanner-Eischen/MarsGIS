@@ -55,3 +55,19 @@ def test_hillshade_relief_changes_rendered_tile(client_with_cog):
     assert low_relief.status_code == 200
     assert high_relief.status_code == 200
     assert low_relief.content != high_relief.content
+
+
+def test_overlay_tile_cache_isolation_between_projection_types(client_with_cog):
+    """Different overlay types should not share the same disk-cache tile payload."""
+    hillshade = client_with_cog.get(
+        "/api/v1/visualization/tiles/overlay/hillshade/mola/2/4/1.png",
+        params={"sun_azimuth": "315", "sun_altitude": "45", "relief": "2.0"},
+    )
+    slope = client_with_cog.get(
+        "/api/v1/visualization/tiles/overlay/slope/mola/2/4/1.png",
+        params={"colormap": "viridis"},
+    )
+
+    assert hillshade.status_code == 200
+    assert slope.status_code == 200
+    assert hillshade.content != slope.content

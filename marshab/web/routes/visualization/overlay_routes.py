@@ -130,7 +130,9 @@ async def get_overlay_tile(
             response.headers["X-Fallback-Reason"] = resolution.fallback_reason
         return response
 
-    disk_path = tile_cache_path("overlay", dataset_cache, z, x, y, style_hash)
+    # Include overlay type in disk cache namespace so different projections
+    # (hillshade/slope/aspect/...) cannot overwrite each other's tile bytes.
+    disk_path = tile_cache_path(f"overlay_{overlay_type}", dataset_cache, z, x, y, style_hash)
     disk_cached = read_disk_cache(disk_path, TILE_CACHE.config.ttl_seconds)
     if disk_cached:
         _log_metric("tile.cache.hit.disk", 1, kind="overlay", overlay_type=overlay_type)

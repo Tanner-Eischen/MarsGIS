@@ -147,12 +147,6 @@ def _resolve_global_basemap_source(style: str | None = None) -> tuple[str, Path]
             path=str(override_path),
         )
 
-    # If style-specific source files are not provisioned, use local MOLA COG.
-    mola_cog = (os.getenv(MOLA_COG_PATH_ENV) or "").strip()
-    if mola_cog:
-        mola_cog_path = Path(mola_cog)
-        if mola_cog_path.exists():
-            return ("mola_cog", mola_cog_path)
     resolved_style = _normalize_global_basemap_style(style)
     fallback_order = [resolved_style] + [
         s for s in [DEFAULT_GLOBAL_BASEMAP_STYLE, "clrshade", "shade"] if s != resolved_style
@@ -176,6 +170,13 @@ def _resolve_global_basemap_source(style: str | None = None) -> tuple[str, Path]
                     return (style_name, candidate)
             except Exception:
                 continue
+
+    # Fall back to local MOLA COG when style-specific source files are not provisioned.
+    mola_cog = (os.getenv(MOLA_COG_PATH_ENV) or "").strip()
+    if mola_cog:
+        mola_cog_path = Path(mola_cog)
+        if mola_cog_path.exists():
+            return ("mola_cog", mola_cog_path)
     return None
 
 

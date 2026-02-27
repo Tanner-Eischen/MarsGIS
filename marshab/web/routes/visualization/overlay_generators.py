@@ -418,17 +418,22 @@ async def generate_terrain_metric_overlay(
             metric_data = (np.sin(2 * np.pi * xx) * np.cos(2 * np.pi * yy) + 1.0) * 100.0
     else:
         analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
-        metrics = analyzer.analyze(dem)
+        elevation = dem.values.astype(np.float32)
+        if hasattr(dem, "attrs") and "nodata" in dem.attrs:
+            nodata = dem.attrs["nodata"]
+            if nodata is not None:
+                elevation[elevation == nodata] = np.nan
 
+        # Compute only the requested terrain derivative.
         if metric_type == "slope":
-            metric_data = metrics.slope
+            metric_data = analyzer.calculate_slope(elevation)
         elif metric_type == "aspect":
-            metric_data = metrics.aspect
+            metric_data = analyzer.calculate_aspect(elevation)
             metric_data = np.where(metric_data < 0, 0, metric_data)
         elif metric_type == "roughness":
-            metric_data = metrics.roughness
+            metric_data = analyzer.calculate_roughness(elevation, window_size=5)
         elif metric_type == "tri":
-            metric_data = metrics.tri
+            metric_data = analyzer.calculate_tri(elevation)
         else:
             raise ValueError(f"Unknown metric type: {metric_type}")
 

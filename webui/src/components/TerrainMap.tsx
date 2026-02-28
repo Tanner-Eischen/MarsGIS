@@ -517,6 +517,7 @@ export default function TerrainMap({
   const [tilePending, setTilePending] = useState({ basemap: 0, overlay: 0 })
   const [tileErrorCount, setTileErrorCount] = useState(0)
   const [lastTileErrorAt, setLastTileErrorAt] = useState<number | null>(null)
+  const staleTileTimerRef = useRef<number | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const [viewState, setViewState] = useState<MapViewState>({
     lat: autoFitRoi && roi ? (Number(roi.lat_min) + Number(roi.lat_max)) / 2 : 0,
@@ -631,8 +632,13 @@ export default function TerrainMap({
   // Use global local-raster basemap tiles for robust pan/zoom coverage.
   // Keep analytical overlays separate to avoid stacking duplicate terrain layers.
   const supportedTileOverlays = ['elevation', 'solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri'] as const
+  const enableElevationTileOverlay = import.meta.env.VITE_ENABLE_ELEVATION_TILE_OVERLAY === 'true'
   const tileOverlayType = supportedTileOverlays.includes(activeOverlayType as (typeof supportedTileOverlays)[number])
-    ? activeOverlayType
+    ? (
+        activeOverlayType === 'elevation' && !enableElevationTileOverlay
+          ? null
+          : activeOverlayType
+      )
     : null
   const overlayTileParams = tileOverlayType
     ? (() => {
@@ -660,7 +666,7 @@ export default function TerrainMap({
     `/visualization/tiles/basemap/global/{z}/{x}/{y}.png?${new URLSearchParams({
       style: globalBasemapStyle,
       fallback_dataset: 'mola_200m',
-      allow_fallback: 'false',
+      allow_fallback: 'true',
     }).toString()}`
   )
 
@@ -672,7 +678,8 @@ export default function TerrainMap({
     : null
 
   const totalPendingTiles = tilePending.basemap + tilePending.overlay
-  const showActivity = probeLoading || coverageLoading || displayLoading || totalPendingTiles > 0
+  const showTileActivity = totalPendingTiles > 2
+  const showActivity = probeLoading || coverageLoading || displayLoading || showTileActivity
   const activityLabel = probeLoading
     ? 'Sampling elevation...'
     : coverageLoading
@@ -683,12 +690,37 @@ export default function TerrainMap({
           ? `Loading map tiles... (${totalPendingTiles})`
           : null
 
+  const scheduleTilePendingTimeout = useCallback(() => {
+    if (staleTileTimerRef.current !== null) {
+      window.clearTimeout(staleTileTimerRef.current)
+      staleTileTimerRef.current = null
+    }
+    staleTileTimerRef.current = window.setTimeout(() => {
+      setTilePending({ basemap: 0, overlay: 0 })
+      staleTileTimerRef.current = null
+    }, 12000)
+  }, [])
+
   const bumpTilePending = useCallback((kind: 'basemap' | 'overlay', delta: number) => {
     setTilePending((prev) => {
       const next = { ...prev }
       next[kind] = Math.max(0, next[kind] + delta)
       return next
     })
+    scheduleTilePendingTimeout()
+  }, [scheduleTilePendingTimeout])
+
+  useEffect(() => {
+    setTilePending({ basemap: 0, overlay: 0 })
+  }, [basemapTileUrl, tileOverlayType, overlayTileParams, datasetLower])
+
+  useEffect(() => {
+    return () => {
+      if (staleTileTimerRef.current !== null) {
+        window.clearTimeout(staleTileTimerRef.current)
+        staleTileTimerRef.current = null
+      }
+    }
   }, [])
 
   const recordTileError = useCallback(() => {
@@ -760,6 +792,8 @@ export default function TerrainMap({
               eventHandlers={{
                 tileloadstart: () => bumpTilePending('basemap', 1),
                 tileload: () => bumpTilePending('basemap', -1),
+                tileabort: () => bumpTilePending('basemap', -1),
+                tileunload: () => bumpTilePending('basemap', -1),
                 tileerror: () => {
                   bumpTilePending('basemap', -1)
                   recordTileError()
@@ -783,6 +817,8 @@ export default function TerrainMap({
                 eventHandlers={{
                   tileloadstart: () => bumpTilePending('overlay', 1),
                   tileload: () => bumpTilePending('overlay', -1),
+                  tileabort: () => bumpTilePending('overlay', -1),
+                  tileunload: () => bumpTilePending('overlay', -1),
                   tileerror: () => {
                     bumpTilePending('overlay', -1)
                     recordTileError()
@@ -866,26 +902,6 @@ export default function TerrainMap({
             </div>
           </div>
 
-          {onDatasetChange && (
-            <div className="bg-gray-900/85 border border-cyan-700/60 text-cyan-200 text-xs font-mono px-3 py-2 rounded">
-              <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Dataset</div>
-              <select
-                value={(datasetLower === 'hirise' || datasetLower === 'mola_200m' || datasetLower === 'mola') ? (datasetLower as MapDataset) : 'mola_200m'}
-                onChange={(e) => onDatasetChange(e.target.value as MapDataset)}
-                className="pointer-events-auto bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-xs focus:border-cyan-500 focus:outline-none"
-              >
-                <option value="hirise">HiRISE (1m)</option>
-                <option value="mola_200m">MOLA 200m (global)</option>
-                <option value="mola">MOLA 463m (global)</option>
-              </select>
-              <div className="mt-1 text-[10px] text-cyan-300/80">
-                <Link to="/settings" className="pointer-events-auto underline hover:text-white">
-                  Data settings / downloads
-                </Link>
-              </div>
-            </div>
-          )}
-
           {showActivity && activityLabel && (
             <div className="pointer-events-none bg-gray-900/85 border border-gray-700/60 text-gray-100 text-xs font-mono px-3 py-2 rounded flex items-center gap-2">
               <div className="h-3 w-3 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
@@ -909,17 +925,37 @@ export default function TerrainMap({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-3 right-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
-        <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Map Source</div>
-        <div>Requested: {requestedDatasetName}</div>
-        <div>
-          Rendered: {renderedDatasetName}
-          {coverageStatus?.isFallback ? ' (fallback)' : ''}
-        </div>
-        {!!coverageStatus?.fallbackReason && (
-          <div className="text-[10px] text-amber-300/90 mt-1">Reason: {coverageStatus.fallbackReason}</div>
+      <div className="pointer-events-auto absolute bottom-3 right-3 z-[1000] bg-gray-900/85 border border-cyan-700/60 text-cyan-300 text-xs font-mono px-3 py-2 rounded">
+        {onDatasetChange ? (
+          <>
+            <div className="text-[10px] uppercase tracking-wide text-cyan-400/90 mb-1">Dataset</div>
+            <select
+              value={(datasetLower === 'hirise' || datasetLower === 'mola_200m' || datasetLower === 'mola') ? (datasetLower as MapDataset) : 'mola_200m'}
+              onChange={(e) => onDatasetChange(e.target.value as MapDataset)}
+              className="bg-gray-800 border border-gray-600 text-white px-2 py-1 rounded text-xs focus:border-cyan-500 focus:outline-none"
+            >
+              <option value="hirise">HiRISE (1m)</option>
+              <option value="mola_200m">MOLA 200m (global)</option>
+              <option value="mola">MOLA 463m (global)</option>
+            </select>
+            <div className="mt-1 text-[10px] text-cyan-300/80">
+              <Link to="/settings" className="underline hover:text-white">
+                Data settings / downloads
+              </Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>Requested: {requestedDatasetName}</div>
+            <div>
+              Rendered: {renderedDatasetName}
+              {coverageStatus?.isFallback ? ' (fallback)' : ''}
+            </div>
+            {!!coverageStatus?.fallbackReason && (
+              <div className="text-[10px] text-amber-300/90 mt-1">Reason: {coverageStatus.fallbackReason}</div>
+            )}
+          </>
         )}
-
         <div className="mt-2 pt-2 border-t border-cyan-800/60">
           <div className="font-bold mb-1">Elevation Extraction (click map)</div>
           {probeLoading && <div>Sampling elevation...</div>}

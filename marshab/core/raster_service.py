@@ -24,6 +24,47 @@ logger = get_logger(__name__)
 MarsDataset = Literal["mola", "mola_200m", "hirise", "ctx"]
 
 
+def _resolve_local_mola_cog_path() -> Optional[Path]:
+    """Best-effort discovery for local MOLA COG used by tile rendering."""
+    env_path = (os.getenv("MARSHAB_MOLA_COG_PATH") or "").strip()
+    candidates: list[Path] = []
+    if env_path:
+        candidates.append(Path(env_path))
+
+    config = get_config()
+    candidates.extend(
+        [
+            config.paths.cache_dir / "mola_global_463m.cog.tif",
+            Path("/app/data/cache/mola_global_463m.cog.tif"),
+            Path("/var/data/cache/mola_global_463m.cog.tif"),
+            Path("/var/data/datasets/mola/Mars_MGS_MOLA_DEM_mosaic_global_463m.cog.tif"),
+        ]
+    )
+
+    for base in [config.paths.cache_dir, Path("/app/data/cache"), Path("/var/data/cache"), Path("/var/data/datasets/mola")]:
+        try:
+            for pattern in ("*mola*463m*.cog.tif", "*MOLA*463m*.cog.tif"):
+                candidates.extend(base.glob(pattern))
+        except Exception:
+            continue
+
+    seen: set[str] = set()
+    for candidate in candidates:
+        try:
+            resolved = str(candidate.resolve())
+        except Exception:
+            resolved = str(candidate)
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        try:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        except Exception:
+            continue
+    return None
+
+
 @dataclass
 class DatasetResolutionResult:
     dataset_requested: MarsDataset
@@ -232,12 +273,12 @@ def load_dem_window(
     resolution = resolve_dataset_with_fallback(dataset_normalized, bbox)
 
     # Prefer local COG when configured and MOLA is the resolved dataset
-    cog_path = os.getenv("MARSHAB_MOLA_COG_PATH")
-    if cog_path and Path(cog_path).exists() and resolution.dataset_used == "mola":
+    cog_path = _resolve_local_mola_cog_path()
+    if cog_path is not None and resolution.dataset_used == "mola":
         from marshab.core.cog_reader import read_cog_window
 
         roi_360 = bbox_to_lon360(bbox)
-        result = read_cog_window(cog_path, roi_360, target_shape)
+        result = read_cog_window(str(cog_path), roi_360, target_shape)
         # Override dataset_requested to reflect what caller asked for
         return RasterWindowResult(
             array=result.array,

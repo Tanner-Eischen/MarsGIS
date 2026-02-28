@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 import urllib.request
 
@@ -45,6 +46,7 @@ from ._helpers import (
 from .overlay_generators import generate_elevation_overlay
 
 router = APIRouter()
+TILE_ALLOW_DOWNLOAD = os.getenv("MARSHAB_TILE_ALLOW_DOWNLOAD", "true").lower() in {"1", "true", "yes"}
 
 
 @router.get("/visualization/basemap/{z}/{x}/{y}.png")
@@ -336,7 +338,7 @@ async def get_basemap_tile(dataset: str, z: int, x: int, y: int):
                 dataset_lower,
                 bbox,
                 target_shape=(256, 256),
-                allow_download=True,
+                allow_download=TILE_ALLOW_DOWNLOAD,
             )
         )
         dem = _build_dem_dataarray(raster_result)

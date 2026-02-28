@@ -47,6 +47,7 @@ from .overlay_generators import (
 )
 
 router = APIRouter()
+TILE_ALLOW_DOWNLOAD = os.getenv("MARSHAB_TILE_ALLOW_DOWNLOAD", "true").lower() in {"1", "true", "yes"}
 
 
 @router.get(
@@ -149,11 +150,14 @@ async def get_overlay_tile(
     _log_metric("tile.cache.miss", 1, kind="overlay", overlay_type=overlay_type)
     start = time.time()
     try:
-        raster_result = load_dem_window(
-            dataset_lower,
-            bbox,
-            target_shape=(256, 256),
-            allow_download=True,
+        raster_result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: load_dem_window(
+                dataset_lower,
+                bbox,
+                target_shape=(256, 256),
+                allow_download=TILE_ALLOW_DOWNLOAD,
+            ),
         )
         dem = _build_dem_dataarray(raster_result)
         loop = asyncio.get_event_loop()

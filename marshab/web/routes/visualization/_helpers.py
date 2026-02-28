@@ -38,6 +38,7 @@ TILE_CACHE = TileCache(
 )
 ENABLE_TILE_BASEMAP = os.getenv("MARSHAB_ENABLE_TILE_BASEMAP", "true").lower() in {"1", "true", "yes"}
 ENABLE_TILE_OVERLAYS = os.getenv("MARSHAB_ENABLE_TILE_OVERLAYS", "true").lower() in {"1", "true", "yes"}
+ENABLE_TILE_METRICS = os.getenv("MARSHAB_ENABLE_TILE_METRICS", "false").lower() in {"1", "true", "yes"}
 ORTHO_BASEMAP_PATH_ENV = "MARSHAB_ORTHO_BASEMAP_PATH"
 GLOBAL_BASEMAP_PATH_ENV = "MARSHAB_GLOBAL_BASEMAP_PATH"
 GLOBAL_BASEMAP_STYLE_ENV = "MARSHAB_GLOBAL_BASEMAP_STYLE"
@@ -68,6 +69,8 @@ def _build_dem_dataarray(raster_result) -> xr.DataArray:
 
 
 def _log_metric(name: str, value: float = 1.0, **fields) -> None:
+    if not ENABLE_TILE_METRICS:
+        return
     logger.info("metric", metric=name, value=value, **fields)
 
 

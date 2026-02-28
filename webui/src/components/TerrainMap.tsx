@@ -32,6 +32,12 @@ interface ElevationSample {
   elevation_max_m: number
 }
 
+type RawTileDecode = {
+  rows: number
+  cols: number
+  values: Float32Array
+}
+
 type MapDataset = 'hirise' | 'mola_200m' | 'mola'
 
 interface ViewportSample {
@@ -54,6 +60,7 @@ interface MapViewState {
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const roundTo = (value: number, step: number) => Math.round(value / step) * step
 const MAX_OVERLAY_PIXELS = 2_000_000
+const ELEVATION_PROBE_RAW_Z = 10
 
 const normalizeLon360 = (lon: number) => {
   let normalized = lon
@@ -67,6 +74,164 @@ const normalizeLon180 = (lon: number) => {
   while (normalized < -180) normalized += 360
   while (normalized > 180) normalized -= 360
   return normalized
+}
+
+const parseNpyFloat32 = (buffer: ArrayBuffer): RawTileDecode => {
+  const bytes = new Uint8Array(buffer)
+  if (bytes.length < 16) throw new Error('Invalid NPY payload (too small)')
+  if (bytes[0] !== 0x93 || bytes[1] !== 0x4e || bytes[2] !== 0x55 || bytes[3] !== 0x4d || bytes[4] !== 0x50 || bytes[5] !== 0x59) {
+    throw new Error('Invalid NPY payload (bad magic)')
+  }
+
+  const major = bytes[6]
+  const headerLengthOffset = major <= 1 ? 8 : 10
+  const headerLengthSize = major <= 1 ? 2 : 4
+  const headerLengthView = new DataView(buffer, headerLengthOffset, headerLengthSize)
+  const headerLength = major <= 1 ? headerLengthView.getUint16(0, true) : headerLengthView.getUint32(0, true)
+  const headerStart = major <= 1 ? 10 : 12
+  const headerEnd = headerStart + headerLength
+  if (headerEnd > bytes.length) throw new Error('Invalid NPY payload (header overflow)')
+
+  const header = new TextDecoder('ascii').decode(bytes.subarray(headerStart, headerEnd))
+  const descrMatch = /'descr'\s*:\s*'([^']+)'/.exec(header)
+  const shapeMatch = /'shape'\s*:\s*\(([^)]*)\)/.exec(header)
+  const fortranMatch = /'fortran_order'\s*:\s*(True|False)/.exec(header)
+  if (!descrMatch || !shapeMatch) throw new Error('Invalid NPY header')
+  if (fortranMatch?.[1] === 'True') throw new Error('Fortran-order NPY arrays are not supported')
+
+  const dims = shapeMatch[1]
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)
+    .map((v) => parseInt(v, 10))
+    .filter((v) => Number.isFinite(v))
+
+  if (dims.length !== 2) throw new Error('Expected 2D NPY array')
+  const rows = dims[0]
+  const cols = dims[1]
+  const expectedValues = rows * cols
+  const dtype = descrMatch[1]
+  const dataOffset = headerEnd
+
+  if (dtype === '<f4' || dtype === '|f4' || dtype === 'f4') {
+    const values = new Float32Array(buffer.slice(dataOffset))
+    if (values.length < expectedValues) throw new Error('NPY payload shorter than expected')
+    return { rows, cols, values: values.subarray(0, expectedValues) }
+  }
+  if (dtype === '<f8' || dtype === '|f8' || dtype === 'f8') {
+    const values64 = new Float64Array(buffer.slice(dataOffset))
+    if (values64.length < expectedValues) throw new Error('NPY payload shorter than expected')
+    const values32 = new Float32Array(expectedValues)
+    for (let i = 0; i < expectedValues; i++) values32[i] = values64[i]
+    return { rows, cols, values: values32 }
+  }
+  throw new Error(`Unsupported NPY dtype: ${dtype}`)
+}
+
+const parseHeaderBool = (value: string | null) => value === 'true'
+
+const sampleElevationFromRawTile = async (
+  dataset: string,
+  lat: number,
+  lon: number
+): Promise<ElevationSample> => {
+  const z = ELEVATION_PROBE_RAW_Z
+  const xTiles = 2 ** (z + 1)
+  const yTiles = 2 ** z
+  const lon180 = normalizeLon180(lon)
+  const tileX = clamp(Math.floor(((lon180 + 180) / 360) * xTiles), 0, xTiles - 1)
+  const tileY = clamp(Math.floor(((90 - lat) / 180) * yTiles), 0, yTiles - 1)
+  const params = new URLSearchParams({
+    stride: '1',
+    allow_download: 'true',
+  })
+  const path = `/visualization/tiles/elevation-raw/${encodeURIComponent(dataset)}/${z}/${tileX}/${tileY}.npy?${params.toString()}`
+  const response = await fetch(apiUrl(path))
+  if (!response.ok) {
+    let detail = ''
+    try {
+      const payload = await response.json()
+      detail = payload?.detail || payload?.error || ''
+    } catch {
+      detail = await response.text()
+    }
+    throw new Error(`Elevation sample failed: ${response.status} ${detail}`)
+  }
+
+  const { rows, cols, values } = parseNpyFloat32(await response.arrayBuffer())
+  if (rows < 1 || cols < 1 || values.length < rows * cols) {
+    throw new Error('Elevation sample failed: empty tile')
+  }
+
+  const left = Number(response.headers.get('X-Bounds-Left') || -180)
+  const right = Number(response.headers.get('X-Bounds-Right') || 180)
+  const bottom = Number(response.headers.get('X-Bounds-Bottom') || -90)
+  const top = Number(response.headers.get('X-Bounds-Top') || 90)
+
+  const lon360 = normalizeLon360(lon)
+  const lonForTile = lon180
+  const col = clamp(Math.round(((lonForTile - left) / Math.max(1e-12, right - left)) * (cols - 1)), 0, cols - 1)
+  const row = clamp(Math.round(((top - lat) / Math.max(1e-12, top - bottom)) * (rows - 1)), 0, rows - 1)
+  const nodataHeader = response.headers.get('X-NoData-Value')
+  const nodata = nodataHeader == null ? null : Number(nodataHeader)
+
+  const isValid = (value: number) => Number.isFinite(value) && (nodata == null || value !== nodata)
+  let sampleRow = row
+  let sampleCol = col
+  let sampledValue = values[sampleRow * cols + sampleCol]
+  if (!isValid(sampledValue)) {
+    let bestDistance = Number.POSITIVE_INFINITY
+    let bestIndex = -1
+    for (let r = 0; r < rows; r++) {
+      const rowOffset = r * cols
+      for (let c = 0; c < cols; c++) {
+        const v = values[rowOffset + c]
+        if (!isValid(v)) continue
+        const d2 = (r - sampleRow) * (r - sampleRow) + (c - sampleCol) * (c - sampleCol)
+        if (d2 < bestDistance) {
+          bestDistance = d2
+          bestIndex = rowOffset + c
+        }
+      }
+    }
+    if (bestIndex >= 0) {
+      sampleRow = Math.floor(bestIndex / cols)
+      sampleCol = bestIndex % cols
+      sampledValue = values[bestIndex]
+    } else {
+      throw new Error('Elevation sample failed: tile has no valid values')
+    }
+  }
+
+  let minValue = Number.POSITIVE_INFINITY
+  let maxValue = Number.NEGATIVE_INFINITY
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i]
+    if (!isValid(v)) continue
+    if (v < minValue) minValue = v
+    if (v > maxValue) maxValue = v
+  }
+  if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+    minValue = sampledValue
+    maxValue = sampledValue
+  }
+
+  return {
+    dataset: response.headers.get('X-Dataset-Requested') || dataset,
+    dataset_used: response.headers.get('X-Dataset-Used') || dataset,
+    is_fallback: parseHeaderBool(response.headers.get('X-Fallback-Used')),
+    fallback_reason: response.headers.get('X-Fallback-Reason'),
+    lat,
+    lon,
+    lon_360: lon360,
+    elevation_m: Number(sampledValue),
+    pixel_row: sampleRow,
+    pixel_col: sampleCol,
+    grid_shape: [rows, cols],
+    window_deg: 0,
+    elevation_min_m: Number(minValue),
+    elevation_max_m: Number(maxValue),
+  }
 }
 
 const boundsToViewportSample = (map: L.Map): ViewportSample => {
@@ -181,19 +346,9 @@ function ElevationProbe({
     click: async (event) => {
       const lat = event.latlng.lat
       const lon = event.latlng.lng
-      const params = new URLSearchParams({
-        dataset,
-        lat: String(lat),
-        lon: String(lon),
-      })
       onPending()
       try {
-        const response = await fetch(apiUrl(`/visualization/elevation-at?${params.toString()}`))
-        if (!response.ok) {
-          const detail = await response.text()
-          throw new Error(`Elevation sample failed: ${response.status} ${detail}`)
-        }
-        const data: ElevationSample = await response.json()
+        const data = await sampleElevationFromRawTile(dataset, lat, lon)
         onResult(data)
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown elevation sampling error'
@@ -315,6 +470,25 @@ function MapResizeHandler() {
     return () => observer.disconnect();
   }, [map]);
   return null;
+}
+
+function MapScaleControl() {
+  const map = useMap()
+
+  useEffect(() => {
+    const scale = L.control.scale({
+      position: 'bottomleft',
+      imperial: false,
+      metric: true,
+      maxWidth: 140,
+    })
+    scale.addTo(map)
+    return () => {
+      scale.remove()
+    }
+  }, [map])
+
+  return null
 }
 
 function MapViewTracker({
@@ -522,7 +696,7 @@ export default function TerrainMap({
   const [viewState, setViewState] = useState<MapViewState>({
     lat: autoFitRoi && roi ? (Number(roi.lat_min) + Number(roi.lat_max)) / 2 : 0,
     lon: autoFitRoi && roi ? normalizeLon180((Number(roi.lon_min) + Number(roi.lon_max)) / 2) : 0,
-    zoom: autoFitRoi ? 6 : 1,
+    zoom: autoFitRoi ? 8 : 2,
   })
   const useLegacyOverlay = import.meta.env.VITE_USE_LEGACY_IMAGE_OVERLAY === 'true'
 
@@ -736,7 +910,7 @@ export default function TerrainMap({
     <div className="relative h-full w-full">
       <MapContainer
         center={centerTuple}
-        zoom={autoFitRoi ? 6 : 1}
+        zoom={autoFitRoi ? 8 : 2}
         zoomControl={false}
         style={{ height: '100%', width: '100%' }}
         className="bg-black"
@@ -747,6 +921,7 @@ export default function TerrainMap({
         maxBounds={[[-90, -180], [90, 180]]}
         worldCopyJump={false}
       >
+        <MapScaleControl />
         <MapResizeHandler />
         <ViewportTracker onViewportChange={handleViewportChange} />
         <MapViewTracker onViewChange={setViewState} mapRef={mapRef} />
@@ -900,6 +1075,21 @@ export default function TerrainMap({
                 <div>ZOOM: {zoomPercent}%</div>
               </div>
             </div>
+            <div className="mt-2 pt-2 border-t border-cyan-800/60">
+              <div className="font-bold mb-1">Elevation Extraction (click map)</div>
+              {probeLoading && <div>Sampling elevation...</div>}
+              {!probeLoading && probeSample && (
+                <>
+                  <div>LAT: {probeSample.lat.toFixed(4)}</div>
+                  <div>LON: {probeSample.lon_360.toFixed(4)}</div>
+                  <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
+                  <div>DATASET: {(probeSample.dataset_used || probeSample.dataset).toUpperCase()}</div>
+                  {probeSample.is_fallback && <div className="text-amber-300">Fallback active</div>}
+                </>
+              )}
+              {!probeLoading && !probeSample && <div>No sample yet</div>}
+              {probeError && <div className="text-red-300 mt-1">Error: {probeError}</div>}
+            </div>
           </div>
 
           {showActivity && activityLabel && (
@@ -956,21 +1146,6 @@ export default function TerrainMap({
             )}
           </>
         )}
-        <div className="mt-2 pt-2 border-t border-cyan-800/60">
-          <div className="font-bold mb-1">Elevation Extraction (click map)</div>
-          {probeLoading && <div>Sampling elevation...</div>}
-          {!probeLoading && probeSample && (
-            <>
-              <div>LAT: {probeSample.lat.toFixed(4)}</div>
-              <div>LON: {probeSample.lon_360.toFixed(4)}</div>
-              <div>ELEV: {probeSample.elevation_m.toFixed(1)} m</div>
-              <div>DATASET: {(probeSample.dataset_used || probeSample.dataset).toUpperCase()}</div>
-              {probeSample.is_fallback && <div className="text-amber-300">Fallback active</div>}
-            </>
-          )}
-          {!probeLoading && !probeSample && <div>No sample yet</div>}
-          {probeError && <div className="text-red-300 mt-1">Error: {probeError}</div>}
-        </div>
       </div>
     </div>
   );

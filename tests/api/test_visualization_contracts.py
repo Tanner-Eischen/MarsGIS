@@ -30,6 +30,7 @@ def test_openapi_documents_503_real_dem_unavailable():
     for path in (
         "/api/v1/visualization/tiles/basemap/{dataset}/{z}/{x}/{y}.png",
         "/api/v1/visualization/tiles/overlay/{overlay_type}/{dataset}/{z}/{x}/{y}.png",
+        "/api/v1/visualization/tiles/elevation-raw/{dataset}/{z}/{x}/{y}.npy",
         "/api/v1/visualization/terrain-3d",
     ):
         assert "503" in paths[path]["get"]["responses"]

@@ -31,7 +31,7 @@ from marshab.core.raster_contracts import (
     REAL_DEM_UNAVAILABLE_STATUS_CODE,
     build_real_dem_unavailable_payload,
 )
-from marshab.core.raster_service import normalize_dataset, to_lon360
+from marshab.core.raster_service import compute_tile_bbox_epsg4326, normalize_dataset, to_lon360
 from marshab.exceptions import DataError
 from marshab.models import BoundingBox
 from marshab.web.routes.visualization import load_dem_window
@@ -51,6 +51,8 @@ DEM_WINDOW_CACHE = DemWindowMemoryCache(
         ttl_seconds=int(os.getenv("MARSHAB_DEM_WINDOW_CACHE_TTL", str(12 * 60 * 60))),
     )
 )
+
+RAW_ELEVATION_TILE_MAX_PIXELS = int(os.getenv("MARSHAB_RAW_ELEVATION_TILE_MAX_PIXELS", "12000000"))
 
 
 def _parse_roi_bounds(roi: str) -> tuple[float, float, float, float]:
@@ -102,6 +104,110 @@ def _dem_signature_for_cache(dataset_used: str, bbox: BoundingBox) -> str:
     except Exception:
         pass
     return "none"
+
+
+@router.get(
+    "/visualization/tiles/elevation-raw/{dataset}/{z}/{x}/{y}.npy",
+    responses=REAL_DEM_UNAVAILABLE_RESPONSE_DOC,
+)
+async def get_raw_elevation_tile(
+    dataset: str,
+    z: int,
+    x: int,
+    y: int,
+    stride: int = Query(
+        1,
+        ge=1,
+        le=16,
+        description="Optional nearest-neighbor decimation stride (no averaging).",
+    ),
+    allow_download: bool = Query(
+        True,
+        description="Allow DEM download/cache fill if tile is not already local.",
+    ),
+):
+    """Return native DEM samples for a tile as `.npy` (float32, no averaging)."""
+    try:
+        try:
+            dataset_lower = normalize_dataset(dataset)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid dataset. Use one of: mola, mola_200m, hirise, ctx")
+
+        try:
+            bbox = compute_tile_bbox_epsg4326(z, x, y)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        raster_result = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: load_dem_window(
+                dataset_lower,
+                bbox,
+                target_shape=None,
+                allow_download=allow_download,
+            ),
+        )
+
+        arr = raster_result.array
+        if arr.size == 0:
+            raise HTTPException(status_code=404, detail="No DEM samples available for tile")
+
+        # Preserve raw elevation values; optional stride is nearest-neighbor decimation only.
+        if stride > 1:
+            arr = arr[::stride, ::stride]
+
+        if arr.size > RAW_ELEVATION_TILE_MAX_PIXELS:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Raw elevation tile too large ({arr.shape[0]}x{arr.shape[1]}). "
+                    "Zoom in further or request a larger stride."
+                ),
+            )
+
+        arr_f32 = arr.astype(np.float32, copy=False)
+        out = io.BytesIO()
+        np.save(out, arr_f32, allow_pickle=False)
+        payload = out.getvalue()
+
+        response = Response(content=payload, media_type="application/x-npy")
+        response.headers["Cache-Control"] = "public, max-age=600"
+        response.headers["X-Dataset-Requested"] = raster_result.dataset_requested
+        response.headers["X-Dataset-Used"] = raster_result.dataset_used
+        response.headers["X-Fallback-Used"] = str(raster_result.is_fallback).lower()
+        if raster_result.fallback_reason:
+            response.headers["X-Fallback-Reason"] = raster_result.fallback_reason
+        response.headers["X-Array-Dtype"] = "float32"
+        response.headers["X-Array-Shape"] = f"{arr_f32.shape[0]},{arr_f32.shape[1]}"
+        response.headers["X-Subsample-Stride"] = str(stride)
+        response.headers["X-Bounds-Left"] = str(bbox.lon_min)
+        response.headers["X-Bounds-Right"] = str(bbox.lon_max)
+        response.headers["X-Bounds-Bottom"] = str(bbox.lat_min)
+        response.headers["X-Bounds-Top"] = str(bbox.lat_max)
+        if raster_result.nodata is not None:
+            response.headers["X-NoData-Value"] = str(raster_result.nodata)
+        if raster_result.resolution_m is not None:
+            response.headers["X-Resolution-M"] = str(raster_result.resolution_m)
+        response.headers["Content-Length"] = str(len(payload))
+        return response
+
+    except DataError as exc:
+        if exc.message == REAL_DEM_UNAVAILABLE_ERROR_CODE:
+            payload = build_real_dem_unavailable_payload(
+                detail="Real DEM data is unavailable for the requested raw tile.",
+                dataset_requested=dataset,
+                dataset_used=dataset,
+            )
+            return JSONResponse(
+                status_code=REAL_DEM_UNAVAILABLE_STATUS_CODE,
+                content=payload,
+            )
+        raise HTTPException(status_code=500, detail=str(exc))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to generate raw elevation tile", dataset=dataset, z=z, x=x, y=y)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/visualization/elevation-at")

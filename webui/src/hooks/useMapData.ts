@@ -121,7 +121,7 @@ export function useDemImage(roi: Roi | null, dataset: string, relief: number): I
   return demImage
 }
 
-function useGeoJson(path: string, enabled: boolean, refreshKey?: number) {
+function useGeoJson(path: string, enabled: boolean, refreshKey?: string | number) {
   const [data, setData] = useState<any>(null)
 
   useEffect(() => {
@@ -149,12 +149,42 @@ function useGeoJson(path: string, enabled: boolean, refreshKey?: number) {
   return data
 }
 
-export function useSitesGeoJson(enabled: boolean) {
-  return useGeoJson('/visualization/sites-geojson', enabled)
+interface SitesGeoJsonOptions {
+  analysisDir?: string
 }
 
-export function useWaypointsGeoJson(enabled: boolean, refreshKey?: number) {
-  return useGeoJson('/visualization/waypoints-geojson', enabled, refreshKey)
+interface WaypointsGeoJsonOptions {
+  analysisDir?: string
+  siteId?: number
+  strategy?: string
+  preferNavigationEndpoint?: boolean
+}
+
+export function useSitesGeoJson(enabled: boolean, options: SitesGeoJsonOptions = {}) {
+  const { analysisDir } = options
+  const params = new URLSearchParams()
+  if (analysisDir) params.set('analysis_dir', analysisDir)
+  const path = params.toString()
+    ? `/visualization/sites-geojson?${params.toString()}`
+    : '/visualization/sites-geojson'
+  return useGeoJson(path, enabled, path)
+}
+
+export function useWaypointsGeoJson(
+  enabled: boolean,
+  refreshKey?: string | number,
+  options: WaypointsGeoJsonOptions = {}
+) {
+  const { analysisDir, siteId, strategy } = options
+  const useNavigationScope = Boolean(options.preferNavigationEndpoint && analysisDir && siteId !== undefined)
+  const params = new URLSearchParams()
+  if (analysisDir) params.set('analysis_dir', analysisDir)
+  if (siteId !== undefined) params.set('site_id', String(siteId))
+  if (strategy && !useNavigationScope) params.set('strategy', strategy)
+  const basePath = useNavigationScope ? '/navigation/waypoints-geojson' : '/visualization/waypoints-geojson'
+  const path = params.toString() ? `${basePath}?${params.toString()}` : basePath
+  const compositeRefreshKey = `${refreshKey ?? 0}|${path}`
+  return useGeoJson(path, enabled, compositeRefreshKey)
 }
 
 // Unified overlay hook

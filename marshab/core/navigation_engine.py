@@ -14,7 +14,7 @@ from marshab.utils.roi import roi_from_two_sites
 from marshab.utils.sites import load_site_coords
 from marshab.models import BoundingBox, SiteCandidate, SiteOrigin
 from marshab.processing.coordinates import CoordinateTransformer
-from marshab.processing.pathfinding import AStarPathfinder
+from marshab.processing.pathfinding import AStarPathfinder, smooth_path
 from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface
 from marshab.utils.logging import get_logger
 
@@ -662,11 +662,26 @@ class NavigationEngine:
                 progress_callback("pathfinding", 0.3, "Running A* pathfinding...")
 
             try:
-                waypoint_pixels = pathfinder.find_path_with_waypoints(
-                    start_pixel,
-                    goal_pixel,
-                    max_waypoint_spacing=max_spacing_pixels
-                )
+                full_path = pathfinder.find_path(start_pixel, goal_pixel)
+                if not isinstance(full_path, list) or len(full_path) == 0:
+                    waypoint_pixels = pathfinder.find_path_with_waypoints(
+                        start_pixel,
+                        goal_pixel,
+                        max_waypoint_spacing=max_spacing_pixels
+                    )
+                else:
+                    if nav_config.enable_smoothing and len(full_path) > 2:
+                        smoothing_tolerance = max(1.0, nav_config.smoothing_tolerance / downsample_factor)
+                        full_path = smooth_path(full_path, cost_map, tolerance=smoothing_tolerance)
+
+                    waypoint_pixels = [full_path[0]]
+                    for idx in range(max_spacing_pixels, len(full_path), max_spacing_pixels):
+                        waypoint_pixels.append(full_path[idx])
+                    if waypoint_pixels[-1] != full_path[-1]:
+                        waypoint_pixels.append(full_path[-1])
+
+                if len(waypoint_pixels) == 0:
+                    raise NavigationError("No path found between start and goal")
 
                 # If we downsampled, upsample the waypoints back to original resolution
                 if downsample_factor > 1:
@@ -751,10 +766,11 @@ class NavigationEngine:
             # Create DataFrame
             waypoints_df = pd.DataFrame(waypoints_site)
 
-            total_distance = float(
-                np.sqrt(waypoints_df['x_meters'].iloc[-1]**2 +
-                       waypoints_df['y_meters'].iloc[-1]**2)
-            ) if len(waypoints_df) > 0 else 0.0
+            total_distance = 0.0
+            if len(waypoints_df) > 1:
+                dx = waypoints_df['x_meters'].diff().to_numpy()[1:]
+                dy = waypoints_df['y_meters'].diff().to_numpy()[1:]
+                total_distance = float(np.sum(np.sqrt(dx * dx + dy * dy)))
 
             logger.info(
                 "Navigation plan complete",
@@ -767,6 +783,8 @@ class NavigationEngine:
 
             return waypoints_df
 
+        except NavigationError:
+            raise
         except Exception as e:
             raise NavigationError(
                 "Navigation planning failed",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { planNavigation, NavigationRequest, getExampleROIs, ExampleROIItem, Waypoint } from '../services/api'
+import { planNavigation, NavigationRequest, getExampleROIs, ExampleROIItem, Waypoint, getStatus } from '../services/api'
 import MLSiteRecommendation from '../components/MLSiteRecommendation'
 import { useGeoPlan } from '../context/GeoPlanContext'
 import TerrainMap from '../components/TerrainMap'
@@ -64,12 +64,33 @@ export default function NavigationPlanning() {
   const [waypointsRefreshKey, setWaypointsRefreshKey] = useState(0)
   
   useEffect(() => {
-    const sLat = localStorage.getItem('nav.startLat')
-    const sLon = localStorage.getItem('nav.startLon')
-    const dir = localStorage.getItem('nav.analysisDir')
-    if (sLat) setStartLat(parseFloat(sLat))
-    if (sLon) setStartLon(parseFloat(sLon))
-    if (dir) setAnalysisDir(dir)
+    let cancelled = false
+    const initializeDefaults = async () => {
+      const sLat = localStorage.getItem('nav.startLat')
+      const sLon = localStorage.getItem('nav.startLon')
+      const dir = localStorage.getItem('nav.analysisDir')
+      if (sLat) setStartLat(parseFloat(sLat))
+      if (sLon) setStartLon(parseFloat(sLon))
+
+      if (dir) {
+        setAnalysisDir(dir)
+        return
+      }
+
+      try {
+        const status = await getStatus()
+        if (!cancelled && status.output?.directory) {
+          setAnalysisDir(status.output.directory)
+        }
+      } catch {
+        // Keep local fallback when status probe is unavailable.
+      }
+    }
+
+    initializeDefaults()
+    return () => {
+      cancelled = true
+    }
   }, [])
   useEffect(() => { localStorage.setItem('nav.startLat', String(startLat)) }, [startLat])
   useEffect(() => { localStorage.setItem('nav.startLon', String(startLon)) }, [startLon])
@@ -303,10 +324,10 @@ export default function NavigationPlanning() {
           <h3 className="text-lg font-bold mb-4 text-green-400 tracking-wider">
             FLIGHTPATH_DATA
           </h3>
-          {mutation.data.path_length_m && (
+          {Number.isFinite(mutation.data.total_distance_m) && (
              <div className="bg-gray-900 p-3 rounded border border-gray-700 mb-4 flex justify-between items-center">
                 <span className="text-xs text-gray-500">EST. DISTANCE</span>
-                <span className="text-lg font-mono text-white">{(mutation.data.path_length_m).toFixed(2)} m</span>
+                <span className="text-lg font-mono text-white">{mutation.data.total_distance_m.toFixed(2)} m</span>
              </div>
           )}
           <div className="overflow-x-auto max-h-60 custom-scrollbar">
@@ -342,9 +363,13 @@ export default function NavigationPlanning() {
               <TerrainMap
                 roi={computeRouteRoi(mutation.data.waypoints, startLat, startLon)}
                 dataset="mola"
+                analysisDir={analysisDir}
                 showWaypoints={true}
                 showSites={true}
                 waypointsRefreshKey={waypointsRefreshKey}
+                waypointsSiteId={mutation.data.site_id ?? siteId}
+                waypointsStrategy={strategy}
+                waypointsUseNavigationScope={true}
               />
             </div>
           ) : (

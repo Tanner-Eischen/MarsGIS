@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { runTraverseScenario, TraverseScenarioRequest, TraverseScenarioResponse } from '../services/api'
+import { getStatus, runTraverseScenario, TraverseScenarioRequest, TraverseScenarioResponse } from '../services/api'
 import { ChevronDown, ChevronUp, Route, Clock, AlertCircle, AlertTriangle, MapPin, Navigation } from 'lucide-react'
 
 const ROUTE_PRESETS = [
@@ -31,6 +31,22 @@ export default function TraverseScenarioForm() {
 
   // Results state
   const [results, setResults] = useState<TraverseScenarioResponse | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getStatus()
+      .then((status) => {
+        if (!cancelled && status.output?.directory) {
+          setAnalysisDir(status.output.directory)
+        }
+      })
+      .catch(() => {
+        // Keep local fallback when status endpoint is unavailable.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const mutation = useMutation({
     mutationFn: async (request: TraverseScenarioRequest) => {

@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -25,6 +26,15 @@ router = APIRouter(tags=["navigation"])
 
 # Thread pool for CPU-bound pathfinding operations
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="nav")
+
+
+def _compute_cumulative_distance_m(waypoints_df) -> float:
+    """Compute route length by summing waypoint segment distances."""
+    if len(waypoints_df) <= 1:
+        return 0.0
+    dx = waypoints_df["x_meters"].diff().to_numpy()[1:]
+    dy = waypoints_df["y_meters"].diff().to_numpy()[1:]
+    return float(np.sum(np.sqrt(dx * dx + dy * dy)))
 
 
 class NavigationRequest(BaseModel):
@@ -110,21 +120,21 @@ async def plan_route(request: NavigationRequest):
         analysis_dir.mkdir(parents=True, exist_ok=True)
         site_waypoints_file = analysis_dir / f"waypoints_site_{request.site_id}.csv"
         default_waypoints_file = analysis_dir / "waypoints.csv"
+        site_strategy_waypoints_file = analysis_dir / f"waypoints_{request.site_id}_{request.strategy.value}.csv"
         waypoints_df.to_csv(site_waypoints_file, index=False)
         waypoints_df.to_csv(default_waypoints_file, index=False)
+        waypoints_df.to_csv(site_strategy_waypoints_file, index=False)
 
         # Also write to output_dir for the /visualization/waypoints-geojson endpoint
         config = get_config()
         output_dir = config.paths.output_dir
         output_dir.mkdir(parents=True, exist_ok=True)
+        site_strategy_output_file = output_dir / f"waypoints_{request.site_id}_{request.strategy.value}.csv"
         strategy_waypoints_file = output_dir / f"waypoints_{request.strategy.value}.csv"
+        waypoints_df.to_csv(site_strategy_output_file, index=False)
         waypoints_df.to_csv(strategy_waypoints_file, index=False)
 
-        if len(waypoints_df) > 0:
-            last = waypoints_df.iloc[-1]
-            total_distance = float((last['x_meters']**2 + last['y_meters']**2)**0.5)
-        else:
-            total_distance = 0.0
+        total_distance = _compute_cumulative_distance_m(waypoints_df)
 
         logger.info(
             "Navigation planning completed",
@@ -215,6 +225,8 @@ async def get_waypoints_geojson(
             "features": features
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Failed to generate waypoints GeoJSON", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
@@ -262,6 +274,8 @@ async def plan_routes(request: MultiRouteRequest):
         cost_engine = RouteCostEngine()
         config = get_config()
         output_dir = config.paths.output_dir
+        analysis_dir = Path(request.analysis_dir)
+        analysis_dir.mkdir(parents=True, exist_ok=True)
         for strat in request.strategies:
             try:
                 df = await asyncio.wait_for(
@@ -282,11 +296,7 @@ async def plan_routes(request: MultiRouteRequest):
                 )
             except asyncio.TimeoutError:
                 raise HTTPException(status_code=504, detail="Navigation planning timed out")
-            if len(df) > 0:
-                last = df.iloc[-1]
-                dist = float((last['x_meters']**2 + last['y_meters']**2)**0.5)
-            else:
-                dist = 0.0
+            dist = _compute_cumulative_distance_m(df)
             weights = {
                 "distance": 1.0,
                 "slope_penalty": 1.0,
@@ -304,6 +314,11 @@ async def plan_routes(request: MultiRouteRequest):
             try:
                 fname = output_dir / f"waypoints_{request.site_id}_{strat.value}.csv"
                 df.to_csv(fname, index=False)
+            except Exception:
+                pass
+            try:
+                analysis_fname = analysis_dir / f"waypoints_{request.site_id}_{strat.value}.csv"
+                df.to_csv(analysis_fname, index=False)
             except Exception:
                 pass
         if not routes_data:

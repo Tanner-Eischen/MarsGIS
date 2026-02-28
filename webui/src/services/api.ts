@@ -113,7 +113,7 @@ export interface NavigationRequest {
   start_lon: number
   max_waypoint_spacing_m?: number
   max_slope_deg?: number
-  strategy?: 'safest' | 'balanced' | 'direct'  // Note: strategy is handled by backend config
+  strategy?: 'safest' | 'balanced' | 'direct'
   task_id?: string
 }
 
@@ -125,10 +125,10 @@ export interface Waypoint {
 }
 
 export interface NavigationResponse {
-  status: string
   waypoints: Waypoint[]
-  path_length_m?: number
   num_waypoints: number
+  total_distance_m: number
+  site_id: number
   task_id?: string
 }
 
@@ -164,6 +164,8 @@ export const planNavigation = async (request: NavigationRequest): Promise<Naviga
     start_lon: request.start_lon,
     max_waypoint_spacing_m: request.max_waypoint_spacing_m ?? 250.0,
     max_slope_deg: request.max_slope_deg || 25.0,
+    strategy: request.strategy || 'balanced',
+    task_id: request.task_id,
   })
   return response.data
 }

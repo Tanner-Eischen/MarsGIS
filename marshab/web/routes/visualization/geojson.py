@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
@@ -17,12 +18,19 @@ from ._helpers import logger
 router = APIRouter()
 
 
+def _resolve_results_dir(analysis_dir: str | None) -> Path:
+    if analysis_dir:
+        return Path(analysis_dir).expanduser()
+    return get_config().paths.output_dir
+
+
 @router.get("/visualization/sites-geojson")
-async def get_sites_geojson():
+async def get_sites_geojson(
+    analysis_dir: str | None = Query(None, description="Optional analysis directory containing sites.csv"),
+):
     """Get sites as GeoJSON for map visualization."""
     try:
-        config = get_config()
-        output_dir = config.paths.output_dir
+        output_dir = _resolve_results_dir(analysis_dir)
         sites_file = output_dir / "sites.csv"
 
         if not sites_file.exists():
@@ -118,19 +126,40 @@ async def get_sites_geojson():
 
 
 @router.get("/visualization/waypoints-geojson")
-async def get_waypoints_geojson():
+async def get_waypoints_geojson(
+    analysis_dir: str | None = Query(None, description="Optional analysis directory for waypoint CSVs"),
+    site_id: int | None = Query(None, description="Optional site filter"),
+    strategy: str | None = Query(None, description="Optional strategy filter (safest, balanced, direct)"),
+):
     """Get waypoints as GeoJSON LineString for path visualization."""
     try:
-        config = get_config()
-        output_dir = config.paths.output_dir
-        files = list(output_dir.glob("waypoints_*.csv"))
+        output_dir = _resolve_results_dir(analysis_dir)
+        files: list[Path] = []
+        if site_id is not None:
+            site_specific = output_dir / f"waypoints_site_{site_id}.csv"
+            if site_specific.exists():
+                files.append(site_specific)
+            files.extend(sorted(output_dir.glob(f"waypoints_{site_id}_*.csv")))
+        else:
+            files.extend(sorted(output_dir.glob("waypoints_*.csv")))
+            default_file = output_dir / "waypoints.csv"
+            if default_file.exists():
+                files.append(default_file)
+
+        if strategy:
+            normalized_strategy = strategy.strip().lower()
+            files = [
+                fpath for fpath in files
+                if fpath.stem.lower().endswith(f"_{normalized_strategy}") or fpath.stem.lower() == f"waypoints_{normalized_strategy}"
+            ]
+
         features = []
         if not files:
             return Response(
                 content=json.dumps({"type": "FeatureCollection", "features": []}),
                 media_type="application/json",
             )
-        colors = {"safest": "#00ff00", "balanced": "#1e90ff", "direct": "#ffa500"}
+        colors = {"safest": "#00ff00", "balanced": "#1e90ff", "direct": "#ffa500", "site_route": "#ef4444"}
         for fpath in files:
             try:
                 df = pd.read_csv(fpath)
@@ -165,9 +194,13 @@ async def get_waypoints_geojson():
                 features.append(point)
                 coords.append([lon, lat])
             if len(coords) > 1:
-                name = fpath.name
-                parts = name.split("_")
-                route_type = parts[-1].replace(".csv", "") if len(parts) >= 2 else "balanced"
+                stem = fpath.stem.lower()
+                if stem.startswith("waypoints_site_"):
+                    route_type = "site_route"
+                elif stem.startswith("waypoints_"):
+                    route_type = stem.split("_")[-1]
+                else:
+                    route_type = "route"
                 color = colors.get(route_type, "#ff0000")
                 features.append({
                     "type": "Feature",

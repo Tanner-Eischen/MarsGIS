@@ -32,6 +32,24 @@ export default function RoverTraverseWizard() {
   const [results, setResults] = useState<MultiRouteResponse | null>(null)
   const { recommendedLandingSiteId } = useGeoPlan()
 
+  useEffect(() => {
+    let cancelled = false
+    apiFetch('/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.output?.directory) {
+          setAnalysisDir(data.output.directory)
+        }
+      })
+      .catch(() => {
+        // Keep local default when status endpoint is unavailable.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Fetch route presets on mount
   useEffect(() => {
     apiFetch('/analysis/presets?scope=route')
@@ -301,8 +319,10 @@ export default function RoverTraverseWizard() {
             <TerrainMap
               roi={{ lat_min: 40.0, lat_max: 41.0, lon_min: 180.0, lon_max: 181.0 }}
               dataset="mola_200m"
+              analysisDir={analysisDir}
               showSites={true}
               showWaypoints={true}
+              waypointsSiteId={endSiteId}
             />
           </div>
 

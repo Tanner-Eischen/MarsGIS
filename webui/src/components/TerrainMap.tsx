@@ -398,8 +398,8 @@ const onEachFeature = (feature, layer, onSiteSelect) => {
   }
 };
 
-function SitesLayer({ showSites, onSiteSelect, selectedSiteId }) {
-  const sitesGeoJson = useSitesGeoJson(showSites);
+function SitesLayer({ showSites, onSiteSelect, selectedSiteId, analysisDir }) {
+  const sitesGeoJson = useSitesGeoJson(showSites, { analysisDir });
   if (!sitesGeoJson) return null;
 
   return (
@@ -411,8 +411,29 @@ function SitesLayer({ showSites, onSiteSelect, selectedSiteId }) {
   );
 }
 
-function WaypointsLayer({ showWaypoints, selectedSiteId, refreshKey }: { showWaypoints: boolean; selectedSiteId?: number; refreshKey?: number }) {
-  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints, refreshKey);
+function WaypointsLayer({
+  showWaypoints,
+  selectedSiteId,
+  refreshKey,
+  analysisDir,
+  siteId,
+  strategy,
+  preferNavigationEndpoint,
+}: {
+  showWaypoints: boolean
+  selectedSiteId?: number
+  refreshKey?: string | number
+  analysisDir?: string
+  siteId?: number
+  strategy?: string
+  preferNavigationEndpoint?: boolean
+}) {
+  const waypointsGeoJson = useWaypointsGeoJson(showWaypoints, refreshKey, {
+    analysisDir,
+    siteId,
+    strategy,
+    preferNavigationEndpoint,
+  });
   if (!waypointsGeoJson) return null;
 
   return (
@@ -429,10 +450,14 @@ interface TerrainMapProps {
   roi: any
   dataset?: MapDataset | string
   onDatasetChange?: (dataset: MapDataset) => void
+  analysisDir?: string
   autoFitRoi?: boolean
   showSites?: boolean
   showWaypoints?: boolean
-  waypointsRefreshKey?: number
+  waypointsRefreshKey?: string | number
+  waypointsSiteId?: number
+  waypointsStrategy?: string
+  waypointsUseNavigationScope?: boolean
   relief?: number
   onSiteSelect?: any
   selectedSiteId?: any
@@ -466,10 +491,14 @@ export default function TerrainMap({
   roi,
   dataset = 'hirise',
   onDatasetChange,
+  analysisDir,
   autoFitRoi = true,
   showSites = false,
   showWaypoints = false,
   waypointsRefreshKey,
+  waypointsSiteId,
+  waypointsStrategy,
+  waypointsUseNavigationScope = false,
   relief = 0,
   onSiteSelect,
   selectedSiteId,
@@ -773,11 +802,24 @@ export default function TerrainMap({
         {!useLegacyOverlay && autoFitRoi && roiBounds && <FitBounds bounds={roiBounds} fitKey={fitKey} />}
 
         {showSites && (
-          <SitesLayer showSites={showSites} onSiteSelect={onSiteSelect} selectedSiteId={selectedSiteId} />
+          <SitesLayer
+            showSites={showSites}
+            onSiteSelect={onSiteSelect}
+            selectedSiteId={selectedSiteId}
+            analysisDir={analysisDir}
+          />
         )}
 
         {showWaypoints && (
-          <WaypointsLayer showWaypoints={showWaypoints} selectedSiteId={selectedSiteId} refreshKey={waypointsRefreshKey} />
+          <WaypointsLayer
+            showWaypoints={showWaypoints}
+            selectedSiteId={selectedSiteId}
+            refreshKey={waypointsRefreshKey}
+            analysisDir={analysisDir}
+            siteId={waypointsSiteId}
+            strategy={waypointsStrategy}
+            preferNavigationEndpoint={waypointsUseNavigationScope}
+          />
         )}
       </MapContainer>
 

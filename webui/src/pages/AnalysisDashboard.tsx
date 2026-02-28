@@ -6,13 +6,16 @@ import OverlaySwitcher, { OverlayType } from '../components/OverlaySwitcher'
 import TerrainAnalysis from './TerrainAnalysis'
 import SolarAnalysis from './SolarAnalysis'
 import { getStatus } from '../services/api'
-import { Layers, Sun, Box, Activity } from 'lucide-react'
+import { Layers, Sun, Box, SlidersHorizontal, ChevronDown, ChevronRight } from 'lucide-react'
 
 const Terrain3D = lazy(() => import('../components/Terrain3D'))
 
 export default function AnalysisDashboard() {
   const [mode, setMode] = useState<'terrain' | 'solar' | '3d'>('terrain')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarTab, setSidebarTab] = useState<'analysis' | 'map'>('analysis')
+  const [analysisPanelOpen, setAnalysisPanelOpen] = useState(true)
+  const [mapPanelOpen, setMapPanelOpen] = useState(true)
   
   // Shared Map State
   const [roi, setRoi] = useState({ lat_min: 18.0, lat_max: 18.6, lon_min: 77.0, lon_max: 77.8 })
@@ -91,55 +94,121 @@ export default function AnalysisDashboard() {
           </button>
         </div>
 
+        {sidebarOpen && (
+          <div className="px-2 pb-2">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setSidebarTab('analysis')}
+                className={`flex items-center justify-center gap-2 p-2 rounded text-xs font-semibold transition-all ${
+                  sidebarTab === 'analysis'
+                    ? 'bg-cyan-900/50 text-cyan-300 border border-cyan-500/50'
+                    : 'bg-gray-800/70 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                }`}
+                title="Analysis Operations"
+              >
+                <Layers size={14} />
+                <span>Analysis</span>
+              </button>
+              <button
+                onClick={() => setSidebarTab('map')}
+                className={`flex items-center justify-center gap-2 p-2 rounded text-xs font-semibold transition-all ${
+                  sidebarTab === 'map'
+                    ? 'bg-cyan-900/50 text-cyan-300 border border-cyan-500/50'
+                    : 'bg-gray-800/70 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                }`}
+                title="Map Settings"
+              >
+                <SlidersHorizontal size={14} />
+                <span>Map</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Contextual Controls */}
         {sidebarOpen && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-             {/* Shared Overlay Controls */}
-             <div className="bg-gray-900/50 p-3 rounded border border-gray-700/50">
-                <OverlaySwitcher
-                  overlayType={overlayType}
-                  onOverlayTypeChange={setOverlayType}
-                  colormap={colormap}
-                  onColormapChange={setColormap}
-                  relief={relief}
-                  onReliefChange={setRelief}
-                  sunAzimuth={sunAzimuth}
-                  onSunAzimuthChange={setSunAzimuth}
-                  sunAltitude={sunAltitude}
-                  onSunAltitudeChange={setSunAltitude}
-                  dataset={dataset as any}
-                  roi={roi}
-                  showLayerList={false}
-                  showCacheStats={false}
-                />
-             </div>
+            {sidebarTab === 'analysis' && (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setAnalysisPanelOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded border border-cyan-700/50 bg-gray-900/60 text-cyan-300 text-xs font-semibold uppercase tracking-wide"
+                >
+                  <span>Analysis Operations</span>
+                  {analysisPanelOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
 
-             {/* Mode Specific Content */}
-             <div className="space-y-4">
-                {mode === 'terrain' && (
-                  <div className="text-sm text-gray-400">
-                    <h3 className="text-cyan-400 font-semibold mb-2 uppercase tracking-wider">Terrain Parameters</h3>
-                    <TerrainAnalysis 
-                      roi={roi} 
-                      onRoiChange={setRoi} 
-                      dataset={dataset} 
-                      onDatasetChange={setDataset} 
+                {analysisPanelOpen && (
+                  <div className="space-y-4">
+                    {mode === 'terrain' && (
+                      <div className="text-sm text-gray-400">
+                        <h3 className="text-cyan-400 font-semibold mb-2 uppercase tracking-wider">Terrain Parameters</h3>
+                        <TerrainAnalysis
+                          roi={roi}
+                          onRoiChange={setRoi}
+                          dataset={dataset}
+                          onDatasetChange={setDataset}
+                        />
+                      </div>
+                    )}
+
+                    {mode === 'solar' && (
+                      <div className="text-sm text-gray-400">
+                        <h3 className="text-amber-400 font-semibold mb-2 uppercase tracking-wider">Solar Config</h3>
+                        <SolarAnalysis
+                          roi={roi}
+                          onRoiChange={setRoi}
+                          dataset={dataset}
+                          onDatasetChange={setDataset}
+                        />
+                      </div>
+                    )}
+
+                    {mode === '3d' && (
+                      <div className="p-3 rounded border border-gray-700 bg-gray-900/50 text-xs text-gray-300">
+                        3D mode uses the active ROI and dataset from this dashboard.
+                        Use the <span className="text-cyan-300 font-semibold">Map</span> tab for overlays and map rendering controls.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {sidebarTab === 'map' && (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setMapPanelOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded border border-cyan-700/50 bg-gray-900/60 text-cyan-300 text-xs font-semibold uppercase tracking-wide"
+                >
+                  <span>Map & Overlay Settings</span>
+                  {mapPanelOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+
+                {mapPanelOpen && (
+                  <div className="bg-gray-900/50 p-3 rounded border border-gray-700/50">
+                    <OverlaySwitcher
+                      overlayType={overlayType}
+                      onOverlayTypeChange={setOverlayType}
+                      colormap={colormap}
+                      onColormapChange={setColormap}
+                      relief={relief}
+                      onReliefChange={setRelief}
+                      sunAzimuth={sunAzimuth}
+                      onSunAzimuthChange={setSunAzimuth}
+                      sunAltitude={sunAltitude}
+                      onSunAltitudeChange={setSunAltitude}
+                      dataset={dataset as any}
+                      roi={roi}
+                      showLayerList={false}
+                      showCacheStats={false}
                     />
                   </div>
                 )}
-                
-                {mode === 'solar' && (
-                   <div className="text-sm text-gray-400">
-                   <h3 className="text-amber-400 font-semibold mb-2 uppercase tracking-wider">Solar Config</h3>
-                   <SolarAnalysis 
-                      roi={roi} 
-                      onRoiChange={setRoi} 
-                      dataset={dataset} 
-                      onDatasetChange={setDataset}
-                   />
-                 </div>
-                )}
-             </div>
+              </div>
+            )}
           </div>
         )}
       </div>

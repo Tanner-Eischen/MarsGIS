@@ -26,7 +26,9 @@ interface OverlaySwitcherProps {
 const COLORMAPS = [
   { value: 'terrain', label: 'Natural Terrain' },
   { value: 'viridis', label: 'Viridis (Analytical)' },
-  { value: 'plasma', label: 'Plasma (Solar/Heat)' },
+  { value: 'plasma', label: 'Plasma (Thermal)' },
+  { value: 'inferno', label: 'Inferno (High Contrast)' },
+  { value: 'turbo', label: 'Turbo (Vivid Spectrum)' },
   { value: 'magma', label: 'Magma (Geological)' },
   { value: 'cividis', label: 'Cividis (Colorblind Safe)' },
 ]

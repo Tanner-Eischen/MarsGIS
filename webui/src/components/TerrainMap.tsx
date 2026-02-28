@@ -601,7 +601,7 @@ export default function TerrainMap({
 
   // Use global local-raster basemap tiles for robust pan/zoom coverage.
   // Keep analytical overlays separate to avoid stacking duplicate terrain layers.
-  const supportedTileOverlays = ['solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri'] as const
+  const supportedTileOverlays = ['elevation', 'solar', 'dust', 'hillshade', 'slope', 'aspect', 'roughness', 'tri'] as const
   const tileOverlayType = supportedTileOverlays.includes(activeOverlayType as (typeof supportedTileOverlays)[number])
     ? activeOverlayType
     : null
@@ -611,11 +611,11 @@ export default function TerrainMap({
         if (tileOverlayType !== 'hillshade') {
           params.set('colormap', overlayOptions.colormap || 'terrain')
         }
-        if (tileOverlayType === 'solar' || tileOverlayType === 'hillshade' || tileOverlayType === 'dust') {
+        if (tileOverlayType === 'elevation' || tileOverlayType === 'solar' || tileOverlayType === 'hillshade' || tileOverlayType === 'dust') {
           params.set('sun_azimuth', String(overlayOptions.sunAzimuth || 315))
           params.set('sun_altitude', String(overlayOptions.sunAltitude || 45))
         }
-        if (tileOverlayType === 'hillshade') {
+        if (tileOverlayType === 'elevation' || tileOverlayType === 'hillshade') {
           params.set('relief', String(overlayOptions.relief ?? relief))
         }
         if (tileOverlayType === 'solar' || tileOverlayType === 'dust') {

@@ -11,13 +11,16 @@ const Plot = createPlotlyComponent(Plotly as any);
 
 const toPlotlyColorScale = (colormap?: string, overlayType?: string) => {
   const source = (colormap || '').toLowerCase();
-  if (source === 'terrain') return 'Terrain';
+  if (source === 'terrain') return 'Earth';
   if (source === 'viridis') return 'Viridis';
   if (source === 'plasma') return 'Plasma';
   if (source === 'magma') return 'Magma';
   if (source === 'cividis') return 'Cividis';
+  if (source === 'inferno') return 'Inferno';
+  if (source === 'turbo') return 'Turbo';
   if (overlayType === 'solar') return 'Plasma';
-  return 'Terrain';
+  if (overlayType === 'aspect') return 'HSV';
+  return 'Earth';
 };
 
 interface Terrain3DProps {
@@ -67,6 +70,7 @@ export default function Terrain3D({
   const [showSiteLayer, setShowSiteLayer] = useState(true);
 
   const plotRef = useRef<PlotlyHTMLElement | null>(null);
+  const plotContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Use external rover position if provided, otherwise use internal state
   const roverPosition = externalRoverPosition;
@@ -87,6 +91,30 @@ export default function Terrain3D({
   useEffect(() => {
     setColorScale(toPlotlyColorScale(overlayOptions.colormap, overlayType));
   }, [overlayOptions.colormap, overlayType]);
+
+  useEffect(() => {
+    const container = plotContainerRef.current;
+    if (!container) return;
+
+    const resizePlot = () => {
+      if (!plotRef.current) return;
+      try {
+        Plotly.Plots.resize(plotRef.current);
+      } catch {
+        // Plotly can throw during rapid unmount/remount; safe to ignore.
+      }
+    };
+
+    resizePlot();
+    const observer = new ResizeObserver(() => resizePlot());
+    observer.observe(container);
+    window.addEventListener('resize', resizePlot);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', resizePlot);
+    };
+  }, []);
 
   // Keep hook order stable across loading/error/data states.
   // Resolve rover trace index from current Plotly graph data at runtime.
@@ -115,7 +143,7 @@ export default function Terrain3D({
 
   if (!roi) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6 text-center">
+      <div className="h-full overflow-y-auto bg-gray-800 p-6 text-center">
         <p className="text-gray-400">Select a region of interest to view 3D terrain visualization</p>
       </div>
     );
@@ -123,7 +151,7 @@ export default function Terrain3D({
 
   if (terrainLoading) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6 text-center">
+      <div className="h-full overflow-y-auto bg-gray-800 p-6 text-center">
         <p className="text-gray-300">Loading 3D terrain data...</p>
       </div>
     );
@@ -131,7 +159,7 @@ export default function Terrain3D({
 
   if (terrainError?.isServiceUnavailable) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="h-full overflow-y-auto bg-gray-800 p-6">
         <div className="p-4 bg-amber-900/40 border border-amber-600/70 rounded-md">
           <p className="text-amber-200 font-semibold">3D terrain service unavailable</p>
           <p className="text-amber-300 text-sm mt-1">{terrainError.message}</p>
@@ -145,7 +173,7 @@ export default function Terrain3D({
 
   if (terrainError) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="h-full overflow-y-auto bg-gray-800 p-6">
         <div className="p-4 bg-red-900/50 border border-red-700 rounded-md">
           <p className="text-red-300 font-semibold">Error loading 3D terrain</p>
           <p className="text-red-400 text-sm mt-1">{terrainError.message}</p>
@@ -159,7 +187,7 @@ export default function Terrain3D({
 
   if (!terrainData) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6 text-center">
+      <div className="h-full overflow-y-auto bg-gray-800 p-6 text-center">
         <p className="text-gray-400">No terrain data available</p>
       </div>
     );
@@ -168,7 +196,7 @@ export default function Terrain3D({
   const mesh = ((terrainData as any).mesh || terrainData) as { x: number[][]; y: number[][]; z: number[][] } | null;
   if (!mesh) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6 text-center">
+      <div className="h-full overflow-y-auto bg-gray-800 p-6 text-center">
         <p className="text-gray-400">No terrain mesh available</p>
       </div>
     );
@@ -331,7 +359,7 @@ export default function Terrain3D({
     paper_bgcolor: '#1f2937',
     plot_bgcolor: '#1f2937',
     font: { color: '#ffffff' },
-    margin: { l: 0, r: 0, t: 50, b: 0 },
+    margin: { l: 0, r: 0, t: 50, b: 20 },
   };
 
   const config = {
@@ -340,9 +368,14 @@ export default function Terrain3D({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="h-full min-h-0 overflow-y-auto bg-gray-800 p-4 md:p-6">
       {metadata && (
         <div className="mb-4 bg-gray-900/80 border border-cyan-700/50 rounded-md px-3 py-2 text-xs font-mono text-cyan-300">
+          <div className="text-cyan-100">SOURCE: Current map ROI + dataset controls</div>
+          <div className="text-cyan-200/85">If you have not drawn/edited an ROI yet, this uses the dashboard default ROI.</div>
+          <div className="mt-1">
+            ROI: LAT {roi.lat_min.toFixed(3)} to {roi.lat_max.toFixed(3)} | LON {roi.lon_min.toFixed(3)} to {roi.lon_max.toFixed(3)}
+          </div>
           <div>REQUESTED: {(metadata.datasetRequested || dataset).toUpperCase()}</div>
           <div>
             RENDERED: {(metadata.datasetUsed || dataset).toUpperCase()}
@@ -362,12 +395,13 @@ export default function Terrain3D({
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Color Scale</label>
             <select value={colorScale} onChange={e => setColorScale(e.target.value)} className="w-full bg-gray-700 text-white px-3 py-2 rounded-md text-sm">
-              <option>Terrain</option>
+              <option>Earth</option>
               <option>Viridis</option>
               <option>Plasma</option>
-              <option>Earth</option>
               <option>Magma</option>
               <option>Cividis</option>
+              <option>Inferno</option>
+              <option>Turbo</option>
             </select>
           </div>
           <div className="flex items-center">
@@ -381,7 +415,7 @@ export default function Terrain3D({
             <label className="text-xs text-gray-300"><input type="checkbox" checked={showSiteLayer} onChange={e => setShowSiteLayer(e.target.checked)} className="mr-1"/>Sites</label>
           </div>
       </div>
-      <div className="h-[600px] w-full rounded-md overflow-hidden border border-gray-700">
+      <div ref={plotContainerRef} className="w-full h-[62vh] min-h-[360px] rounded-md overflow-hidden border border-gray-700">
         <Plot
           data={traces}
           layout={layout}
@@ -390,6 +424,11 @@ export default function Terrain3D({
           useResizeHandler={true}
           onInitialized={(figure, graphDiv) => {
             plotRef.current = graphDiv as PlotlyHTMLElement;
+            try {
+              Plotly.Plots.resize(graphDiv as PlotlyHTMLElement);
+            } catch {
+              // Ignore initialization-time resize race.
+            }
           }}
         />
       </div>

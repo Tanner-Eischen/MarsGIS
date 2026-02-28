@@ -166,7 +166,7 @@ export default function AnalysisDashboard() {
 
         </div>
         {mode === '3d' && (
-          <div className="w-1/2 relative border-l border-gray-700">
+          <div className="w-1/2 relative border-l border-gray-700 h-full overflow-y-auto">
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-full w-full bg-gray-900 text-cyan-400 font-mono">

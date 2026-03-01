@@ -689,9 +689,11 @@ export default function TerrainMap({
   const [coverageStatus, setCoverageStatus] = useState<{ datasetUsed: string; isFallback: boolean; fallbackReason?: string | null } | null>(null)
   const [coverageLoading, setCoverageLoading] = useState(false)
   const [tilePending, setTilePending] = useState({ basemap: 0, overlay: 0 })
+  const [overlayLayerEnabled, setOverlayLayerEnabled] = useState(false)
   const [tileErrorCount, setTileErrorCount] = useState(0)
   const [lastTileErrorAt, setLastTileErrorAt] = useState<number | null>(null)
   const staleTileTimerRef = useRef<number | null>(null)
+  const overlayEnableTimerRef = useRef<number | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const [viewState, setViewState] = useState<MapViewState>({
     lat: autoFitRoi && roi ? (Number(roi.lat_min) + Number(roi.lat_max)) / 2 : 0,
@@ -884,8 +886,25 @@ export default function TerrainMap({
     scheduleTilePendingTimeout()
   }, [scheduleTilePendingTimeout])
 
+  const markBasemapVisible = useCallback(() => {
+    setOverlayLayerEnabled((prev) => prev || true)
+    if (overlayEnableTimerRef.current !== null) {
+      window.clearTimeout(overlayEnableTimerRef.current)
+      overlayEnableTimerRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     setTilePending({ basemap: 0, overlay: 0 })
+    setOverlayLayerEnabled(false)
+    if (overlayEnableTimerRef.current !== null) {
+      window.clearTimeout(overlayEnableTimerRef.current)
+    }
+    // Progressive render: show basemap first, then enable overlay shortly after.
+    overlayEnableTimerRef.current = window.setTimeout(() => {
+      setOverlayLayerEnabled(true)
+      overlayEnableTimerRef.current = null
+    }, 900)
   }, [basemapTileUrl, tileOverlayType, overlayTileParams, datasetLower])
 
   useEffect(() => {
@@ -893,6 +912,10 @@ export default function TerrainMap({
       if (staleTileTimerRef.current !== null) {
         window.clearTimeout(staleTileTimerRef.current)
         staleTileTimerRef.current = null
+      }
+      if (overlayEnableTimerRef.current !== null) {
+        window.clearTimeout(overlayEnableTimerRef.current)
+        overlayEnableTimerRef.current = null
       }
     }
   }, [])
@@ -957,7 +980,7 @@ export default function TerrainMap({
             <TileLayer
               url={basemapTileUrl}
               tileSize={256}
-              keepBuffer={1}
+              keepBuffer={0}
               updateWhenIdle={true}
               updateWhenZooming={false}
               updateInterval={300}
@@ -966,7 +989,10 @@ export default function TerrainMap({
               noWrap={true}
               eventHandlers={{
                 tileloadstart: () => bumpTilePending('basemap', 1),
-                tileload: () => bumpTilePending('basemap', -1),
+                tileload: () => {
+                  bumpTilePending('basemap', -1)
+                  markBasemapVisible()
+                },
                 tileabort: () => bumpTilePending('basemap', -1),
                 tileunload: () => bumpTilePending('basemap', -1),
                 tileerror: () => {
@@ -975,14 +1001,14 @@ export default function TerrainMap({
                 },
               }}
             />
-            {tileOverlayType && (
+            {tileOverlayType && overlayLayerEnabled && (
               <TileLayer
                 url={apiUrl(
                   `/visualization/tiles/overlay/${tileOverlayType}/${dataset}/{z}/{x}/{y}.png?${overlayTileParams}`
                 )}
                 opacity={0.72}
                 tileSize={256}
-                keepBuffer={1}
+                keepBuffer={0}
                 updateWhenIdle={true}
                 updateWhenZooming={false}
                 updateInterval={300}

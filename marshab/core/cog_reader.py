@@ -15,7 +15,8 @@ import rasterio
 from rasterio.enums import Resampling
 from rasterio.transform import from_bounds
 from rasterio.warp import transform_bounds
-from rasterio.windows import Window, from_bounds as window_from_bounds
+from rasterio.windows import Window
+from rasterio.windows import from_bounds as window_from_bounds
 
 from marshab.core.raster_service import RasterWindowResult
 from marshab.models import BoundingBox

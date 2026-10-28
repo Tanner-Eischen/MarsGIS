@@ -1,20 +1,17 @@
 """API tests for overlay tiles when using local COG."""
 
 import sys
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from marshab.web.api import create_app
 
-FIXTURE_COG = Path(__file__).resolve().parent.parent / "fixtures" / "dem_small.cog.tif"
-
 
 @pytest.fixture
-def client_with_cog(monkeypatch):
+def client_with_cog(monkeypatch, dem_small_cog):
     """Client with MARSHAB_MOLA_COG_PATH pointing to fixture (no downloads)."""
-    monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(FIXTURE_COG))
+    monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(dem_small_cog))
     monkeypatch.setenv("MARSHAB_MOLA_COG_URL", "")
     app = create_app()
     return TestClient(app)

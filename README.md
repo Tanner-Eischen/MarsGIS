@@ -1,210 +1,83 @@
-# MarsHab Site Selector
+# MarsHab / MarsGIS
 
-MarsHab is a Mars terrain intelligence platform for planning where to build, how to traverse, and how to operate safely.
-It combines real digital elevation models (DEMs), terrain analytics, multi-criteria scoring, and route planning into one API + web app.
+MarsHab is a scientific software portfolio project for comparing Mars terrain and planning terrain-constrained routes. The validated example turns a measured NASA MRO CTX digital elevation model into terrain derivatives, a transparent suitability score, three candidate comparisons, and exported routes.
 
-## Live Deployment
+The emphasis is reproducible geospatial computation: explicit units and coordinate systems, invalid-data masks, analytical tests, independent shortest-path references, and inspectable outputs. Candidate scores illustrate terrain tradeoffs; they do not establish habitat safety.
 
-- Frontend: https://marshab-web.onrender.com/
-- Backend API: https://marshab-api.onrender.com
-- API Docs (OpenAPI): https://marshab-api.onrender.com/docs
+![Jezero DEM, slope and terrain-constrained routes](docs/assets/jezero-comparison.png)
 
-## What It Is
+## Reproduce the example
 
-MarsHab is a geospatial decision system built for Mars mission planning workflows:
+Requirements: Python **3.11**, [uv](https://docs.astral.sh/uv/), internet for the first 9.7 MB DEM download. No credentials, paid APIs, or manual dataset acquisition. Subsequent runs use the checksum-verified local source.
 
-- Site selection for habitat construction
-- Terrain-aware rover routing
-- Elevation-driven map products (hillshade, slope, roughness, TRI)
-- Solar potential analysis and mission support overlays
+From the repository root, on Windows PowerShell:
 
-## What Problem It Solves
-
-Mars mission planning usually requires multiple disconnected tools. MarsHab unifies them so teams can:
-
-- Identify safer build zones faster
-- Avoid manually stitching DEM analysis and route planning
-- Use the same data stack from map view to numeric elevation probe
-- Expose planning workflows through a production API for automation
-
-## How It Works
-
-1. Load DEM windows from configured datasets (MOLA, MOLA 200m, HiRISE, CTX).
-2. Compute terrain derivatives (slope, aspect, roughness, TRI, hillshade).
-3. Score candidate regions using weighted criteria.
-4. Generate routes and waypoints to selected targets.
-5. Serve map tiles, overlays, 3D terrain payloads, and analysis artifacts through REST endpoints.
-
-## Main Features
-
-- DEM ingestion with cache-aware window extraction
-- Global basemap + overlay tile endpoints for smooth pan/zoom
-- Terrain projection overlays: `elevation`, `hillshade`, `slope`, `aspect`, `roughness`, `tri`, `solar`, `dust`
-- Elevation sampling endpoint for exact numeric probe values at clicked coordinates
-- 3D terrain payload endpoint for rotatable mesh visualization
-- Site scoring and decision-brief generation
-- Single-route and multi-route rover planning
-- Solar analysis endpoint and map overlays
-- Project CRUD endpoints for saved planning runs
-
-## Architecture
-
-- `webui/`: React + Leaflet + Plotly frontend
-- `marshab/web/`: FastAPI routes and API composition
-- `marshab/core/`: DEM loading, raster services, caching, analysis orchestration
-- `marshab/processing/`: Terrain metrics, pathfinding, coordinate transforms
-- `data/`: local cache, outputs, and generated artifacts
-
-## Quick Start (Local)
-
-### Prerequisites
-
-- Python 3.11+
-- Poetry
-- Node.js 18+
-
-### Backend
-
-```bash
-poetry install
-poetry run python -m marshab.web.server
+```powershell
+uv venv --python 3.11 .venv
+uv pip sync --python .venv/Scripts/python.exe requirements-dev.lock
+uv pip install --python .venv/Scripts/python.exe --no-deps -e .
+.venv/Scripts/python.exe scripts/run_portfolio_demo.py
+.venv/Scripts/python.exe scripts/verify_portfolio_demo.py
 ```
 
-### Frontend
+On Linux/macOS, substitute `.venv/bin/python` for `.venv/Scripts/python.exe`. Linux CI is configured; this revision was verified locally on Windows. `requirements.lock` pins runtime dependencies; `requirements-dev.lock` adds the pinned test tools. `poetry.lock` and the Conda/Docker configuration are legacy environments and were not used for the results below.
 
-```bash
+The script downloads the source to `data/source/jezero_ctx_20m.tif`, refuses checksum mismatches, and writes to `data/output/portfolio_demo/`:
+
+| Artifact | Contents |
+| --- | --- |
+| `suitability.tif` | Float32 score, native analysis-grid Mars CRS, transform and NoData |
+| `terrain.tif` | Elevation, slope, aspect, roughness, TRI, hillshade and route-cost bands with units |
+| `routes.geojson` | Three complete unsmoothed routes, candidate coordinates and cost comparisons |
+| `report.md` | Candidate metrics, assumptions, limitations and figure |
+| `comparison.png` | DEM, slope, suitability and route figure |
+| `manifest.json` | Source URL/SHA-256, ROI, source/analysis CRS, resolution, parameters, software/source versions and output checksums |
+
+Two local runs, including a fresh environment and a fresh source download, produced identical artifact checksums. To repeat that check, run with `--output-dir data/output/repeat`, then run `scripts/verify_portfolio_demo.py --compare data/output/repeat`.
+
+**Planetary coordinates:** GeoJSON stores Mars east longitude and planetocentric latitude in degrees, declared in its metadata. It is not terrestrial RFC 7946/WGS84 GeoJSON. Use a planetary-aware tool; the GeoTIFFs contain a machine-readable Mars CRS.
+
+## What the example demonstrates
+
+1. Reproject the documented CTX 20 m DEM to a local spherical azimuthal equidistant grid at 20 m spacing.
+2. Calculate slope, downslope aspect, 5x5 elevation standard deviation, mean absolute neighbor-difference TRI, and hillshade.
+3. Score slope and roughness with weights 0.70/0.30, both lower-is-better, over jointly valid cells.
+4. Compare the three highest-scoring candidate cells in the largest traversable component, separated by at least 1.5 km and excluded from the raster boundary.
+5. Route from a common proposed start using eight-connected A*, exact diagonal distances and no corner cutting. Compare the optimized terrain cost with a distance-only route over the same passable cells.
+6. Reopen and independently check exports, masks, coordinates, route connectivity and accumulated costs.
+
+The source is [USGS's Jezero CTX stereo DEM](https://www.usgs.gov/media/images/m20jezerocraterctxdemmosaic20m100jpg), derived from NASA MRO observations and controlled to MOLA. Read [scientific methods and numerical tolerances](docs/scientific-methods.md), the [feature-verification matrix](docs/feature-verification.md), and the [interview walkthrough](docs/portfolio-walkthrough.md).
+
+## Validation
+
+```powershell
+.venv/Scripts/python.exe -m pytest -q
+.venv/Scripts/python.exe -m ruff check marshab tests scripts
 cd webui
-npm install
-npm run dev
+npm ci
+npm run lint
+npm run build
 ```
 
-Open `http://localhost:4000` for local UI development.
+Local result: **317 tests passed, one Windows-specific legacy cache test skipped; 54% overall coverage**. The full Python suite runs offline with temporary storage and generated fixtures. Numerical tests include analytical terrain surfaces, hand-calculated suitability scores, independent SciPy Dijkstra comparisons, Mars coordinate round trips, metadata-preserving exports, and repeated-run configuration isolation. Passing mocked API tests establish contracts, not real-data scientific correctness.
 
-## Deployment (Render)
+CI runs the complete offline suite on Windows and Linux, frontend lint/build, and a separate real-DEM demonstration with artifact verification/upload. Remote results are recorded in the PR checks and [GitHub Actions](https://github.com/Tanner-Eischen/MarsGIS/actions/workflows/ci.yml).
 
-### Frontend
+## Architecture and scope
 
-Deploy `webui` as a static site on Render and point it to the API service.
+- `marshab/analysis/portfolio.py`: strict real-data example orchestration.
+- `marshab/processing/`: shared terrain, DEM ingestion, scoring and pathfinding kernels.
+- `marshab/analysis/export.py`: metadata-preserving suitability export.
+- `marshab/core/` and `marshab/web/`: legacy analysis orchestration, caching, FastAPI and navigation services.
+- `webui/`: React, Leaflet and Plotly interface; local lint/build verified, interactive workflows unverified.
+- `tests/`: scientific assertions, API contracts and integration checks.
 
-Required frontend env var:
+The example intentionally uses only measured terrain criteria. Solar exposure and energy estimates, dust/science-value proxies, mission economics, ML recommendations, legacy cache/projection branches and complete UI workflows are **outside the validated portfolio scope**. Their remaining gaps are recorded in the matrix.
 
-- `VITE_API_URL=https://marshab-api.onrender.com/api/v1`
+## API, frontend and deployment
 
-### Backend
+The existing API can be started with `.venv/Scripts/python.exe -m marshab.web.server`; the frontend uses `npm run dev` from `webui/`. API schema is available locally at `/docs`. The flagship CLI does not require either service and does not populate the legacy API cache.
 
-Deploy API service with `render.yaml` / Docker.
+The previously advertised Render frontend and API health URLs returned **HTTP 404 on 2026-10-27**. There is no verified live deployment. `render.yaml` and Docker configuration remain for future deployment review; a liveness response alone would not establish DEM readiness.
 
-Recommended backend env vars:
-
-- `MARSHAB_CORS_ORIGINS=https://marshab-web.onrender.com`
-- `MARSHAB_MOLA_COG_PATH=/app/data/cache/mola_global_463m.cog.tif`
-- `MARSHAB_MOLA_COG_URL=<direct-binary-url-to-cog>`
-- `MARSHAB_MOLA_COG_BOOTSTRAP_MODE=blocking`
-- `MARSHAB_MOLA_COG_REQUIRED=true`
-- `MARSHAB_PREWARM_COG=true`
-- `MARSHAB_WEB_HOST=0.0.0.0`
-- `MARSHAB_WEB_RELOAD=false`
-
-Notes:
-
-- Use a direct binary URL for COG downloads (not a release HTML page).
-- Persist DEMs on the mounted data disk path so files survive restarts.
-
-## Key API Endpoints
-
-Base URL: `/api/v1`
-
-### Health and Status
-
-- `GET /health/live` - liveness probe
-- `GET /health/ready` - readiness check
-- `GET /status` - service and cache status
-- `GET /demo-mode` - current demo-mode flag
-- `POST /demo-mode` - update demo-mode flag
-
-### Analysis
-
-- `POST /analyze` - run primary analysis pipeline
-- `POST /analysis/site-scores` - compute candidate site scores
-- `POST /analysis/decision-brief` - generate ranked decision brief
-- `POST /analysis/route-plan` - route planning analysis payload
-- `POST /analysis/route-cost` - route cost computation
-
-### Navigation
-
-- `POST /navigation/plan-route` - single route generation
-- `POST /navigation/plan-routes` - multi-strategy route generation
-- `GET /navigation/waypoints-geojson` - route output as GeoJSON
-
-### Visualization
-
-- `GET /visualization/elevation-at` - sample elevation at lat/lon
-- `GET /visualization/terrain-3d` - 3D terrain scene payload
-- `GET /visualization/dem-window.tif` - float32 DEM GeoTIFF window
-- `GET /visualization/dem-image` - DEM preview image
-- `GET /visualization/overlay` - generated overlay image
-- `GET /visualization/tiles/basemap/global/{z}/{x}/{y}.png` - global basemap tiles
-- `GET /visualization/tiles/basemap/{dataset}/{z}/{x}/{y}.png` - DEM-backed basemap tiles
-- `GET /visualization/tiles/overlay/{overlay_type}/{dataset}/{z}/{x}/{y}.png` - overlay tiles
-- `GET /visualization/sites-geojson` - site features
-- `GET /visualization/waypoints-geojson` - waypoint features
-- `GET /visualization/dataset-coverage` - dataset availability/fallback metadata
-
-### Solar and Mission
-
-- `POST /solar/analyze` - solar irradiance and mission-energy analysis
-- `GET /solar/health` - solar service health
-- `POST /mission/landing-scenario` - landing scenario evaluation
-- `POST /mission/rover-traverse` - traverse scenario evaluation
-
-### Data and Export
-
-- `POST /download` - dataset fetch/caching workflows
-- `POST /download/prewarm/mola-tiles` - prewarm MOLA tiles
-- `POST /download/prewarm/examples` - prewarm examples
-- `POST /export/suitability-geotiff` - export suitability raster
-- `POST /export/report` - export analysis report
-
-### AI and Projects
-
-- `POST /ai-query` - AI-assisted query endpoint
-- `GET /ai-query/examples` - AI query examples
-- `GET /ai-query/capabilities` - AI capabilities metadata
-- `GET /projects` - list projects
-- `POST /projects` - create project
-- `GET /projects/{project_id}` - get project
-- `DELETE /projects/{project_id}` - delete project
-
-### WebSocket
-
-- `WS /ws/progress/{task_id}` - real-time long-running task progress stream
-
-## CLI Examples
-
-```bash
-# Full pipeline
-poetry run marshab pipeline --roi "18.0,18.6,77.0,77.8" --output data/output
-
-# Download DEM window sources
-poetry run marshab download mola --roi "18.0,18.6,77.0,77.8"
-
-# Terrain/site analysis only
-poetry run marshab analyze --roi "18.0,18.6,77.0,77.8" --dataset mola
-```
-
-## Development
-
-```bash
-# Tests
-poetry run pytest -v
-
-# Lint
-poetry run ruff check marshab tests
-
-# Format
-poetry run ruff format marshab tests
-```
-
-## License
-
-MIT
+Frontend installation reports dependency vulnerabilities; see the audit. Deployment hardening and dependency migration are separate follow-up work, and no production readiness is claimed.

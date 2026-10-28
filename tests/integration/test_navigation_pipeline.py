@@ -1,14 +1,17 @@
 """Integration tests for navigation pipeline."""
 
 import pickle
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import rasterio
 import xarray as xr
+from rasterio.transform import from_bounds
 
 from marshab.core.analysis_pipeline import AnalysisPipeline
+from marshab.core.data_manager import DataManager
 from marshab.core.navigation_engine import NavigationEngine
+from marshab.processing.dem_loader import DEMLoader
 from marshab.types import BoundingBox, SiteCandidate, TerrainMetrics
 
 
@@ -29,28 +32,23 @@ class TestNavigationPipeline:
             lon_min=180.0, lon_max=180.5
         )
 
-        # Mock DEM loading to avoid actual downloads
-        with patch.object(pipeline.data_manager, 'get_dem_for_roi') as mock_get_dem:
-            # Create mock DEM
-            mock_dem = xr.DataArray(
-                np.random.randn(100, 100) * 50 + 1000.0,
-                dims=["y", "x"],
-                coords={"y": np.arange(100), "x": np.arange(100)}
-            )
-            mock_dem.attrs = {'resolution_m': 463.0}
-            mock_get_dem.return_value = mock_dem
-
-            # Mock criteria extraction
-            with patch('marshab.core.analysis_pipeline.CriteriaExtractor') as mock_extractor:
-                mock_ext = MagicMock()
-                mock_extractor.return_value = mock_ext
-                mock_ext.extract_all.return_value = {
-                    'slope': np.ones((100, 100)) * 5.0,
-                    'roughness': np.ones((100, 100)) * 0.3,
-                    'elevation': np.ones((100, 100)) * 1000.0
-                }
-
-                results = pipeline.run(roi, dataset="mola", threshold=0.6)
+        # Only data acquisition is replaced: terrain, scoring, extraction and
+        # routing all run on the same georeferenced, gentle synthetic surface.
+        row, col = np.indices((100, 100))
+        elevation = 1000 + 50 * np.exp(-((row - 45)**2 + (col - 50)**2) / 250)
+        dem_path = tmp_path / "navigation_fixture.tif"
+        with rasterio.open(
+            dem_path, "w", driver="GTiff", height=100, width=100, count=1,
+            dtype="float32", crs="+proj=longlat +a=3396190 +b=3396190 +no_defs +type=crs",
+            transform=from_bounds(180, 40, 180.5, 40.5, 100, 100), nodata=-9999,
+        ) as dst:
+            dst.write(elevation.astype("float32"), 1)
+            dst.update_tags(DATA_MODE="synthetic")
+        dem = DEMLoader().load(dem_path)
+        monkeypatch.setattr(DataManager, "get_dem_for_roi", lambda *args, **kwargs: dem)
+        test_config.navigation.enable_smoothing = False
+        results = pipeline.run(roi, dataset="mola", threshold=0.6)
+        assert results.sites, "Known gentle fixture should yield candidate sites"
 
         output_dir = tmp_path / "analysis"
         pipeline.save_results(results, output_dir)
@@ -66,33 +64,27 @@ class TestNavigationPipeline:
         output_dir, results = analysis_results
 
         # Get first site
-        if len(results.sites) == 0:
-            pytest.skip("No sites found in analysis results")
+        assert results.sites
 
         site = results.sites[0]
 
         # Plan navigation
         engine = NavigationEngine()
 
-        # Mock pathfinding to avoid complex A* calculations
-        with pytest.mock.patch('marshab.core.navigation_engine.AStarPathfinder') as mock_pathfinder:
-            mock_pf_instance = pytest.mock.MagicMock()
-            mock_pathfinder.return_value = mock_pf_instance
-            # Return a simple path
-            mock_pf_instance.find_path_with_waypoints.return_value = [
-                (10, 10), (20, 20), (30, 30), (40, 40)
-            ]
-
-            waypoints = engine.plan_to_site(
-                site_id=site.site_id,
-                analysis_dir=output_dir,
-                start_lat=40.1,
-                start_lon=180.1,
-                max_waypoint_spacing_m=100.0
-            )
+        # Start at a known pixel center so SITE coordinates have no snapping
+        # offset. Exercise the real A* solver, not a mocked waypoint list.
+        start_lat = float(results.dem.coords["lat"].values[80, 20])
+        start_lon = float(results.dem.coords["lon"].values[80, 20])
+        waypoints = engine.plan_to_site(
+            site_id=site.site_id,
+            analysis_dir=output_dir,
+            start_lat=start_lat,
+            start_lon=start_lon,
+            max_waypoint_spacing_m=100.0,
+        )
 
         # Validate waypoints
-        assert len(waypoints) > 0
+        assert len(waypoints) > 2
         assert 'waypoint_id' in waypoints.columns
         assert 'x_site' in waypoints.columns
         assert 'y_site' in waypoints.columns
@@ -111,7 +103,7 @@ class TestNavigationPipeline:
             last = waypoints.iloc[-1]
             distance = (last['x_site']**2 + last['y_site']**2)**0.5
             # Distance should be reasonable (at least some distance)
-            assert distance >= 0
+            assert distance > results.dem.attrs["resolution_m"]
 
     def test_pickle_file_loading(self, analysis_results, test_config, monkeypatch):
         """Test that navigation engine can load from pickle file."""

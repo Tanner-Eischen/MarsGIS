@@ -11,6 +11,7 @@ from typing import Literal, Optional
 
 import numpy as np
 import rasterio
+from pyproj import CRS
 from rasterio.transform import from_bounds
 
 from marshab.config import get_config
@@ -41,7 +42,12 @@ def _resolve_local_mola_cog_path() -> Optional[Path]:
         ]
     )
 
-    for base in [config.paths.cache_dir, Path("/app/data/cache"), Path("/var/data/cache"), Path("/var/data/datasets/mola")]:
+    for base in [
+        config.paths.cache_dir,
+        Path("/app/data/cache"),
+        Path("/var/data/cache"),
+        Path("/var/data/datasets/mola"),
+    ]:
         try:
             for pattern in ("*mola*463m*.cog.tif", "*MOLA*463m*.cog.tif"):
                 candidates.extend(base.glob(pattern))
@@ -93,25 +99,77 @@ def normalize_dataset(dataset: str) -> MarsDataset:
     return dataset_lower  # type: ignore[return-value]
 
 
-def get_cell_size_from_dem(dem, default: float = 463.0) -> float:
-    """Get cell size in meters from DEM (xarray DataArray or rasterio dataset).
+def get_cell_spacing_from_dem(dem, default: float = 463.0) -> tuple[float, float]:
+    """Return physical (row, column) spacing, preferring validated meter metadata.
 
-    Args:
-        dem: xarray DataArray with rio accessor, or object with .rio.res
-        default: Fallback when resolution cannot be determined (MOLA default)
-
-    Returns:
-        Cell size in meters (positive)
+    Native geographic resolution is converted using the CRS radius and center
+    latitude; projected units are converted to meters. Unreferenced native
+    coordinates cannot establish physical spacing and use the explicit default.
     """
-    if hasattr(dem, "rio") and hasattr(dem.rio, "res"):
-        res = dem.rio.res
-        if res is not None and len(res) >= 1:
-            return float(abs(res[0]))
-    if hasattr(dem, "attrs") and isinstance(dem.attrs, dict):
-        res = dem.attrs.get("resolution_m")
-        if res is not None:
-            return float(res)
-    return default
+    attrs = getattr(dem, "attrs", {})
+
+    def positive(value):
+        try:
+            value = float(value)
+            return value if np.isfinite(value) and value > 0 else None
+        except (ValueError, TypeError):
+            return None
+
+    dx, dy = positive(attrs.get("resolution_x_m")), positive(attrs.get("resolution_y_m"))
+    if dx is not None and dy is not None:
+        return dy, dx
+    scalar = positive(attrs.get("resolution_m"))
+    if scalar is not None:
+        return scalar, scalar
+
+    rio = getattr(dem, "rio", None)
+    crs_value = attrs.get("crs") or getattr(dem, "crs", None) or getattr(rio, "crs", None)
+    if crs_value is not None:
+        crs = CRS.from_user_input(crs_value)
+        resolution = getattr(rio, "resolution", None)
+        if resolution is None:
+            resolution = getattr(rio, "res", None)
+        if resolution is None:
+            resolution = getattr(dem, "res", None)
+        resolution = resolution() if callable(resolution) else resolution
+        transform = attrs.get("transform")
+        if resolution is None and transform is not None:
+            resolution = (transform[0], transform[4])
+        if resolution is not None and len(resolution) >= 2:
+            dx, dy = abs(float(resolution[0])), abs(float(resolution[1]))
+            if crs.is_projected:
+                dx *= crs.axis_info[0].unit_conversion_factor
+                dy *= crs.axis_info[1].unit_conversion_factor
+            elif crs.is_geographic:
+                latitude = None
+                coords = getattr(dem, "coords", {})
+                if "lat" in coords:
+                    latitude = float(np.nanmean(coords["lat"]))
+                elif "y" in coords:
+                    latitude = float(np.nanmean(coords["y"]))
+                else:
+                    bounds = getattr(rio, "bounds", None) or getattr(dem, "bounds", None)
+                    bounds = bounds() if callable(bounds) else bounds
+                    if bounds is not None:
+                        latitude = float((bounds[1] + bounds[3]) / 2)
+                if latitude is None:
+                    return default, default
+                radius = crs.ellipsoid.semi_major_metre
+                dx *= (
+                    crs.axis_info[0].unit_conversion_factor * radius * np.cos(np.radians(latitude))
+                )
+                dy *= crs.axis_info[1].unit_conversion_factor * radius
+            else:
+                return default, default
+            if positive(dx) is not None and positive(dy) is not None:
+                return dy, dx
+    return default, default
+
+
+def get_cell_size_from_dem(dem, default: float = 463.0) -> float:
+    """Return the geometric mean physical pixel spacing in meters."""
+    dy, dx = get_cell_spacing_from_dem(dem, default=default)
+    return float(np.sqrt(dx * dy))
 
 
 def to_lon360(lon: float) -> float:
@@ -157,7 +215,7 @@ def compute_tile_bbox_epsg4326(z: int, x: int, y: int) -> BoundingBox:
     if z < 0 or x < 0 or y < 0:
         raise ValueError("Invalid tile indices")
     x_tiles = 2 ** (z + 1)
-    y_tiles = 2 ** z
+    y_tiles = 2**z
     if x >= x_tiles or y >= y_tiles:
         raise ValueError("Tile indices out of range")
     lon_span = 360.0 / x_tiles
@@ -191,7 +249,9 @@ def _cache_has_real_data(path) -> bool:
     return False
 
 
-def resolve_dataset_with_fallback(requested: MarsDataset, bbox: BoundingBox) -> DatasetResolutionResult:
+def resolve_dataset_with_fallback(
+    requested: MarsDataset, bbox: BoundingBox
+) -> DatasetResolutionResult:
     """
     Resolve dataset with strict fallback rules.
 
@@ -313,13 +373,21 @@ def load_dem_window(
                 download=True,
                 clip=True,
             )
-            allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {"1", "true", "yes"}
+            allow_synthetic = os.getenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
             if (
                 resolution.dataset_used in {"mola", "mola_200m"}
                 and not allow_synthetic
-                and not _cache_has_real_data(data_manager._get_cache_path(resolution.dataset_used, roi_360))
+                and not _cache_has_real_data(
+                    data_manager._get_cache_path(resolution.dataset_used, roi_360)
+                )
             ):
-                raise DataError(f"Synthetic fallback disallowed for dataset {resolution.dataset_used}")
+                raise DataError(
+                    f"Synthetic fallback disallowed for dataset {resolution.dataset_used}"
+                )
         else:
             dem = load_from_cache(resolution.dataset_used)
     except Exception as exc:

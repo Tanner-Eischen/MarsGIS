@@ -1,7 +1,6 @@
 """API tests for COG bootstrap startup."""
 
 from io import BytesIO
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -10,8 +9,6 @@ from marshab.core.datasets.bootstrap_cog import (
     MIN_EXPECTED_SIZE_BYTES,
     ensure_mola_cog_present,
 )
-
-FIXTURE_COG = Path(__file__).resolve().parent.parent / "fixtures" / "dem_small.cog.tif"
 
 
 def _make_mock_response(size_bytes: int) -> BytesIO:
@@ -22,12 +19,12 @@ def _make_mock_response(size_bytes: int) -> BytesIO:
 class TestBootstrapCog:
     """Tests for ensure_mola_cog_present."""
 
-    def test_skips_download_when_file_exists(self, monkeypatch):
+    def test_skips_download_when_file_exists(self, monkeypatch, dem_small_cog):
         """Skips download when COG path exists."""
-        monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(FIXTURE_COG))
+        monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(dem_small_cog))
         monkeypatch.setenv("MARSHAB_MOLA_COG_URL", "https://example.com/fake.cog.tif")
         ensure_mola_cog_present()
-        assert FIXTURE_COG.exists()
+        assert dem_small_cog.exists()
 
     def test_fails_fast_when_url_missing_and_file_missing(self, monkeypatch, tmp_path):
         """Fails fast when COG missing and MARSHAB_MOLA_COG_URL not set."""
@@ -48,8 +45,6 @@ class TestBootstrapCog:
         monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(dest))
         monkeypatch.setenv("MARSHAB_MOLA_COG_URL", "https://example.com/fake.cog.tif")
         monkeypatch.delenv("MARSHAB_MOLA_COG_SHA256", raising=False)
-
-        mock_body = _make_mock_response(MIN_EXPECTED_SIZE_BYTES + 1024)
 
         def mock_urlopen(req, timeout=60):
             body = _make_mock_response(MIN_EXPECTED_SIZE_BYTES + 1024)

@@ -10,13 +10,13 @@ import xarray as xr
 from marshab.config import PathfindingStrategy, get_config
 from marshab.core.data_manager import DataManager
 from marshab.exceptions import NavigationError
-from marshab.utils.roi import roi_from_two_sites
-from marshab.utils.sites import load_site_coords
-from marshab.models import BoundingBox, SiteCandidate, SiteOrigin
+from marshab.models import SiteCandidate, SiteOrigin
 from marshab.processing.coordinates import CoordinateTransformer
 from marshab.processing.pathfinding import AStarPathfinder, smooth_path
 from marshab.processing.terrain import TerrainAnalyzer, generate_cost_surface
 from marshab.utils.logging import get_logger
+from marshab.utils.roi import roi_from_two_sites
+from marshab.utils.sites import load_site_coords
 
 logger = get_logger(__name__)
 
@@ -274,7 +274,6 @@ class NavigationEngine:
                 results = self._load_analysis_results(analysis_dir)
                 dem = results['dem']
                 metrics = results['metrics']
-                sites = results['sites']
                 logger.info("Using saved analysis results")
             except NavigationError:
                 # Fallback to direct DEM loading (backward compatibility)
@@ -318,7 +317,7 @@ class NavigationEngine:
                 )
 
             roi = roi_from_two_sites(start_lat, start_lon, site_lat, site_lon, padding=roi_padding)
-            
+
             logger.info(
                 "Navigation ROI created",
                 lat_span=lat_span,
@@ -595,7 +594,7 @@ class NavigationEngine:
 
             # Adaptive downsampling based on DEM size
             pixels = cost_map.shape[0] * cost_map.shape[1]
-            
+
             if pixels > 5_000_000:      # > 5 megapixels
                 downsample_factor = 4   # ~312k pixels after downsample
             elif pixels > 2_000_000:    # > 2 megapixels
@@ -604,7 +603,7 @@ class NavigationEngine:
                 downsample_factor = 2   # ~250k pixels
             else:
                 downsample_factor = 1   # No downsampling
-            
+
             if downsample_factor > 1:
                 logger.info(
                     "Downsampling cost map for pathfinding",

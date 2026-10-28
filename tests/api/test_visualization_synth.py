@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from marshab.core.raster_service import RasterWindowResult
 from marshab.models import BoundingBox
 from marshab.web.api import app
-from marshab.web.routes import visualization
 from marshab.web.routes.visualization import terrain as visualization_terrain
 
 client = TestClient(app)

@@ -1,6 +1,5 @@
 """Unit tests for COG window reader."""
 
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -10,13 +9,11 @@ from rasterio.transform import from_bounds
 from marshab.core.cog_reader import read_cog_window
 from marshab.models import BoundingBox
 
-FIXTURE_COG = Path(__file__).resolve().parent.parent / "fixtures" / "dem_small.cog.tif"
-
 
 @pytest.fixture
-def fixture_cog_path():
+def fixture_cog_path(dem_small_cog):
     """Path to small COG fixture."""
-    return str(FIXTURE_COG)
+    return str(dem_small_cog)
 
 
 @pytest.fixture

@@ -1,373 +1,190 @@
-"""DEM loading and raster I/O operations using GDAL/rasterio."""
+"""DEM loading with explicit CRS, pixel-center coordinates, and masked elevations."""
 
+import math
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import rasterio
 import xarray as xr
-from rasterio.errors import RasterioIOError
-
-try:
-    import rioxarray  # noqa: F401 - needed to register rio accessor
-except ImportError:
-    pass  # rioxarray not available, will use fallback methods
+from pyproj import CRS, Transformer
+from rasterio.enums import Resampling
+from rasterio.transform import Affine, array_bounds, from_bounds
+from rasterio.warp import reproject
+from rasterio.windows import Window
+from rasterio.windows import from_bounds as window_from_bounds
+from rasterio.windows import transform as window_transform
 
 from marshab.exceptions import DataError
 from marshab.models import BoundingBox
-from marshab.utils.logging import get_logger
-
-logger = get_logger(__name__)
 
 
 class DEMLoader:
-    """Handles Mars DEM loading and preprocessing."""
+    """Load north-up Mars DEMs; elevations and physical spacing are in meters.
+
+    Geographic grids use the configured Mars radius and the center latitude to
+    estimate east-west spacing. ``resolution_x_m`` and ``resolution_y_m`` retain
+    anisotropy; ``resolution_m`` is their geometric mean for scalar consumers.
+    """
 
     def __init__(self, mars_radius_eq: float = 3396190.0):
-        """Initialize DEM loader.
-
-        Args:
-            mars_radius_eq: Mars equatorial radius in meters
-        """
         self.mars_radius_eq = mars_radius_eq
 
+    @staticmethod
+    def _metadata(crs_value, transform_value) -> tuple[CRS, Affine]:
+        if crs_value is None or transform_value is None:
+            raise DataError("DEM requires an explicit CRS and affine transform")
+        crs = CRS.from_user_input(crs_value)
+        transform = Affine(*list(transform_value)[:6])
+        if not all(np.isfinite(list(transform)[:6])):
+            raise DataError("DEM affine transform must be finite")
+        if transform.b != 0 or transform.d != 0 or transform.a <= 0 or transform.e >= 0:
+            raise DataError("Only north-up, unrotated DEM grids are supported")
+        if not (crs.is_geographic or crs.is_projected):
+            raise DataError("DEM CRS must be geographic or projected")
+        return crs, transform
+
+    def _array(self, elevation, crs: CRS, transform: Affine, attrs: dict) -> xr.DataArray:
+        if elevation.ndim != 2 or min(elevation.shape) < 1:
+            raise DataError("DEM must be a nonempty two-dimensional raster")
+        height, width = elevation.shape
+        x = transform.c + (np.arange(width) + 0.5) * transform.a
+        y = transform.f + (np.arange(height) + 0.5) * transform.e
+        xx, yy = np.meshgrid(x, y)
+        if crs.is_geographic:
+            lon, lat = xx, yy
+            angular_units = crs.axis_info[0].unit_conversion_factor
+            resolution_x = (
+                abs(transform.a)
+                * angular_units
+                * self.mars_radius_eq
+                * math.cos(math.radians(float(np.mean(y))))
+            )
+            resolution_y = abs(transform.e) * angular_units * self.mars_radius_eq
+        else:
+            geographic = Transformer.from_crs(crs, crs.geodetic_crs, always_xy=True)
+            lon, lat = geographic.transform(xx.ravel().tolist(), yy.ravel().tolist())
+            lon = np.asarray(lon).reshape(height, width)
+            lat = np.asarray(lat).reshape(height, width)
+            resolution_x = abs(transform.a) * crs.axis_info[0].unit_conversion_factor
+            resolution_y = abs(transform.e) * crs.axis_info[1].unit_conversion_factor
+        if (
+            not np.isfinite([resolution_x, resolution_y]).all()
+            or min(resolution_x, resolution_y) <= 0
+        ):
+            raise DataError("DEM physical pixel spacing must be finite and positive")
+        return xr.DataArray(
+            elevation,
+            dims=["y", "x"],
+            coords={"x": x, "y": y, "lon": (("y", "x"), lon), "lat": (("y", "x"), lat)},
+            attrs={
+                **attrs,
+                "crs": crs.to_wkt(),
+                "transform": list(transform)[:6],
+                "resolution_x_m": float(resolution_x),
+                "resolution_y_m": float(resolution_y),
+                "resolution_m": float(math.sqrt(resolution_x * resolution_y)),
+                "units": "m",
+            },
+        )
+
+    @staticmethod
+    def _window(roi: BoundingBox, crs: CRS, transform: Affine, height: int, width: int) -> Window:
+        bounds = (roi.lon_min, roi.lat_min, roi.lon_max, roi.lat_max)
+        if crs.is_projected:
+            projection = Transformer.from_crs(
+                crs.geodetic_crs, crs, always_xy=True, force_over=True
+            )
+            bounds = projection.transform_bounds(*bounds, densify_pts=21)
+        if not np.isfinite(bounds).all():
+            raise DataError("ROI cannot be transformed into DEM CRS")
+        left, bottom, right, top = array_bounds(height, width, transform)
+        roi_left, roi_bottom, roi_right, roi_top = bounds
+        if roi_left >= right or roi_right <= left or roi_bottom >= top or roi_top <= bottom:
+            raise DataError("ROI does not overlap with DEM bounds")
+        bounds = (
+            max(left, roi_left),
+            max(bottom, roi_bottom),
+            min(right, roi_right),
+            min(top, roi_top),
+        )
+        fractional = window_from_bounds(*bounds, transform=transform)
+        # Include every intersecting pixel, without adding a pixel due to roundoff.
+        col_start = max(0, math.floor(fractional.col_off + 1e-8))
+        row_start = max(0, math.floor(fractional.row_off + 1e-8))
+        col_stop = min(width, math.ceil(fractional.col_off + fractional.width - 1e-8))
+        row_stop = min(height, math.ceil(fractional.row_off + fractional.height - 1e-8))
+        if col_stop <= col_start or row_stop <= row_start:
+            raise DataError("ROI does not contain a raster pixel")
+        return Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
+
     def load(self, path: Path, roi: Optional[BoundingBox] = None) -> xr.DataArray:
-        """Load DEM into xarray DataArray with geospatial metadata.
+        """Read a full DEM or an intersecting lon/lat ROI; masked cells become NaN.
 
-        Args:
-            path: Path to GeoTIFF DEM file
-            roi: Optional region of interest to clip during loading (memory efficient)
-
-        Returns:
-            xarray DataArray with elevation data and coordinates
-
-        Raises:
-            DataError: If DEM cannot be loaded or is invalid
+        ROI bounds are interpreted in the source CRS's geographic reference
+        system. Projected ROIs use a densified geographic-to-source envelope.
+        Missing metadata or nonoverlapping ROIs fail rather than returning a
+        different region or inferring georeferencing from filename/tags.
         """
         try:
             with rasterio.open(path) as src:
-                # Extract spatial info
-                transform = src.transform
-                crs = src.crs
-                nodata = src.nodata
-                full_height, full_width = src.height, src.width
-                crs_value = str(crs) if crs is not None else src.tags().get("CRS_INFO")
-
-                # If ROI provided, use windowed reading to only load the needed region
-                if roi is not None:
-                    from rasterio.windows import Window, from_bounds
-                    # Calculate window for ROI
-                    window = from_bounds(
-                        roi.lon_min, roi.lat_min, roi.lon_max, roi.lat_max,
-                        transform
-                    )
-                    # Round to integer pixel bounds
-                    window = window.round_offsets().round_lengths()
-
-                    # Clamp window to image bounds and ensure minimum size
-                    row_start = max(0, int(window.row_off))
-                    col_start = max(0, int(window.col_off))
-                    row_stop = min(full_height, int(window.row_off + window.height))
-                    col_stop = min(full_width, int(window.col_off + window.width))
-
-                    # Ensure we have a valid window (at least 1 pixel)
-                    # If window is too small, expand it slightly to ensure we get data
-                    if row_stop <= row_start:
-                        # Expand by at least 10 pixels or to edge
-                        row_stop = min(full_height, row_start + max(10, int(0.01 * full_height)))
-                    if col_stop <= col_start:
-                        # Expand by at least 10 pixels or to edge
-                        col_stop = min(full_width, col_start + max(10, int(0.01 * full_width)))
-
-                    # Create window object
-                    read_window = Window(col_start, row_start, col_stop - col_start, row_stop - row_start)
-
-                    # Validate window
-                    if read_window.width <= 0 or read_window.height <= 0:
-                        logger.warning(
-                            "Invalid window calculated, falling back to full DEM read",
-                            window=read_window,
-                            roi=roi.model_dump()
-                        )
-                        elevation = src.read(1).astype(np.float32)
-                    else:
-                        # Read only the windowed region
-                        try:
-                            elevation = src.read(1, window=read_window).astype(np.float32)
-
-                            # Update transform for the windowed region
-                            transform = rasterio.windows.transform(read_window, transform)
-                        except Exception as e:
-                            logger.warning(
-                                "Windowed read failed, falling back to full DEM read",
-                                error=str(e),
-                                window=read_window
-                            )
-                            elevation = src.read(1).astype(np.float32)
-
-                    logger.info(
-                        "Loading DEM with ROI window",
-                        path=str(path),
-                        full_shape=(full_height, full_width),
-                        window_shape=elevation.shape,
-                        window=read_window,
-                        crs=str(crs),
-                    )
-                else:
-                    # Read full elevation data
-                    elevation = src.read(1).astype(np.float32)
-
-                    logger.info(
-                        "Loading DEM",
-                        path=str(path),
-                        shape=elevation.shape,
-                        crs=str(crs),
-                        nodata=nodata,
-                    )
-
-                height, width = elevation.shape
-
-                # Only create coordinate arrays for the loaded region (much smaller)
-                # Use a more memory-efficient approach: calculate coordinates only for corners/edges
-                # For large arrays, we'll use a sparse coordinate approach
-                if height * width > 10_000_000:  # For very large arrays, skip full coordinate arrays
-                    logger.info(
-                        "Large DEM detected, using transform-based coordinates",
-                        shape=(height, width)
-                    )
-                    # Create xarray without full coordinate arrays - use transform instead
-                    dem = xr.DataArray(
-                        elevation,
-                        dims=["y", "x"],
-                        attrs={
-                            "crs": crs_value,
-                            "transform": list(transform)[:6],
-                            "nodata": nodata,
-                            "resolution_m": abs(transform.a),
-                        },
-                    )
-                    # Add rio accessor for geospatial operations
-                    dem.rio.write_transform(transform, inplace=True)
-                    dem.rio.write_crs(crs, inplace=True)
-                else:
-                    # For smaller arrays, create full coordinate arrays
-                    # Calculate lat/lon coordinates efficiently
-                    rows, cols = np.meshgrid(
-                        np.arange(height), np.arange(width), indexing="ij"
-                    )
-                    # rasterio.transform.xy returns (x, y) for each (row, col)
-                    # We need to call it correctly to get 2D arrays
-                    lons_flat, lats_flat = rasterio.transform.xy(transform, rows.flatten(), cols.flatten())
-
-                    # Reshape to match elevation shape
-                    lons = np.array(lons_flat).reshape(height, width)
-                    lats = np.array(lats_flat).reshape(height, width)
-
-                    # Create xarray DataArray with coordinates
-                    dem = xr.DataArray(
-                        elevation,
-                        dims=["y", "x"],
-                        coords={
-                            "lat": (["y", "x"], lats),
-                            "lon": (["y", "x"], lons),
-                        },
-                        attrs={
-                            "crs": crs_value,
-                            "transform": list(transform)[:6],
-                            "nodata": nodata,
-                            "resolution_m": abs(transform.a),
-                        },
-                    )
-                    # Add rio accessor for geospatial operations (needed for bounds() and clip_box)
-                    # Only if rioxarray is available and accessor can be set up
-                    try:
-                        if hasattr(dem, 'rio'):
-                            dem.rio.write_transform(transform, inplace=True)
-                            dem.rio.write_crs(crs, inplace=True)
-                    except (AttributeError, RuntimeError):
-                        # rio accessor not available, will use coordinate arrays as fallback
-                        pass
-
-                logger.info(
-                    "DEM loaded successfully",
-                    shape=elevation.shape,
-                    resolution_m=abs(transform.a),
+                crs, transform = self._metadata(src.crs, src.transform)
+                window = self._window(roi, crs, transform, src.height, src.width) if roi else None
+                elevation = (
+                    src.read(1, window=window, masked=True).astype(np.float32).filled(np.nan)
                 )
-
-                return dem
-
-        except RasterioIOError as e:
+                if window is not None:
+                    transform = window_transform(window, transform)
+                return self._array(
+                    elevation, crs, transform, {"nodata": src.nodata, "source_tags": src.tags()}
+                )
+        except DataError:
+            raise
+        except Exception as exc:
             raise DataError(
-                f"Failed to read DEM file: {path}",
-                details={"path": str(path), "error": str(e)},
-            )
-        except Exception as e:
-            raise DataError(
-                f"Unexpected error loading DEM: {path}",
-                details={"path": str(path), "error": str(e)},
-            )
+                "Failed to load DEM", details={"path": str(path), "error": str(exc)}
+            ) from exc
 
     def clip_to_roi(self, dem: xr.DataArray, roi: BoundingBox) -> xr.DataArray:
-        """Clip DEM raster to region of interest.
-
-        Args:
-            dem: Input DEM DataArray
-            roi: Bounding box to clip to
-
-        Returns:
-            Clipped DEM DataArray
-
-        Raises:
-            DataError: If clipping fails
-        """
-        try:
-            logger.info(
-                "Clipping DEM to ROI",
-                original_shape=dem.shape,
-                roi=roi.model_dump(),
-            )
-
-            # Use rio accessor if available (more efficient)
-            if hasattr(dem, 'rio') and hasattr(dem.rio, 'clip_box'):
-                try:
-                    # Use rioxarray's clip_box method (most efficient)
-                    clipped = dem.rio.clip_box(
-                        minx=roi.lon_min,
-                        miny=roi.lat_min,
-                        maxx=roi.lon_max,
-                        maxy=roi.lat_max
-                    )
-                    logger.info(
-                        "DEM clipped using rio.clip_box",
-                        clipped_shape=clipped.shape,
-                    )
-                    return clipped
-                except Exception as e:
-                    logger.warning("rio.clip_box failed, falling back to coordinate-based clipping", error=str(e))
-
-            # Fallback: Use coordinate-based clipping if coordinates exist
-            if "lat" in dem.coords and "lon" in dem.coords:
-                # Use a half-pixel margin so clipping to full bounds still drops edge pixels.
-                try:
-                    lon_margin = abs(float(dem.attrs.get("resolution_m", 0))) / 2.0
-                    lat_margin = lon_margin
-                    if lon_margin <= 0:
-                        lon_vals = dem.coords["lon"].values
-                        lat_vals = dem.coords["lat"].values
-                        if np.asarray(lon_vals).ndim == 2:
-                            lon_margin = abs(float(np.nanmedian(np.diff(lon_vals, axis=1))))
-                            lat_margin = abs(float(np.nanmedian(np.diff(lat_vals, axis=0))))
-                        else:
-                            lon_margin = abs(float(np.nanmedian(np.diff(lon_vals))))
-                            lat_margin = abs(float(np.nanmedian(np.diff(lat_vals))))
-                        lon_margin /= 2.0
-                        lat_margin /= 2.0
-                except Exception:
-                    lon_margin = 0.0
-                    lat_margin = 0.0
-
-                # Create mask for pixels within ROI
-                lat_mask = (dem.coords["lat"] >= roi.lat_min + lat_margin) & (
-                    dem.coords["lat"] <= roi.lat_max - lat_margin
-                )
-                lon_mask = (dem.coords["lon"] >= roi.lon_min + lon_margin) & (
-                    dem.coords["lon"] <= roi.lon_max - lon_margin
-                )
-                combined_mask = lat_mask & lon_mask
-
-                # Apply mask
-                clipped = dem.where(combined_mask, drop=True)
-
-                # If ROI covers full raster extent, preserve "clip happened" behavior
-                # expected by integration tests by trimming one edge pixel.
-                if clipped.shape == dem.shape and clipped.shape[0] > 1 and clipped.shape[1] > 1:
-                    clipped = clipped.isel(y=slice(0, -1), x=slice(0, -1))
-
-                logger.info(
-                    "DEM clipped using coordinate mask",
-                    clipped_shape=clipped.shape,
-                )
-                return clipped
-            else:
-                # If no coordinates, use transform-based clipping
-                # Calculate pixel bounds from transform
-                if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                    bounds = dem.rio.bounds()
-                    # Check if ROI overlaps with DEM bounds
-                    if (roi.lon_max < bounds.left or roi.lon_min > bounds.right or
-                        roi.lat_max < bounds.bottom or roi.lat_min > bounds.top):
-                        raise DataError(
-                            "ROI does not overlap with DEM bounds",
-                            details={"roi": roi.model_dump(), "dem_bounds": bounds}
-                        )
-
-                    # Use rio clip_box if available
-                    clipped = dem.rio.clip_box(
-                        minx=roi.lon_min,
-                        miny=roi.lat_min,
-                        maxx=roi.lon_max,
-                        maxy=roi.lat_max
-                    )
-                    logger.info(
-                        "DEM clipped using transform-based clip_box",
-                        clipped_shape=clipped.shape,
-                    )
-                    return clipped
-                else:
-                    # Last resort: return as-is with warning
-                    logger.warning(
-                        "Cannot clip DEM - no coordinates or transform available, returning full DEM",
-                        shape=dem.shape
-                    )
-                    return dem
-
-        except Exception as e:
-            raise DataError(
-                "Failed to clip DEM to ROI",
-                details={"roi": roi.model_dump(), "error": str(e)},
-            )
+        """Clip by intersecting pixels and update affine/coordinate metadata."""
+        crs, transform = self._metadata(dem.attrs.get("crs"), dem.attrs.get("transform"))
+        window = self._window(roi, crs, transform, *dem.shape)
+        row, col = int(window.row_off), int(window.col_off)
+        elevation = dem.values[row : row + int(window.height), col : col + int(window.width)]
+        return self._array(elevation, crs, window_transform(window, transform), dem.attrs)
 
     def resample(
-        self,
-        dem: xr.DataArray,
-        target_resolution_m: float,
-        method: str = "bilinear",
+        self, dem: xr.DataArray, target_resolution_m: float, method: str = "bilinear"
     ) -> xr.DataArray:
-        """Resample DEM to different resolution.
+        """Resample on the same bounds, retaining NaN masks and true pixel centers.
 
-        Args:
-            dem: Input DEM DataArray
-            target_resolution_m: Target resolution in meters
-            method: Resampling method ('nearest', 'bilinear', 'cubic')
-
-        Returns:
-            Resampled DEM DataArray
+        Dimensions are rounded up to at least one cell. Exact target spacing is
+        therefore approximate; output metadata records the resulting spacing.
         """
-        current_res = float(dem.attrs.get("resolution_m", 200.0))
-
-        if abs(current_res - target_resolution_m) < 1.0:
-            logger.info("DEM already at target resolution")
-            return dem
-
-        scale_factor = current_res / target_resolution_m
-
-        logger.info(
-            "Resampling DEM",
-            from_resolution_m=current_res,
-            to_resolution_m=target_resolution_m,
-            scale_factor=scale_factor,
-            from_shape=dem.shape,
+        if not np.isfinite(target_resolution_m) or target_resolution_m <= 0:
+            raise DataError("Target resolution must be finite and positive")
+        if method not in {"nearest", "bilinear", "cubic"}:
+            raise DataError("Unsupported resampling method", details={"method": method})
+        crs, transform = self._metadata(dem.attrs.get("crs"), dem.attrs.get("transform"))
+        source = self._array(dem.values, crs, transform, dem.attrs)
+        height = max(
+            1, math.ceil(dem.shape[0] * source.attrs["resolution_y_m"] / target_resolution_m)
         )
-
-        from scipy.ndimage import zoom
-
-        order = {"nearest": 0, "bilinear": 1, "cubic": 3}.get(method, 1)
-        resampled_data = zoom(dem.values, scale_factor, order=order)
-
-        resampled = xr.DataArray(
-            resampled_data,
-            dims=["y", "x"],
-            attrs={**dem.attrs, "resolution_m": target_resolution_m},
+        width = max(
+            1, math.ceil(dem.shape[1] * source.attrs["resolution_x_m"] / target_resolution_m)
         )
-
-        return resampled
+        bounds = array_bounds(*dem.shape, transform)
+        destination_transform = from_bounds(*bounds, width, height)
+        destination = np.full((height, width), np.nan, dtype=np.float32)
+        reproject(
+            source=np.asarray(dem.values, dtype=np.float32),
+            destination=destination,
+            src_transform=transform,
+            src_crs=crs.to_wkt(),
+            src_nodata=np.nan,
+            dst_transform=destination_transform,
+            dst_crs=crs.to_wkt(),
+            dst_nodata=np.nan,
+            resampling=Resampling[method],
+        )
+        return self._array(destination, crs, destination_transform, dem.attrs)

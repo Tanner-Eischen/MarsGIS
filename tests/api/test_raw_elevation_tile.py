@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -14,12 +13,10 @@ from marshab.models import BoundingBox
 from marshab.web.api import create_app
 from marshab.web.routes.visualization import terrain as visualization_terrain
 
-FIXTURE_COG = Path(__file__).resolve().parent.parent / "fixtures" / "dem_small.cog.tif"
-
 
 @pytest.fixture
-def client_with_cog(monkeypatch):
-    monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(FIXTURE_COG))
+def client_with_cog(monkeypatch, dem_small_cog):
+    monkeypatch.setenv("MARSHAB_MOLA_COG_PATH", str(dem_small_cog))
     monkeypatch.setenv("MARSHAB_MOLA_COG_URL", "")
     app = create_app()
     return TestClient(app)

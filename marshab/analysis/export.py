@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import rasterio
 import xarray as xr
-from rasterio.transform import from_bounds
+from rasterio.transform import Affine
 
 from marshab.core.analysis_pipeline import AnalysisResults
 from marshab.models import BoundingBox
@@ -46,20 +46,21 @@ def export_suitability_geotiff(
     if suitability is None or dem is None:
         raise ValueError("DEM and suitability data must be provided or calculated")
 
-    # Get DEM bounds and transform
-    if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-        transform = dem.rio.transform()
-    else:
-        # Create transform from ROI bounds
-        height, width = suitability.shape
-        transform = from_bounds(
-            roi.lon_min,
-            roi.lat_min,
-            roi.lon_max,
-            roi.lat_max,
-            width,
-            height
-        )
+    if suitability.ndim != 2 or suitability.shape != dem.shape:
+        raise ValueError("Suitability and DEM must share the same two-dimensional grid")
+    # An ROI is a request envelope, not necessarily the pixel-aligned source extent.
+    if "transform" not in dem.attrs or not dem.attrs.get("crs"):
+        raise ValueError("DEM requires an explicit CRS and affine transform for export")
+    transform = Affine(*dem.attrs["transform"][:6])
+    crs = rasterio.crs.CRS.from_user_input(dem.attrs["crs"])
+    if not np.all(np.isfinite(tuple(transform))) or transform.determinant == 0:
+        raise ValueError("DEM transform must be finite and invertible")
+    clean = np.asarray(suitability, dtype=np.float32).copy()
+    valid_dem = np.isfinite(dem.values)
+    nodata = dem.attrs.get("nodata")
+    if nodata is not None:
+        valid_dem &= dem.values != nodata
+    clean[~np.isfinite(clean) | ~valid_dem] = -9999.0
 
     # Ensure output directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,19 +73,13 @@ def export_suitability_geotiff(
         height=suitability.shape[0],
         width=suitability.shape[1],
         count=1,
-        dtype=suitability.dtype,
-        crs='EPSG:4326',  # WGS84 - would need Mars CRS in production
+        dtype="float32",
+        crs=crs,
         transform=transform,
         compress='lzw',
         nodata=-9999.0
     ) as dst:
-        # Replace NaN with nodata
-        suitability_clean = np.where(
-            np.isfinite(suitability),
-            suitability,
-            -9999.0
-        )
-        dst.write(suitability_clean, 1)
+        dst.write(clean, 1)
 
         # Add metadata
         dst.update_tags(
@@ -92,7 +87,7 @@ def export_suitability_geotiff(
             dataset=dataset,
             roi=f"{roi.lat_min},{roi.lat_max},{roi.lon_min},{roi.lon_max}",
             weights=json.dumps(weights),
-            created=datetime.now().isoformat()
+            units="dimensionless",
         )
 
     logger.info("Suitability GeoTIFF exported", file_size_mb=output_path.stat().st_size / 1e6)

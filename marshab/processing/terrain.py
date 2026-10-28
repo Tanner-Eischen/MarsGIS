@@ -15,13 +15,32 @@ logger = get_logger(__name__)
 class TerrainAnalyzer:
     """Performs terrain analysis and derivative calculations on Mars DEMs."""
 
-    def __init__(self, cell_size_m: float = 200.0):
+    def __init__(self, cell_size_m: float | tuple[float, float] = 200.0):
         """Initialize terrain analyzer.
 
         Args:
-            cell_size_m: DEM cell size in meters
+            cell_size_m: Positive cell spacing in meters, either a square-cell
+                size or (row_spacing, column_spacing) for a north-up raster.
         """
+        spacing = np.asarray(cell_size_m, dtype=float)
+        if spacing.ndim == 0:
+            spacing = np.repeat(spacing, 2)
+        if spacing.shape != (2,) or not np.all(np.isfinite(spacing)) or np.any(spacing <= 0):
+            raise ValueError("Cell spacing must be finite, positive, and scalar or (row, column)")
         self.cell_size_m = cell_size_m
+        self.row_spacing_m, self.col_spacing_m = map(float, spacing)
+
+    def _gradient(self, dem: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Differentiate elevation in meters; row direction is south, columns east.
+
+        Central differences are used in the interior, one-sided differences on
+        the boundary. Invalid input cells and affected stencils remain NaN.
+        """
+        elevation = np.asarray(dem, dtype=float)
+        valid = np.isfinite(elevation)
+        elevation = np.where(valid, elevation, np.nan)
+        dy, dx = np.gradient(elevation, self.row_spacing_m, self.col_spacing_m)
+        return np.where(valid, dy, np.nan), np.where(valid, dx, np.nan)
 
     def calculate_slope(self, dem: np.ndarray) -> np.ndarray:
         """Calculate slope magnitude in degrees.
@@ -44,7 +63,7 @@ class TerrainAnalyzer:
 
         # Calculate gradients
         try:
-            dy, dx = np.gradient(dem, self.cell_size_m)
+            dy, dx = self._gradient(dem)
         except ValueError as e:
             logger.warning(
                 "Gradient calculation failed, returning zeros",
@@ -87,7 +106,7 @@ class TerrainAnalyzer:
 
         # Calculate gradients
         try:
-            dy, dx = np.gradient(dem, self.cell_size_m)
+            dy, dx = self._gradient(dem)
         except ValueError as e:
             logger.warning(
                 "Gradient calculation failed for aspect, returning zeros",
@@ -156,18 +175,20 @@ class TerrainAnalyzer:
         Returns:
             TRI array
         """
-        # Create kernel for neighbors
-        kernel = np.array([
-            [1, 1, 1],
-            [1, 0, 1],
-            [1, 1, 1]
-        ]) / 8.0
-
-        # Convolve to get mean of neighbors
-        mean_neighbors = ndimage.convolve(dem, kernel, mode='reflect')
-
-        # TRI is absolute difference from neighbors
-        tri = np.abs(dem - mean_neighbors)
+        # Half-sample symmetric reflection matches scipy's mode='reflect'.
+        # Average differences individually: abs(mean difference) incorrectly
+        # cancels opposing slopes on a plane.
+        elevation = np.asarray(dem, dtype=float)
+        elevation = np.where(np.isfinite(elevation), elevation, np.nan)
+        padded = np.pad(elevation, 1, mode="symmetric")
+        tri = np.zeros_like(elevation)
+        height, width = elevation.shape
+        for row_offset in range(3):
+            for col_offset in range(3):
+                if row_offset == 1 and col_offset == 1:
+                    continue
+                neighbor = padded[row_offset:row_offset + height, col_offset:col_offset + width]
+                tri += np.abs(elevation - neighbor) / 8.0
 
         logger.debug(
             "Calculated TRI",
@@ -193,7 +214,8 @@ class TerrainAnalyzer:
             z_factor: Vertical exaggeration multiplier for terrain gradients
 
         Returns:
-            Hillshade values 0-255 (uint8)
+            Hillshade values 0-255 (uint8). Invalid elevation/gradient cells
+            are encoded as 0; retain the DEM/terrain validity mask when exporting.
         """
         # Check minimum size for gradient calculation (need at least 2x2)
         if dem.shape[0] < 2 or dem.shape[1] < 2:
@@ -209,7 +231,7 @@ class TerrainAnalyzer:
 
         # Calculate gradients
         try:
-            dy, dx = np.gradient(dem, self.cell_size_m)
+            dy, dx = self._gradient(dem)
         except ValueError as e:
             logger.warning(
                 "Gradient calculation failed for hillshade, returning zeros",
@@ -233,10 +255,10 @@ class TerrainAnalyzer:
         aspect_rad = np.arctan2(-dx, dy)
 
         # Hillshade calculation
-        # Formula: cos(altitude) * cos(slope) + sin(altitude) * sin(slope) * cos(azimuth - aspect)
+        # Dot product of the upward surface normal and unit sun direction.
         hillshade = (
-            np.cos(altitude_rad) * np.cos(slope_rad) +
-            np.sin(altitude_rad) * np.sin(slope_rad) *
+            np.sin(altitude_rad) * np.cos(slope_rad) +
+            np.cos(altitude_rad) * np.sin(slope_rad) *
             np.cos(azimuth_rad - aspect_rad)
         )
 
@@ -250,7 +272,7 @@ class TerrainAnalyzer:
             max=float(np.nanmax(hillshade)),
         )
 
-        return hillshade.astype(np.uint8)
+        return np.where(np.isfinite(hillshade), hillshade, 0).astype(np.uint8)
 
     def analyze(self, dem: xr.DataArray) -> TerrainMetrics:
         """Perform complete terrain analysis on DEM.
@@ -264,7 +286,9 @@ class TerrainAnalyzer:
         logger.info("Starting terrain analysis", shape=dem.shape)
 
         # Extract elevation array
-        elevation = dem.values.astype(np.float32)
+        # Preserve float64 analytical inputs rather than quantizing before
+        # differentiation. Float32 source observations retain their precision.
+        elevation = dem.values.astype(np.float64)
 
         # Handle nodata values
         nodata = dem.attrs.get('nodata', -9999)

@@ -1,0 +1,2 @@
+# Preserve checksum-protected scientific reference bytes across all checkouts.
+webui/public/portfolio/** binary

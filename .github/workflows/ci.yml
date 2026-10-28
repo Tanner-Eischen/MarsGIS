@@ -30,6 +30,8 @@ jobs:
         run: python -m ruff check marshab tests scripts
       - name: Full offline suite
         run: python -m pytest -q
+      - name: Verify checked-in scientific reference bytes
+        run: python scripts/build_portfolio_site.py --verify-only
 
   real-dem:
     name: Measured Jezero DEM demonstration

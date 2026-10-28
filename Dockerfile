@@ -11,7 +11,7 @@ FROM python:3.11-slim-bookworm AS runtime
 
 WORKDIR /app
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y ca-certificates libgomp1 \
+    && apt-get install --no-install-recommends -y ca-certificates libexpat1 libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.lock ./

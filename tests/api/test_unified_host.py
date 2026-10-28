@@ -1,5 +1,8 @@
 """Same-origin React/API hosting without browser or network automation."""
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -113,3 +116,15 @@ def test_unified_production_exposes_only_validated_api(monkeypatch, tmp_path: Pa
         response = client.post(path, json={})
         assert response.status_code == 404
         assert response.headers["content-type"].startswith("application/json")
+
+
+def test_production_import_does_not_initialize_experimental_modules():
+    environment = {**os.environ, "MARSHAB_ENABLE_EXPERIMENTAL_API": "false"}
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys; import marshab.web.api; "
+         "assert 'marshab.web.routes.ml_recommendation' not in sys.modules; "
+         "assert 'marshab.web.routes.download' not in sys.modules; "
+         "assert 'marshab.web.routes.ai_query' not in sys.modules"],
+        env=environment, capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr

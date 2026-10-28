@@ -14,25 +14,7 @@ from fastapi.responses import JSONResponse, Response
 from marshab.config import get_config
 from marshab.utils.logging import get_logger
 
-from .routes import (
-    ai_query,
-    analysis,
-    download,
-    examples,
-    export,
-    health,
-    mission_scenarios,
-    ml_recommendation,
-    navigation,
-    portfolio,
-    progress,
-    projects,
-    route_analysis,
-    site_analysis,
-    solar_analysis,
-    status,
-    visualization,
-)
+from .routes import health, portfolio
 from .static import register_webui
 
 logger = get_logger(__name__)
@@ -249,6 +231,24 @@ def create_app() -> FastAPI:
     # Public unified deployments expose only the bounded, validated workflow.
     # Keep research endpoints opt-in there while preserving local compatibility.
     if _env_truthy("MARSHAB_ENABLE_EXPERIMENTAL_API", "true"):
+        from .routes import (
+            ai_query,
+            analysis,
+            download,
+            examples,
+            export,
+            mission_scenarios,
+            ml_recommendation,
+            navigation,
+            progress,
+            projects,
+            route_analysis,
+            site_analysis,
+            solar_analysis,
+            status,
+            visualization,
+        )
+
         app.include_router(status.router, prefix="/api/v1", tags=["status"])
         app.include_router(download.router, prefix="/api/v1", tags=["download"])
         app.include_router(analysis.router, prefix="/api/v1", tags=["analysis"])

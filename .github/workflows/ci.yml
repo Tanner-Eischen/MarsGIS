@@ -96,6 +96,20 @@ jobs:
         run: docker build -t marshab:ci .
       - name: Start the single-service deployment
         run: docker run -d --name marshab-ci --memory=512m -p 5000:5000 marshab:ci
+      - name: Check container startup before the scientific workflow
+        run: |
+          for attempt in $(seq 1 60); do
+            if [ "$(docker inspect -f '{{.State.Running}}' marshab-ci)" != true ]; then
+              docker logs marshab-ci
+              exit 1
+            fi
+            if curl --fail --silent http://127.0.0.1:5000/api/v1/health/live; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs marshab-ci
+          exit 1
       - name: Exercise real analysis and every exported artifact over HTTP
         run: python scripts/smoke_unified_app.py --timeout 300
       - name: Container logs and resource use

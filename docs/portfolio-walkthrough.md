@@ -23,3 +23,9 @@ Start with the problem: comparing candidate locations and routes is only useful 
 “Developed and validated a reproducible Mars terrain-analysis workflow using Python, Rasterio, NumPy/SciPy and pyproj; added analytical numerical tests, independent shortest-path comparisons, provenance manifests and georeferenced raster/vector exports.”
 
 Show the repository, [methods](scientific-methods.md), [audit matrix](feature-verification.md), figure and a locally regenerated report. Do not claim production deployment, a validated solar/mission model, or operational habitat safety.
+
+## Website walkthrough
+
+The unified website now provides an equivalent server-backed demonstration: open the application, inspect its verified reference data, then press **Run Jezero analysis**. The server recomputes the actual workflow; the page polls status and identifies the completed result as server-computed. Select layers, compare candidate routes, inspect raster cells, expand the provenance details and download results from that same run.
+
+Use [the unified deployment guide](unified-deployment.md) to run the whole app on one origin. Current verification covers code-level component behavior and actual HTTP calculations/downloads. Real-browser visual verification and public deployment verification are separate, explicitly outstanding checks; do not describe the old broken API deployment as a live demonstration of this revision.

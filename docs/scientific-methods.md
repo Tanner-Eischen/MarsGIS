@@ -69,3 +69,9 @@ Output SHA-256s identify exact artifacts from one run. Repeated runs in the same
 ## Unvalidated scientific features
 
 Solar code has local-incidence/altitude issues and an unlabelled synthetic API fallback; it has no seasonal ephemeris, terrain horizon, atmospheric or dust time-series validation. Mission-impact economics are heuristic. Science value and dust overlays contain placeholders. The legacy SITE coordinate conversion does not supply a validated inverse and mixes latitude conventions. None supplies evidence for the flagship results; see the feature matrix for required corrections before expanding claims.
+
+## Website data fidelity
+
+The website packages the existing exported rasters without recomputing scientific metrics in JavaScript. Five exact-size transparent PNGs use the full grid; a band-major little-endian Float32 buffer stores the same elevation/slope/roughness/hillshade/suitability cells as the exported TIFFs. The client verifies the buffer SHA-256 before probing. Routes are projected back to pixel centers using the exported affine and explicit Mars CRS. Candidate markers use `(column+0.5,row+0.5)`, matching those same grid cells.
+
+The server's Run command invokes the shared validated Python workflow, independently verifies its exports, packages them, verifies the package and only then publishes a new immutable run. Existing displayed results and their run-specific URLs remain coherent during computation. The public API accepts no arbitrary source URL, region or output path.

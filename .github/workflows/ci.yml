@@ -63,12 +63,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: webui/package-lock.json
       - run: npm ci
         working-directory: webui
       - run: npm run lint
+        working-directory: webui
+      - run: npm test
+        working-directory: webui
+      - run: npm audit --audit-level=moderate
         working-directory: webui
       - name: Ensure no hardcoded backend origin
         shell: bash
@@ -79,3 +83,25 @@ jobs:
           fi
       - run: npm run build
         working-directory: webui
+
+  unified-app:
+    name: Unified container and real API workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the complete website and API image
+        run: docker build -t marshab:ci .
+      - name: Start the single-service deployment
+        run: docker run -d --name marshab-ci --memory=512m -p 5000:5000 marshab:ci
+      - name: Exercise real analysis and every exported artifact over HTTP
+        run: python scripts/smoke_unified_app.py --timeout 300
+      - name: Container logs and resource use
+        if: always()
+        run: |
+          docker logs marshab-ci || true
+          docker stats --no-stream marshab-ci || true
+          docker exec marshab-ci cat /sys/fs/cgroup/memory.peak || true
+      - name: Stop test container
+        if: always()
+        run: docker rm -f marshab-ci || true

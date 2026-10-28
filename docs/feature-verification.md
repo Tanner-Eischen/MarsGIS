@@ -40,3 +40,19 @@ Audit date: 2026-10-27. Cloned `Tanner-Eischen/MarsGIS` at `4eb93e615c985edca106
 The complete suite passed locally: **317 passed, one skipped**, with **54% total coverage**. It includes contract mocks; its pass count alone is not evidence of scientific correctness. The new numerical modules, source checksum, real demonstration and independent export verifier provide that narrower evidence. Local Linux/Docker execution and browser interactions remain unverified. A Windows-only legacy DEM-window cache test remains skipped because its filename contains colons.
 
 P0/P1 deliverables are the strict demonstrated scientific path, numerical checks, reproducible environment, honest documentation and portfolio figure. General dataset expansion, solar, ML, global reprojection, mission economics, frontend security updates and hosting are separate work, not hidden acceptance requirements for this example.
+
+## Unified website revision (2026-10-28)
+
+The website now uses a single FastAPI service for React, the actual Python scientific workflow and per-run downloads. This supersedes the initial CLI-only readiness assessment above for the new `/api/v1/portfolio/*` path. Legacy API/terrain-cache features remain outside the validated path and are disabled by the production container configuration.
+
+| Website feature | Evidence and status |
+| --- | --- |
+| Scientific controls | Component tests exercise five layer switches, candidate selection with keyboard markers, all-route toggle, zoom/fit, exact cell probes, downloads and retries. These run in a virtual DOM, not a browser. |
+| Actual server computation | A real POST202 calculation completed against the pinned CTX DEM, then the HTTP smoke script verified every returned artifact checksum. |
+| Same-origin hosting | FastAPI tests cover React/deep links, registered API precedence, JSON404 for unknown APIs,404 for missing assets and containment/traversal rules. |
+| Run isolation | Tests cover concurrent409, atomic publication, failure preserving old data and run-specific artifact URLs. Retained live results are capped; the reference is always retained. |
+| Dependency audit | Updated dependencies; npm audit reports zero known vulnerabilities. The old vulnerability count above describes the original baseline. |
+| Production scope | Container disables unrestricted experimental download/analysis/solar APIs and uses one worker. |
+| Unified container | Compose configuration validates. A CI job builds/runs the actual image with512 MB and executes real science over HTTP. Local Docker build/run was unavailable because its daemon was stopped. |
+| Deployment | The former split-hosted API returns404. The replacement requires a connected hosting account and a successful smoke check against its public URL. No claim that the existing Vercel page is this unified runtime. |
+| Remaining browser gap | No browser/platform UI, screenshot or browser automation was used. Rendering/interaction in a real browser remains unverified under the repository restriction. |

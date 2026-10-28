@@ -4,6 +4,24 @@ MarsHab is a scientific software portfolio project for comparing Mars terrain an
 
 The emphasis is reproducible geospatial computation: explicit units and coordinate systems, invalid-data masks, analytical tests, independent shortest-path references, and inspectable outputs. Candidate scores illustrate terrain tradeoffs; they do not establish habitat safety.
 
+## Website and API together
+
+The website and API now run as **one service**. The main interface explores five real-Mars terrain layers, selects candidate locations and routes, probes exported raster values, downloads results, and starts an actual server calculation with **Run Jezero analysis**. A verified reference run is visible immediately; newly calculated results are identified separately.
+
+After installing the Python environment below, use Node **22.12+** to build the website:
+
+```powershell
+cd webui
+npm ci
+npm run build
+cd ..
+.venv/Scripts/python.exe -m marshab.web.server
+```
+
+Open `http://localhost:5000`. Alternatively, `docker compose up --build` packages the website, API and checksum-verified DEM together. The single-service Render configuration replaces the previous split frontend/API deployment. See [deployment and API instructions](docs/unified-deployment.md).
+
+The implementation is verified through component tests and actual HTTP workflows. Browser visual/interaction checks remain unperformed under the repository's browser-access restriction. Publishing the new unified service requires a connected hosting account; the old Vercel/Render URLs are not evidence that this runtime is deployed.
+
 ![Jezero DEM, slope and terrain-constrained routes](docs/assets/jezero-comparison.png)
 
 ## Reproduce the example
@@ -56,28 +74,32 @@ The source is [USGS's Jezero CTX stereo DEM](https://www.usgs.gov/media/images/m
 cd webui
 npm ci
 npm run lint
+npm test
 npm run build
+npm audit --audit-level=moderate
 ```
 
-Local result: **317 tests passed, one Windows-specific legacy cache test skipped; 54% overall coverage**. The full Python suite runs offline with temporary storage and generated fixtures. Numerical tests include analytical terrain surfaces, hand-calculated suitability scores, independent SciPy Dijkstra comparisons, Mars coordinate round trips, metadata-preserving exports, and repeated-run configuration isolation. Passing mocked API tests establish contracts, not real-data scientific correctness.
+The full Python suite runs offline with temporary storage and generated fixtures. Numerical tests include analytical terrain surfaces, hand-calculated suitability scores, independent SciPy Dijkstra comparisons, Mars coordinate round trips, metadata-preserving exports, and repeated-run configuration isolation. Frontend component/data tests exercise the controls and error paths; actual HTTP smoke tests execute fresh science and verify every downloaded artifact. Passing mocked API tests alone do not establish real-data scientific correctness.
 
-CI runs the complete offline suite on Windows and Linux, frontend lint/build, and a separate real-DEM demonstration with artifact verification/upload. Remote results are recorded in the PR checks and [GitHub Actions](https://github.com/Tanner-Eischen/MarsGIS/actions/workflows/ci.yml).
+CI runs the complete offline suite on Windows and Linux, frontend tests/lint/build/dependency audit, a real-DEM demonstration, and a full Docker image/HTTP workflow under a 512 MB container memory limit. Remote results are recorded in the PR checks and [GitHub Actions](https://github.com/Tanner-Eischen/MarsGIS/actions/workflows/ci.yml).
 
 ## Architecture and scope
 
 - `marshab/analysis/portfolio.py`: strict real-data example orchestration.
 - `marshab/processing/`: shared terrain, DEM ingestion, scoring and pathfinding kernels.
 - `marshab/analysis/export.py`: metadata-preserving suitability export.
-- `marshab/core/` and `marshab/web/`: legacy analysis orchestration, caching, FastAPI and navigation services.
-- `webui/`: React, Leaflet and Plotly interface; local lint/build verified, interactive workflows unverified.
+- `marshab/core/portfolio_service.py`: bounded server computation and verified result snapshots.
+- `marshab/analysis/site_package.py`: original exports, transparent terrain images, exact raster measurements and scene metadata.
+- `marshab/web/`: same-origin API, downloads and safe React file serving; legacy research endpoints remain available locally.
+- `webui/`: React scientific explorer; the experimental Leaflet/Plotly workspace is development-only.
 - `tests/`: scientific assertions, API contracts and integration checks.
 
-The example intentionally uses only measured terrain criteria. Solar exposure and energy estimates, dust/science-value proxies, mission economics, ML recommendations, legacy cache/projection branches and complete UI workflows are **outside the validated portfolio scope**. Their remaining gaps are recorded in the matrix.
+The example intentionally uses only measured terrain criteria. Solar exposure and energy estimates, dust/science-value proxies, mission economics, ML recommendations and legacy cache/projection branches are **outside the validated portfolio scope**. Their remaining gaps are recorded in the matrix. Unified production disables the experimental API routes.
 
 ## API, frontend and deployment
 
-The existing API can be started with `.venv/Scripts/python.exe -m marshab.web.server`; the frontend uses `npm run dev` from `webui/`. API schema is available locally at `/docs`. The flagship CLI does not require either service and does not populate the legacy API cache.
+The unified application serves React at `/` and scientific endpoints at `/api/v1/portfolio/*`. API schema is at `/docs`. During frontend development, `npm run dev` proxies relative API calls to the Python service; production needs neither a cross-origin API URL nor a second service. The CLI remains an equivalent reproduction path.
 
-The previously advertised Render frontend and API health URLs returned **HTTP 404 on 2026-10-27**. There is no verified live deployment. `render.yaml` and Docker configuration remain for future deployment review; a liveness response alone would not establish DEM readiness.
+The previous Render API URLs returned **HTTP 404**, including the API behind the existing Vercel site. The replacement `render.yaml` defines one Docker service with a baked small DEM and no required paid disk. A deployment is only verified after `scripts/smoke_unified_app.py` passes against its actual URL.
 
-Frontend installation reports dependency vulnerabilities; see the audit. Deployment hardening and dependency migration are separate follow-up work, and no production readiness is claimed.
+Frontend dependencies have been updated; `npm audit` currently reports zero known vulnerabilities. This does not substitute for runtime, deployment or browser verification.

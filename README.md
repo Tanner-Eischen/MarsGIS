@@ -1,5 +1,7 @@
 # MarsHab / MarsGIS
 
+**[Open the live MarsHab website](https://marshab.onrender.com)**
+
 MarsHab is a scientific software portfolio project for comparing Mars terrain and planning terrain-constrained routes. The validated example turns a measured NASA MRO CTX digital elevation model into terrain derivatives, a transparent suitability score, three candidate comparisons, and exported routes.
 
 The emphasis is reproducible geospatial computation: explicit units and coordinate systems, invalid-data masks, analytical tests, independent shortest-path references, and inspectable outputs. Candidate scores illustrate terrain tradeoffs; they do not establish habitat safety.
@@ -20,7 +22,9 @@ cd ..
 
 Open `http://localhost:5000`. Alternatively, `docker compose up --build` packages the website, API and checksum-verified DEM together. The single-service Render configuration replaces the previous split frontend/API deployment. See [deployment and API instructions](docs/unified-deployment.md).
 
-The implementation is verified through component tests and actual HTTP workflows. Browser visual/interaction checks remain unperformed under the repository's browser-access restriction. Publishing the new unified service requires a connected hosting account; the old Vercel/Render URLs are not evidence that this runtime is deployed.
+The unified service is live at **https://marshab.onrender.com**. Public HTTP verification on 2026-10-28 completed a fresh real-DEM calculation and checked every exported artifact's checksum. See the [deployment verification record](docs/live-verification.md). Browser visual/interaction checks remain unperformed under the repository's browser-access restriction.
+
+This uses Render's free compute plan, which sleeps after inactivity and can take about a minute to wake. Open it before a live interview; the verified reference analysis is available after startup. See [Render's free-service behavior](https://render.com/docs/free).
 
 ![Jezero DEM, slope and terrain-constrained routes](docs/assets/jezero-comparison.png)
 

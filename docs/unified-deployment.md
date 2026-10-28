@@ -1,5 +1,7 @@
 # Unified website and analysis service
 
+**Live URL:** https://marshab.onrender.com. Deployed to the confirmed **My Workspace** workspace in Ohio on Render's free plan. The public HTTP workflow passed on 2026-10-28; see [verification evidence](live-verification.md).
+
 MarsHab now runs as one FastAPI application serving both the built React website and `/api/v1`. The browser uses relative API URLs, so there is one origin and no external Render API proxy or production CORS dependency.
 
 ## Run locally
@@ -26,7 +28,7 @@ docker compose up --build
 
 The multi-stage Dockerfile builds React, installs the pinned Python environment, and verifies/bakes the small DEM into `/app/reference`. It starts one Uvicorn worker. The generated reference package is included in the React build. Docker Compose exposes port 5000 and optionally persists generated output in a named volume. The baked input is separate from writable runtime output.
 
-`render.yaml` defines **one Docker web service**, with no required paid disk. The service honors Render's `PORT`. Connect the repository in a hosting account and deploy this Blueprint or use the same Dockerfile on another container host. No live unified deployment is claimed until its HTTP workflow has passed. The previous Vercel static site and separate Render API are not this unified runtime.
+`render.yaml` defines **one Docker web service**, with no required paid disk. The service honors Render's `PORT`. The current service was created directly through Render's API from the tested `codex/portfolio-validation` branch; PR #28 remains open for review. The previous Vercel static site and separate Render API are not this unified runtime.
 
 ## API contract
 
@@ -60,4 +62,4 @@ cd ..
 
 The final command talks to a running local service using ordinary HTTP requests. It loads React assets, starts an actual DEM calculation, waits for completion, checks every artifact checksum and tests API/asset404 behavior. It uses no browser. CI builds the Docker image and runs the same check in a container with a 512 MB memory limit.
 
-Local evidence: 369 Python tests pass with one existing Windows-only skip; 75 frontend component/data tests pass; frontend build/lint passed; npm audit reports zero known vulnerabilities. An actual one-service HTTP run passed all source/results checks. Browser visual/interaction testing was not performed because repository instructions restrict browser access. The local Docker daemon is unavailable; the container build/run is delegated to CI.
+Verification evidence: Linux CI passed 371 tests; Windows passed 370 with one existing skip; 75 frontend component/data tests passed. Frontend build/lint passed; npm audit reported zero known vulnerabilities. The Docker image and real HTTP workflow passed in CI under a 512 MiB limit. The public Render deployment also completed a fresh analysis and passed every artifact checksum. Browser visual/interaction testing was not performed because repository instructions restrict browser access.

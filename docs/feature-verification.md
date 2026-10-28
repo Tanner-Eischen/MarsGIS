@@ -54,5 +54,5 @@ The website now uses a single FastAPI service for React, the actual Python scien
 | Dependency audit | Updated dependencies; npm audit reports zero known vulnerabilities. The old vulnerability count above describes the original baseline. |
 | Production scope | Container disables unrestricted experimental download/analysis/solar APIs and uses one worker. |
 | Unified container | Compose configuration validates. A CI job builds/runs the actual image with512 MB and executes real science over HTTP. Local Docker build/run was unavailable because its daemon was stopped. |
-| Deployment | The former split-hosted API returns404. The replacement requires a connected hosting account and a successful smoke check against its public URL. No claim that the existing Vercel page is this unified runtime. |
+| Deployment | **Verified live** at [marshab.onrender.com](https://marshab.onrender.com) on2026-10-28. The public smoke check completed fresh real-DEM science and verified all result checksums. See [deployment evidence](live-verification.md). The old Vercel/split API is not this runtime. |
 | Remaining browser gap | No browser/platform UI, screenshot or browser automation was used. Rendering/interaction in a real browser remains unverified under the repository restriction. |

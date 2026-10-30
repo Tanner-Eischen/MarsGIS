@@ -16,6 +16,7 @@ from uuid import uuid4
 from marshab.analysis.portfolio import SOURCE_CITATION, SOURCE_SHA256, SOURCE_URL, run_demo
 from marshab.analysis.site_package import build_package, digest, verify_package
 from marshab.config import Config
+from marshab.core.workload import acquire_workload, release_workload
 
 
 class AnalysisAlreadyRunningError(RuntimeError):
@@ -45,7 +46,7 @@ class PortfolioService:
         self.source_path = Path(
             os.getenv("MARSHAB_REFERENCE_DEM_PATH")
             or os.getenv("MARSHAB_PORTFOLIO_DEM_PATH")
-            or config.paths.cache_dir / "jezero_ctx_20m.tif"
+            or config.paths.cache_dir / "jezero_ctx20m.tif"
         ).resolve()
         self.output_root = (config.paths.output_dir / "portfolio-runs").resolve()
         self._lock = threading.Lock()
@@ -107,19 +108,22 @@ class PortfolioService:
         with self._lock:
             if self._state == "running":
                 raise AnalysisAlreadyRunningError("A portfolio analysis is already running")
+            if not acquire_workload():
+                raise AnalysisAlreadyRunningError("Another scientific analysis is already running")
             identifier = uuid4().hex
             self._state, self._running, self._error = "running", identifier, None
-            self._thread = threading.Thread(
-                target=self._work,
-                args=(identifier,),
-                name=f"portfolio-{identifier[:8]}",
-                daemon=True,
-            )
             try:
+                self._thread = threading.Thread(
+                    target=self._work,
+                    args=(identifier,),
+                    name=f"portfolio-{identifier[:8]}",
+                    daemon=True,
+                )
                 self._thread.start()
             except Exception as exc:
                 self._state, self._running = "failed", None
                 self._error = f"Could not start analysis worker: {exc}"
+                release_workload()
                 raise
         return self.status()
 
@@ -160,6 +164,8 @@ class PortfolioService:
                     "Check the pinned DEM, network access, and writable cache/output directories."
                     + cleanup_error
                 )
+        finally:
+            release_workload()
 
     def _make_retention_room(self) -> None:
         """Remove oldest live snapshots before publishing the next verified run."""

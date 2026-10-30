@@ -19,6 +19,8 @@ services:
         value: /app/webui/dist/portfolio
       - key: MARSHAB_REFERENCE_DEM_PATH
         value: /app/reference/jezero_ctx20m.tif
+      - key: MARSHAB_GLOBAL_DEM_PATH
+        value: /app/reference/mola16.img
       - key: MARSHAB_PATHS__DATA_DIR
         value: /app/data
       - key: MARSHAB_PATHS__CACHE_DIR

@@ -110,7 +110,7 @@ def test_unified_production_exposes_only_validated_api(monkeypatch, tmp_path: Pa
     client = TestClient(create_app())
     paths = client.get("/openapi.json").json()["paths"]
     assert paths
-    assert all(path.startswith(("/api/v1/portfolio/", "/api/v1/health/")) for path in paths)
+    assert all(path.startswith(("/api/v1/portfolio/", "/api/v1/explorer/", "/api/v1/health/")) for path in paths)
     assert client.get("/api/v1/health/live").status_code == 200
     for path in ("/api/v1/download", "/api/v1/analyze", "/api/v1/solar/analyze"):
         response = client.post(path, json={})

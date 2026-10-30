@@ -2,17 +2,20 @@
 
 **[Open the live MarsHab website](https://marshab.onrender.com)**
 
-MarsHab is a scientific software portfolio project for comparing Mars terrain and planning terrain-constrained routes. The validated example turns a measured NASA MRO CTX digital elevation model into terrain derivatives, a transparent suitability score, three candidate comparisons, and exported routes.
+MarsHab is a scientific software portfolio project for exploring Mars terrain, selecting two locations, calculating terrain-constrained paths and inspecting them in 3D. It uses a real NASA MOLA global elevation grid for planetary context and regional routing, plus NASA MRO CTX terrain for detailed Jezero traverses.
 
 The emphasis is reproducible geospatial computation: explicit units and coordinate systems, invalid-data masks, analytical tests, independent shortest-path references, and inspectable outputs. Candidate scores illustrate terrain tradeoffs; they do not establish habitat safety.
 
 ## Website and API together
 
-The website and API now run as **one service**. The main interface explores five real-Mars terrain layers, selects candidate locations and routes, probes exported raster values, downloads results, and starts an actual server calculation with **Run Jezero analysis**. A verified reference run is visible immediately; newly calculated results are identified separately.
+The website and API run as **one service**. The default workspace provides a pannable, scroll/zoom Mars map, start/destination selection, calculated routes and a rotatable 3D terrain/path viewer with **1–100× vertical exaggeration**. Use **Jezero example** for a short detailed traverse, or choose locations elsewhere on Mars. The results identify the source and effective analysis spacing; exaggeration changes the display, not measured elevations.
+
+The separate **Site comparison** page preserves the validated DEM-to-suitability example, candidate comparison and original exports. See [map, routing and 3D methods](docs/map-routing.md).
 
 After installing the Python environment below, use Node **22.12+** to build the website:
 
 ```powershell
+.venv/Scripts/python.exe scripts/prepare_planetary_data.py
 cd webui
 npm ci
 npm run build
@@ -20,7 +23,7 @@ cd ..
 .venv/Scripts/python.exe -m marshab.web.server
 ```
 
-Open `http://localhost:5000`. Alternatively, `docker compose up --build` packages the website, API and checksum-verified DEM together. The single-service Render configuration replaces the previous split frontend/API deployment. See [deployment and API instructions](docs/unified-deployment.md).
+The preparation command provisions the checksum-pinned global MOLA source (33 MB) and CTX source (9.7 MB) in the configured cache. No request triggers an unbounded global download. Open `http://localhost:5000`. Alternatively, `docker compose up --build` packages the website, API and both DEMs together. See [deployment and API instructions](docs/unified-deployment.md).
 
 The unified service is live at **https://marshab.onrender.com**. Public HTTP verification on 2026-10-28 completed a fresh real-DEM calculation and checked every exported artifact's checksum. See the [deployment verification record](docs/live-verification.md). Browser visual/interaction checks remain unperformed under the repository's browser-access restriction.
 
@@ -42,7 +45,7 @@ uv pip install --python .venv/Scripts/python.exe --no-deps -e .
 .venv/Scripts/python.exe scripts/verify_portfolio_demo.py
 ```
 
-On Linux/macOS, substitute `.venv/bin/python` for `.venv/Scripts/python.exe`. Linux CI is configured; this revision was verified locally on Windows. `requirements.lock` pins runtime dependencies; `requirements-dev.lock` adds the pinned test tools. `poetry.lock` and the Conda/Docker configuration are legacy environments and were not used for the results below.
+On Linux/macOS, substitute `.venv/bin/python` for `.venv/Scripts/python.exe`. `requirements.lock` pins runtime dependencies; `requirements-dev.lock` adds the pinned test tools. The Docker image uses those locks and is verified in CI. `poetry.lock` and the Conda environment are legacy alternatives.
 
 The script downloads the source to `data/source/jezero_ctx_20m.tif`, refuses checksum mismatches, and writes to `data/output/portfolio_demo/`:
 
@@ -90,19 +93,22 @@ CI runs the complete offline suite on Windows and Linux, frontend tests/lint/bui
 ## Architecture and scope
 
 - `marshab/analysis/portfolio.py`: strict real-data example orchestration.
+- `marshab/core/planetary_data.py`: pinned global/detailed sources, geographic map tiles and bounded cache.
+- `marshab/analysis/planetary_routing.py`: selected-point routes with source-specific spherical distances and matching 3D samples.
+- `marshab/core/explorer_service.py`: bounded asynchronous routing; shares the scientific workload slot with site comparison.
 - `marshab/processing/`: shared terrain, DEM ingestion, scoring and pathfinding kernels.
 - `marshab/analysis/export.py`: metadata-preserving suitability export.
 - `marshab/core/portfolio_service.py`: bounded server computation and verified result snapshots.
 - `marshab/analysis/site_package.py`: original exports, transparent terrain images, exact raster measurements and scene metadata.
 - `marshab/web/`: same-origin API, downloads and safe React file serving; legacy research endpoints remain available locally.
-- `webui/`: React scientific explorer; the experimental Leaflet/Plotly workspace is development-only.
+- `webui/`: React/Leaflet Mars map and lazy Plotly 3D path scene, plus the validated site comparison. The legacy research workspace remains development-only.
 - `tests/`: scientific assertions, API contracts and integration checks.
 
 The example intentionally uses only measured terrain criteria. Solar exposure and energy estimates, dust/science-value proxies, mission economics, ML recommendations and legacy cache/projection branches are **outside the validated portfolio scope**. Their remaining gaps are recorded in the matrix. Unified production disables the experimental API routes.
 
 ## API, frontend and deployment
 
-The unified application serves React at `/` and scientific endpoints at `/api/v1/portfolio/*`. API schema is at `/docs`. During frontend development, `npm run dev` proxies relative API calls to the Python service; production needs neither a cross-origin API URL nor a second service. The CLI remains an equivalent reproduction path.
+The unified application serves the map at `/`, site comparison at `/comparison`, map/routing endpoints at `/api/v1/explorer/*`, and the reference analysis at `/api/v1/portfolio/*`. API schema is at `/docs`. During frontend development, `npm run dev` proxies relative API calls to the Python service; production needs neither a cross-origin API URL nor a second service.
 
 The previous Render API URLs returned **HTTP 404**, including the API behind the existing Vercel site. The replacement `render.yaml` defines one Docker service with a baked small DEM and no required paid disk. A deployment is only verified after `scripts/smoke_unified_app.py` passes against its actual URL.
 

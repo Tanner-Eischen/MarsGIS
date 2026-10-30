@@ -35,7 +35,7 @@ def run_portfolio(request: Request):
     except AnalysisAlreadyRunningError:
         return JSONResponse(
             status_code=409,
-            content={**service.status(), "error": "A portfolio analysis is already running"},
+            content={**service.status(), "error": "Another scientific calculation is already running"},
         )
 
 

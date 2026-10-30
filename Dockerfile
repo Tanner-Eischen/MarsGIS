@@ -21,9 +21,9 @@ COPY marshab/ ./marshab/
 COPY scripts/ ./scripts/
 RUN pip install --no-cache-dir --no-deps -e .
 
-# Download the pinned 9.7 MB CTX source once at build time. acquire_dem verifies
-# its SHA-256 and leaves the original planetary CRS/transform metadata intact.
-RUN python -c "from pathlib import Path; from marshab.analysis.portfolio import acquire_dem; acquire_dem(Path('/app/reference/jezero_ctx20m.tif'))"
+# Bake real global MOLA plus detailed CTX data with their independent pinned
+# checksums and reference systems. Request handlers never download global DEMs.
+RUN python scripts/prepare_planetary_data.py --output-dir /app/reference
 COPY --from=frontend /build/webui/dist/ ./webui/dist/
 
 ENV PYTHONUNBUFFERED=1 \
@@ -36,6 +36,7 @@ ENV PYTHONUNBUFFERED=1 \
     MARSHAB_WEBUI_DIST=/app/webui/dist \
     MARSHAB_PORTFOLIO_REFERENCE_DIR=/app/webui/dist/portfolio \
     MARSHAB_REFERENCE_DEM_PATH=/app/reference/jezero_ctx20m.tif \
+    MARSHAB_GLOBAL_DEM_PATH=/app/reference/mola16.img \
     MARSHAB_PATHS__DATA_DIR=/app/data \
     MARSHAB_PATHS__CACHE_DIR=/app/data/cache \
     MARSHAB_PATHS__OUTPUT_DIR=/app/data/output \

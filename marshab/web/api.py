@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, Response
 from marshab.config import get_config
 from marshab.utils.logging import get_logger
 
-from .routes import health, portfolio
+from .routes import explorer, health, portfolio
 from .static import register_webui
 
 logger = get_logger(__name__)
@@ -266,6 +266,7 @@ def create_app() -> FastAPI:
         app.include_router(ai_query.router, prefix="/api/v1", tags=["ai"])
     app.include_router(health.router, tags=["health"])
     app.include_router(portfolio.router, tags=["portfolio"])
+    app.include_router(explorer.router, tags=["explorer"])
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):

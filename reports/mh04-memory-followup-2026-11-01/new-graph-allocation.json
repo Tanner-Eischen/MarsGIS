@@ -1,0 +1,16 @@
+{
+  "data_sha256": "bacf8877210a6e7ebc4e870e6b43e3ca99921bca2133b7a8c49247a2cd6c8666",
+  "edges": 2359894,
+  "exact_old_csr_arrays_match": true,
+  "graph_storage_bytes": 29654168,
+  "indices_sha256": "0250edd20fd5d054a5922e982cafb143c506fd096c2611a48e18f4d07d50d6ce",
+  "indptr_sha256": "f90a516d119f394130fab930efdbb47414d7b07b40eeedcd16f64e20744624f3",
+  "seconds": 0.07790269999532029,
+  "shape": [
+    593,
+    563
+  ],
+  "sorted_indices": true,
+  "traced_current_bytes": 29669701,
+  "traced_peak_bytes": 42647461
+}

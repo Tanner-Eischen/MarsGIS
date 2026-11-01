@@ -24,7 +24,7 @@ def close(actual, expected, message: str, *, rtol=0, atol=0) -> None:
 
 
 def reconstruct_graph(cost: np.ndarray, passable: np.ndarray, spacing: float) -> csr_matrix:
-    """Construct destination-weighted edges directly, without application graph helpers."""
+    """Construct independent directed CSR without retaining duplicate edge triplets."""
     require(cost.ndim == 2 and cost.shape == passable.shape, "Graph cost/mask shape mismatch")
     require(np.isfinite(spacing) and spacing > 0, "Graph spacing must be finite and positive")
     require(bool(passable.any()), "Graph has no passable cells")
@@ -33,26 +33,45 @@ def reconstruct_graph(cost: np.ndarray, passable: np.ndarray, spacing: float) ->
         "Graph costs must be finite and nonnegative on passable cells",
     )
     height, width = cost.shape
-    rows, columns = np.nonzero(passable)
-    sources, targets, weights = [], [], []
-    for dr, dc in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)):
-        next_rows, next_columns = rows + dr, columns + dc
-        inside = (
-            (next_rows >= 0) & (next_rows < height) & (next_columns >= 0) & (next_columns < width)
-        )
-        r, c = rows[inside], columns[inside]
-        nr, nc = next_rows[inside], next_columns[inside]
-        permitted = passable[nr, nc]
+    ceiling = np.iinfo(np.int32).max
+    require(cost.size < ceiling, "Graph exceeds the supported sparse-index size")
+    directions = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+
+    def edge_mask(dr: int, dc: int):
+        r0, r1 = max(0, -dr), min(height, height - dr)
+        c0, c1 = max(0, -dc), min(width, width - dc)
+        source = (slice(r0, r1), slice(c0, c1))
+        allowed = passable[source] & passable[r0 + dr : r1 + dr, c0 + dc : c1 + dc]
         if dr and dc:
-            permitted &= passable[r + dr, c] & passable[r, c + dc]
-        r, c, nr, nc = r[permitted], c[permitted], nr[permitted], nc[permitted]
-        sources.append(r * width + c)
-        targets.append(nr * width + nc)
-        weights.append(cost[nr, nc].astype(float) * spacing * np.hypot(dr, dc))
-    return csr_matrix(
-        (np.concatenate(weights), (np.concatenate(sources), np.concatenate(targets))),
-        shape=(cost.size, cost.size),
-    )
+            allowed &= passable[r0 + dr : r1 + dr, c0:c1]
+            allowed &= passable[r0:r1, c0 + dc : c1 + dc]
+        return source, allowed
+
+    # Count before allocating. Each source contributes at most one edge per direction.
+    counts = np.zeros(cost.shape, dtype=np.int32)
+    for dr, dc in directions:
+        source, allowed = edge_mask(dr, dc)
+        counts[source] += allowed
+    edges = int(counts.sum(dtype=np.int64))
+    require(edges < ceiling, "Graph exceeds the supported sparse-edge size")
+    indptr = np.empty(cost.size + 1, dtype=np.int32)
+    indptr[0] = 0
+    np.cumsum(counts.ravel(), dtype=np.int32, out=indptr[1:])
+    indices = np.empty(edges, dtype=np.int32)
+    weights = np.empty(edges, dtype=np.float64)
+    cursor = indptr[:-1].copy()
+    identifiers = np.arange(cost.size, dtype=np.int32).reshape(cost.shape)
+    flat_cost = cost.ravel()
+    for dr, dc in directions:
+        source, allowed = edge_mask(dr, dc)
+        sources = identifiers[source][allowed]
+        targets = sources + dr * width + dc
+        positions = cursor[sources]
+        indices[positions] = targets
+        # Preserve the original multiplication order, including explicit zero edges.
+        weights[positions] = flat_cost[targets].astype(float) * spacing * np.hypot(dr, dc)
+        cursor[sources] += 1
+    return csr_matrix((weights, indices, indptr), shape=(cost.size, cost.size), copy=False)
 
 
 def verify(output: Path) -> dict:

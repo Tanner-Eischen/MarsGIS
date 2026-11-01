@@ -1,0 +1,50 @@
+{
+  "archived_independent_verifier": "passed",
+  "canonical_git_lf_backend_fingerprint": "811318c993b328bdacc83503e408628bf6714fa742d5ee44d202eda563b77e69",
+  "exact_csr_arrays_match": true,
+  "final_csr_storage_bytes": 29654168,
+  "limitations": [
+    "Local2CPUtime/peak is not public0.1CPUacceptance or a general headroom guarantee.",
+    "Public redeployment/retest owned by root."
+  ],
+  "local_profile": {
+    "complete_recompute": "passed",
+    "cpus": 2,
+    "five_scientific_outputs_byte_identical": true,
+    "full_ordinary_http_smoke": "passed",
+    "memory_limit_bytes": 536870912,
+    "real_warm_sources": [
+      "ctx",
+      "mola16"
+    ],
+    "resources": {
+      "docker_oom_killed": false,
+      "limit_pressure_events": 0,
+      "max_sampled_anon_bytes": 323276800,
+      "max_sampled_file_bytes": 33603584,
+      "oom_events": 0,
+      "oom_kills": 0,
+      "peak_bytes": 360071168
+    },
+    "warm_map_tiles": 64
+  },
+  "new_allocation_peak_bytes": 42647461,
+  "old_allocation_peak_bytes": 181423667,
+  "public_failure": {
+    "reason": "oomKilled512Mi",
+    "source": "Root Render event inspection; new public retest pending",
+    "time_utc": "2026-11-01T12:14:59Z"
+  },
+  "runtime_archive_sha256": "75248dc032fc748923e2fa98e7c6443630ab07281c266fd1e9045d1e89c48ef6",
+  "schema_version": 1,
+  "scope": "Independent verifier storage correction; same scientific methods and byte-identical outputs",
+  "source_ancestry": "e11e3b9a1ccb7926b1f8684653b97b1d2204eee0",
+  "source_sha256": {
+    "marshab/analysis/verification.py": "c004e346612547407e7261830fe983a9de84c1f76b6ce15f0f814d6c3e6c98ff",
+    "tests/unit/test_independent_reference_verification.py": "9fac646187aaa2b8125502b37b197ea503b6fdc14fefb05ac7252695a7bcdc8e"
+  },
+  "status": "passed",
+  "targeted_tests_passed": 63,
+  "tested_backend_fingerprint": "be15614088f06a9cb553baf5dc70c577a11a9e3cbbce04f638353f3c76028330",
+  "timestamp_utc": "2026-11-01T12:28:57.701606+00:00"
+}

@@ -1,0 +1,39 @@
+{
+  "canonical_git_lf_backend_fingerprint": "811318c993b328bdacc83503e408628bf6714fa742d5ee44d202eda563b77e69",
+  "checks": {
+    "exact_directed_graph_bytes": "passed",
+    "memory_allocation_regression": "passed",
+    "public_retest": "not_run",
+    "scientific_output_agreement": "passed",
+    "warm512_complete_http_recompute": "passed"
+  },
+  "evidence_references": [
+    "verification.json",
+    "old-graph-allocation.json",
+    "new-graph-allocation.json",
+    "warm512-result.json"
+  ],
+  "files_sha256": {
+    "memory-samples.json": "f90bd508f254dfcac1ffe9c9aec5cf0aaa955f2f55ac1531dba0eee8c1734bd6",
+    "new-graph-allocation.json": "940907e07d4824cc9143fd4375f6a62ca1077e08becff35f530aa51b1eeea214",
+    "new-graph-verification.json": "1e873ba22561cfddf3d8bc8ffc5d401911250f120d208a3a2ef350006da1c6ed",
+    "old-graph-allocation.json": "8dad4eeb0aa7907268767eddc92836e4120ae43ce4bff02a68704ff1470e2dbe",
+    "server-logs.log": "737298f0e2162a9d9a613f98284bb157c60c1572200659f49a1c658741321d55",
+    "verification.json": "d934d1f96ef8c5981d70b74ea7c01ea23e097cc8988173e275e8a16536a0041c",
+    "warm512-result.json": "913b3f7e441be0efa21834294ad08b53446ef217857b30325567411608d80b8e"
+  },
+  "headline_results": [],
+  "last_verified_utc": "2026-11-01T12:28:57.701606+00:00",
+  "limitations": [
+    "Local2CPUtime/peak is not public0.1CPUacceptance or a general headroom guarantee.",
+    "Public redeployment/retest owned by root."
+  ],
+  "project_id": "marshab",
+  "release_id": "marshab-warm-memory-fix-2026-11-01",
+  "schema_version": 1,
+  "source_access": "public",
+  "source_revision": "e11e3b9a1ccb7926b1f8684653b97b1d2204eee0",
+  "source_url": "https://github.com/Tanner-Eischen/MarsGIS",
+  "tested_revision": null,
+  "tested_revision_scope": "Exact staged source and runtime archive fingerprints; final commit supplied separately"
+}

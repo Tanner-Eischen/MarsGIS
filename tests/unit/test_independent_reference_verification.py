@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import tracemalloc
 
 import numpy as np
 import pytest
@@ -133,6 +134,46 @@ def test_graph_prohibits_diagonal_corner_cutting():
     graph = reconstruct_graph(cost, np.isfinite(cost), 20)
     assert graph.nnz == 0
     assert np.isinf(dijkstra(graph, directed=True, indices=0)[3])
+
+
+def test_graph_all_edges_match_explicit_directed_reference():
+    costs = np.array([[0, 2, np.nan, 4], [7, 1, 3, 8], [5, np.nan, 6, 9]], dtype=float)
+    passable = np.isfinite(costs)
+    graph = reconstruct_graph(costs, passable, 20)
+    expected = np.zeros(graph.shape)
+    expected_edges = 0
+    for row, col in np.ndindex(costs.shape):
+        if not passable[row, col]:
+            continue
+        for dr, dc in np.ndindex(3, 3):
+            dr, dc = dr - 1, dc - 1
+            nr, nc = row + dr, col + dc
+            if not (dr or dc) or not (0 <= nr < 3 and 0 <= nc < 4):
+                continue
+            if not passable[nr, nc]:
+                continue
+            if dr and dc and not (passable[nr, col] and passable[row, nc]):
+                continue
+            expected[row * 4 + col, nr * 4 + nc] = costs[nr, nc] * 20 * np.hypot(dr, dc)
+            expected_edges += 1
+    np.testing.assert_array_equal(graph.toarray(), expected)
+    assert graph.nnz == expected_edges and graph.has_sorted_indices
+
+
+def test_graph_construction_peak_is_bounded_relative_to_csr_storage():
+    # NumPy's traced allocations include its array buffers in the pinned profile.
+    # This catches the previous 6x CSR peak caused by retaining all triplets twice.
+    costs = np.ones((320, 320), dtype=np.float32)
+    passable = np.ones_like(costs, dtype=bool)
+    tracemalloc.start()
+    try:
+        graph = reconstruct_graph(costs, passable, 20)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    storage = graph.data.nbytes + graph.indices.nbytes + graph.indptr.nbytes
+    assert peak >= storage, "Allocation tracing must include sparse array buffers"
+    assert peak < 2.5 * storage + 5_000_000
 
 
 @pytest.mark.parametrize("bad_cost", [-1, np.inf, np.nan])

@@ -8,7 +8,8 @@
 .env.*
 **/.env
 **/.env.*
-.venv
+.venv*
+**/.venv*
 venv
 ENV
 env
@@ -21,6 +22,7 @@ __pycache__
 htmlcov
 .coverage
 .tox
+.ruff_cache/
 tests/
 *.egg-info
 .eggs
@@ -30,6 +32,7 @@ build
 # Node builds inside the frontend stage.
 webui/node_modules
 webui/dist
+webui/coverage/
 
 # Docs and dev-only files (not needed at runtime)
 docs/
@@ -45,6 +48,11 @@ data/
 *.tiff
 *.geojson
 logs/
+output/
+reports/
+scratch/
+tmp/
+models/
 
 # The verified, public reference exports are part of the React build.
 !webui/public/portfolio/**

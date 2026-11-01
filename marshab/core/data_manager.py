@@ -375,13 +375,12 @@ class DataManager:
                 width=width_px,
                 count=1,
                 dtype=dem_array.dtype,
-                crs=None,
+                crs="+proj=longlat +a=3396190 +b=3396190 +no_defs +type=crs",
                 transform=transform,
                 nodata=-9999.0,
             ) as dst:
                 dst.write(dem_array, 1)
-                # Preserve Mars CRS hint for loaders/tests when CRS registry support is absent.
-                dst.update_tags(CRS_INFO="EPSG:49900")
+                dst.update_tags(DATA_MODE="synthetic", SYNTHETIC="true", ELEVATION_UNITS="m")
             if dest_path.exists():
                 dest_path.unlink()
             tmp_path.replace(dest_path)

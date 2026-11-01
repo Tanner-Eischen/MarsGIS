@@ -1,0 +1,171 @@
+============================================================
+Starting MarsHab Web API Server
+============================================================
+Server will be available at: http://0.0.0.0:5000
+API docs available at: http://0.0.0.0:5000/docs
+Workers: 1
+============================================================
+============================================================
+MarsHab Web API - Starting up...
+============================================================
+2026-11-01 07:27:44 [info     ] Starting MarsHab web API
+[OK] Config loaded
+[OK] Directories created
+[INFO] MARSHAB_MOLA_COG_PATH not set; skipping COG bootstrap
+2026-11-01 07:27:44 [info     ] No plugins config found, skipping plugin loading config_path=/app/data/config/plugins.yaml
+[OK] Plugins loaded
+============================================================
+MarsHab Web API - Ready!
+Server: http://localhost:5000
+API Docs: http://localhost:5000/docs
+============================================================
+[07:27:44] GET /api/v1/health/live
+[07:27:44] GET /api/v1/health/live - 200 (0.007s)
+INFO:     172.17.0.1:46796 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[07:27:44] GET /assets/PortfolioShowcase-CLzcMlfY.css
+[07:27:44] GET /assets/PortfolioShowcase-CLzcMlfY.css - 200 (0.004s)
+INFO:     172.17.0.1:46804 - "GET /assets/PortfolioShowcase-CLzcMlfY.css HTTP/1.1" 200 OK
+[07:27:44] GET /assets/PortfolioShowcase-CUlBNiz-.js
+[07:27:44] GET /assets/PortfolioShowcase-CUlBNiz-.js - 200 (0.001s)
+INFO:     172.17.0.1:46810 - "GET /assets/PortfolioShowcase-CUlBNiz-.js HTTP/1.1" 200 OK
+[07:27:44] GET /assets/TerrainScene3D-DWcsfKRX.js
+[07:27:44] GET /assets/TerrainScene3D-DWcsfKRX.js - 200 (0.000s)
+INFO:     172.17.0.1:46814 - "GET /assets/TerrainScene3D-DWcsfKRX.js HTTP/1.1" 200 OK
+[07:27:44] GET /assets/index-BEdWjQ5j.js
+[07:27:44] GET /assets/index-BEdWjQ5j.js - 200 (0.000s)
+INFO:     172.17.0.1:46828 - "GET /assets/index-BEdWjQ5j.js HTTP/1.1" 200 OK
+[07:27:44] GET /assets/index-DeoliP4Y.css
+[07:27:44] GET /assets/index-DeoliP4Y.css - 200 (0.001s)
+INFO:     172.17.0.1:46836 - "GET /assets/index-DeoliP4Y.css HTTP/1.1" 200 OK
+[07:27:44] GET /index.html
+[07:27:44] GET /index.html - 200 (0.000s)
+INFO:     172.17.0.1:46838 - "GET /index.html HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/comparison.png
+[07:27:44] GET /portfolio/comparison.png - 200 (0.000s)
+INFO:     172.17.0.1:46850 - "GET /portfolio/comparison.png HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/layers/elevation.png
+[07:27:44] GET /portfolio/layers/elevation.png - 200 (0.000s)
+INFO:     172.17.0.1:46858 - "GET /portfolio/layers/elevation.png HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/layers/hillshade.png
+[07:27:44] GET /portfolio/layers/hillshade.png - 200 (0.000s)
+INFO:     172.17.0.1:46868 - "GET /portfolio/layers/hillshade.png HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/layers/roughness.png
+[07:27:44] GET /portfolio/layers/roughness.png - 200 (0.000s)
+INFO:     172.17.0.1:46878 - "GET /portfolio/layers/roughness.png HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/layers/slope.png
+[07:27:44] GET /portfolio/layers/slope.png - 200 (0.000s)
+INFO:     172.17.0.1:46888 - "GET /portfolio/layers/slope.png HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/layers/suitability.png
+[07:27:44] GET /portfolio/layers/suitability.png - 200 (0.000s)
+INFO:     172.17.0.1:46894 - "GET /portfolio/layers/suitability.png HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/manifest.json
+[07:27:44] GET /portfolio/manifest.json - 200 (0.001s)
+INFO:     172.17.0.1:46908 - "GET /portfolio/manifest.json HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/probe.bin
+[07:27:44] GET /portfolio/probe.bin - 200 (0.000s)
+INFO:     172.17.0.1:46918 - "GET /portfolio/probe.bin HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/report.md
+[07:27:44] GET /portfolio/report.md - 200 (0.001s)
+INFO:     172.17.0.1:46932 - "GET /portfolio/report.md HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/routes.geojson
+[07:27:44] GET /portfolio/routes.geojson - 200 (0.001s)
+INFO:     172.17.0.1:46938 - "GET /portfolio/routes.geojson HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/scene.json
+[07:27:44] GET /portfolio/scene.json - 200 (0.000s)
+INFO:     172.17.0.1:46954 - "GET /portfolio/scene.json HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/suitability.tif
+[07:27:44] GET /portfolio/suitability.tif - 200 (0.000s)
+INFO:     172.17.0.1:46968 - "GET /portfolio/suitability.tif HTTP/1.1" 200 OK
+[07:27:44] GET /portfolio/terrain.tif
+[07:27:44] GET /portfolio/terrain.tif - 200 (0.000s)
+INFO:     172.17.0.1:46972 - "GET /portfolio/terrain.tif HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/health/live
+[07:27:45] GET /api/v1/health/live - 200 (0.001s)
+INFO:     172.17.0.1:46986 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/health/live
+[07:27:45] GET /api/v1/health/live - 200 (0.000s)
+INFO:     172.17.0.1:46990 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/health/ready
+[07:27:45] GET /api/v1/health/ready - 200 (0.063s)
+INFO:     172.17.0.1:46996 - "GET /api/v1/health/ready HTTP/1.1" 200 OK
+[07:27:45] GET /
+[07:27:45] GET / - 200 (0.001s)
+INFO:     172.17.0.1:47004 - "GET / HTTP/1.1" 200 OK
+[07:27:45] GET /assets/index-BEdWjQ5j.js
+[07:27:45] GET /assets/index-BEdWjQ5j.js - 200 (0.000s)
+INFO:     172.17.0.1:47012 - "GET /assets/index-BEdWjQ5j.js HTTP/1.1" 200 OK
+[07:27:45] GET /assets/TerrainScene3D-DWcsfKRX.js
+[07:27:45] GET /assets/TerrainScene3D-DWcsfKRX.js - 200 (0.000s)
+INFO:     172.17.0.1:47016 - "GET /assets/TerrainScene3D-DWcsfKRX.js HTTP/1.1" 200 OK
+[07:27:45] GET /assets/index-DeoliP4Y.css
+[07:27:45] GET /assets/index-DeoliP4Y.css - 200 (0.000s)
+INFO:     172.17.0.1:47026 - "GET /assets/index-DeoliP4Y.css HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/explorer/metadata
+[07:27:45] GET /api/v1/explorer/metadata - 200 (0.001s)
+INFO:     172.17.0.1:47038 - "GET /api/v1/explorer/metadata HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/explorer/tiles/mola/0/0/0.png
+[07:27:45] GET /api/v1/explorer/tiles/mola/0/0/0.png - 200 (0.028s)
+INFO:     172.17.0.1:47044 - "GET /api/v1/explorer/tiles/mola/0/0/0.png HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/explorer/tiles/mola/0/1/0.png
+[07:27:45] GET /api/v1/explorer/tiles/mola/0/1/0.png - 200 (0.022s)
+INFO:     172.17.0.1:47052 - "GET /api/v1/explorer/tiles/mola/0/1/0.png HTTP/1.1" 200 OK
+[07:27:45] POST /api/v1/explorer/routes
+[07:27:45] POST /api/v1/explorer/routes - 202 (0.001s)
+INFO:     172.17.0.1:47068 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+2026-11-01 07:27:45 [info     ] Starting A* pathfinding        cost_map_shape=(26, 92) goal=(6, 85) start=(20, 6)
+2026-11-01 07:27:45 [info     ] A* pathfinding starting        cost_map_shape=(26, 92) goal=(6, 85) max_nodes=2392 start=(20, 6)
+2026-11-01 07:27:45 [info     ] A* pathfinding progress        max_nodes=2392 nodes_explored=1000 open_set_size=274 progress_pct=41.8%
+2026-11-01 07:27:45 [info     ] Path found                     nodes_explored=1837 path_length=80 total_cost=1792.149948113478
+[07:27:45] GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af
+[07:27:45] GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af - 200 (0.006s)
+INFO:     172.17.0.1:47074 - "GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af/geojson
+[07:27:45] GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af/geojson - 200 (0.002s)
+INFO:     172.17.0.1:47090 - "GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af/geojson HTTP/1.1" 200 OK
+[07:27:45] POST /api/v1/explorer/routes
+[07:27:45] POST /api/v1/explorer/routes - 202 (0.001s)
+INFO:     172.17.0.1:47098 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+2026-11-01 07:27:45 [info     ] Starting A* pathfinding        cost_map_shape=(38, 38) goal=(2, 34) start=(34, 2)
+2026-11-01 07:27:45 [info     ] A* pathfinding starting        cost_map_shape=(38, 38) goal=(2, 34) max_nodes=1444 start=(34, 2)
+2026-11-01 07:27:45 [info     ] Path found                     nodes_explored=33 path_length=33 total_cost=166598.40441734696
+[07:27:45] GET /api/v1/explorer/routes/79debd2f86c24bf0a568fc0c7a9eeed3
+[07:27:45] GET /api/v1/explorer/routes/79debd2f86c24bf0a568fc0c7a9eeed3 - 200 (0.008s)
+INFO:     172.17.0.1:47102 - "GET /api/v1/explorer/routes/79debd2f86c24bf0a568fc0c7a9eeed3 HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/explorer/routes/79debd2f86c24bf0a568fc0c7a9eeed3/geojson
+[07:27:45] GET /api/v1/explorer/routes/79debd2f86c24bf0a568fc0c7a9eeed3/geojson - 200 (0.001s)
+INFO:     172.17.0.1:47114 - "GET /api/v1/explorer/routes/79debd2f86c24bf0a568fc0c7a9eeed3/geojson HTTP/1.1" 200 OK
+[07:27:45] POST /api/v1/explorer/routes
+[07:27:45] POST /api/v1/explorer/routes
+[07:27:45] POST /api/v1/explorer/routes
+[07:27:45] POST /api/v1/explorer/routes - 202 (0.015s)
+INFO:     172.17.0.1:47124 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+[07:27:45] POST /api/v1/explorer/routes - 409 (0.037s)
+INFO:     172.17.0.1:47128 - "POST /api/v1/explorer/routes HTTP/1.1" 409 Conflict
+[07:27:45] POST /api/v1/explorer/routes - 409 (0.048s)
+INFO:     172.17.0.1:47132 - "POST /api/v1/explorer/routes HTTP/1.1" 409 Conflict
+2026-11-01 07:27:45 [info     ] Starting A* pathfinding        cost_map_shape=(26, 92) goal=(6, 85) start=(20, 6)
+2026-11-01 07:27:45 [info     ] A* pathfinding starting        cost_map_shape=(26, 92) goal=(6, 85) max_nodes=2392 start=(20, 6)
+2026-11-01 07:27:45 [info     ] A* pathfinding progress        max_nodes=2392 nodes_explored=1000 open_set_size=274 progress_pct=41.8%
+2026-11-01 07:27:45 [info     ] Path found                     nodes_explored=1837 path_length=80 total_cost=1792.149948113478
+[07:27:45] GET /api/v1/explorer/routes/7568f54474bf4f2d9914ddb736c46957
+[07:27:45] GET /api/v1/explorer/routes/7568f54474bf4f2d9914ddb736c46957 - 200 (0.005s)
+INFO:     172.17.0.1:47144 - "GET /api/v1/explorer/routes/7568f54474bf4f2d9914ddb736c46957 HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af/geojson
+[07:27:45] GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af/geojson - 200 (0.002s)
+INFO:     172.17.0.1:47160 - "GET /api/v1/explorer/routes/9e0f6a5cd8a54fc08dc85079397741af/geojson HTTP/1.1" 200 OK
+[07:27:45] GET /api/v1/portfolio/status
+[07:27:46] GET /api/v1/portfolio/status - 200 (0.391s)
+INFO:     172.17.0.1:47164 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[07:27:46] GET /api/v1/missing-endpoint
+[07:27:46] GET /api/v1/missing-endpoint - 404 (0.000s)
+INFO:     172.17.0.1:47174 - "GET /api/v1/missing-endpoint HTTP/1.1" 404 Not Found
+[07:27:46] GET /assets/missing-file.js
+[07:27:46] GET /assets/missing-file.js - 404 (0.000s)
+INFO:     172.17.0.1:47176 - "GET /assets/missing-file.js HTTP/1.1" 404 Not Found
+[07:27:46] GET /explore/jezero
+[07:27:46] GET /explore/jezero - 200 (0.000s)
+INFO:     172.17.0.1:47190 - "GET /explore/jezero HTTP/1.1" 200 OK
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)

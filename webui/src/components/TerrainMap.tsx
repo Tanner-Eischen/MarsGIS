@@ -148,7 +148,7 @@ const sampleElevationFromRawTile = async (
   const path = `/visualization/tiles/elevation-raw/${encodeURIComponent(dataset)}/${z}/${tileX}/${tileY}.npy?${params.toString()}`
   const response = await fetch(apiUrl(path))
   if (!response.ok) {
-    let detail = ''
+    let detail: string
     try {
       const payload = await response.json()
       detail = payload?.detail || payload?.error || ''

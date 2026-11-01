@@ -1,0 +1,340 @@
+............................................................F.FFFF...... [ 93%]
+.....                                                                    [100%]
+================================== FAILURES ===================================
+_______ test_package_preserves_full_resolution_probe_and_pixel_centers ________
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_package_preserves_full_re0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+>           source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'crs_wkt'
+
+marshab\analysis\verification.py:72: KeyError
+
+The above exception was the direct cause of the following exception:
+
+analysis = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_package_preserves_full_re0/analysis')
+tmp_path = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_package_preserves_full_re0')
+
+    def test_package_preserves_full_resolution_probe_and_pixel_centers(analysis, tmp_path):
+        output = tmp_path / "site"
+>       scene = build_package(analysis, output)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_portfolio_site.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+marshab\analysis\site_package.py:102: in build_package
+    verify_analysis(source)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_package_preserves_full_re0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+            source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+        except (CRSError, KeyError, TypeError) as error:
+>           raise ValueError("Invalid or missing declared grid/source CRS") from error
+E           ValueError: Invalid or missing declared grid/source CRS
+
+marshab\analysis\verification.py:74: ValueError
+___________________ test_rejects_corrupt_packaged_artifact ____________________
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_corrupt_packaged_0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+>           source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'crs_wkt'
+
+marshab\analysis\verification.py:72: KeyError
+
+The above exception was the direct cause of the following exception:
+
+analysis = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_corrupt_packaged_0/analysis')
+tmp_path = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_corrupt_packaged_0')
+
+    def test_rejects_corrupt_packaged_artifact(analysis, tmp_path):
+        output = tmp_path / "site"
+>       build_package(analysis, output)
+
+tests\unit\test_portfolio_site.py:155: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+marshab\analysis\site_package.py:102: in build_package
+    verify_analysis(source)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_corrupt_packaged_0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+            source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+        except (CRSError, KeyError, TypeError) as error:
+>           raise ValueError("Invalid or missing declared grid/source CRS") from error
+E           ValueError: Invalid or missing declared grid/source CRS
+
+marshab\analysis\verification.py:74: ValueError
+______________ test_probe_values_checked_even_if_hash_is_updated ______________
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_probe_values_checked_even0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+>           source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'crs_wkt'
+
+marshab\analysis\verification.py:72: KeyError
+
+The above exception was the direct cause of the following exception:
+
+analysis = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_probe_values_checked_even0/analysis')
+tmp_path = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_probe_values_checked_even0')
+
+    def test_probe_values_checked_even_if_hash_is_updated(analysis, tmp_path):
+        output = tmp_path / "site"
+>       scene = build_package(analysis, output)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_portfolio_site.py:163: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+marshab\analysis\site_package.py:102: in build_package
+    verify_analysis(source)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_probe_values_checked_even0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+            source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+        except (CRSError, KeyError, TypeError) as error:
+>           raise ValueError("Invalid or missing declared grid/source CRS") from error
+E           ValueError: Invalid or missing declared grid/source CRS
+
+marshab\analysis\verification.py:74: ValueError
+______________ test_route_centers_checked_independently_of_scene ______________
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_route_centers_checked_ind0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+>           source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'crs_wkt'
+
+marshab\analysis\verification.py:72: KeyError
+
+The above exception was the direct cause of the following exception:
+
+analysis = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_route_centers_checked_ind0/analysis')
+tmp_path = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_route_centers_checked_ind0')
+
+    def test_route_centers_checked_independently_of_scene(analysis, tmp_path):
+        output = tmp_path / "site"
+>       scene = build_package(analysis, output)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_portfolio_site.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+marshab\analysis\site_package.py:102: in build_package
+    verify_analysis(source)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_route_centers_checked_ind0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+            source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+        except (CRSError, KeyError, TypeError) as error:
+>           raise ValueError("Invalid or missing declared grid/source CRS") from error
+E           ValueError: Invalid or missing declared grid/source CRS
+
+marshab\analysis\verification.py:74: ValueError
+______________________ test_rejects_synthetic_data_mode _______________________
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_synthetic_data_mo0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+>           source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'crs_wkt'
+
+marshab\analysis\verification.py:72: KeyError
+
+The above exception was the direct cause of the following exception:
+
+analysis = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_synthetic_data_mo0/analysis')
+tmp_path = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_synthetic_data_mo0')
+
+    def test_rejects_synthetic_data_mode(analysis, tmp_path):
+        path = analysis / "manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["data_mode"] = "synthetic"
+        write_json(path, manifest)
+        with pytest.raises(ValueError, match="observed DEM"):
+>           build_package(analysis, tmp_path / "site")
+
+tests\unit\test_portfolio_site.py:188: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+marshab\analysis\site_package.py:102: in build_package
+    verify_analysis(source)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_synthetic_data_mo0/analysis')
+
+    def verify(output: Path) -> dict:
+        manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        require(
+            {"terrain.tif", "suitability.tif", "routes.geojson"} <= manifest["outputs_sha256"].keys(),
+            "Manifest must identify terrain, suitability and route checksums",
+        )
+        for name, expected in manifest["outputs_sha256"].items():
+            require(Path(name).name == name, f"Unsafe output checksum path: {name}")
+            actual = hashlib.sha256((output / name).read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"Output checksum mismatch: {name}")
+        grid = manifest["grid"]
+        try:
+            declared_crs = CRS.from_wkt(grid["crs_wkt"])
+            source_crs = CRS.from_wkt(manifest["source"]["crs_wkt"])
+        except (CRSError, KeyError, TypeError) as error:
+>           raise ValueError("Invalid or missing declared grid/source CRS") from error
+E           ValueError: Invalid or missing declared grid/source CRS
+
+marshab\analysis\verification.py:74: ValueError
+
+During handling of the above exception, another exception occurred:
+
+analysis = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_synthetic_data_mo0/analysis')
+tmp_path = WindowsPath('<temporary>/pytest-of-tanne/pytest-634/test_rejects_synthetic_data_mo0')
+
+    def test_rejects_synthetic_data_mode(analysis, tmp_path):
+        path = analysis / "manifest.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest["data_mode"] = "synthetic"
+        write_json(path, manifest)
+>       with pytest.raises(ValueError, match="observed DEM"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'observed DEM'
+E         Actual message: 'Invalid or missing declared grid/source CRS'
+
+tests\unit\test_portfolio_site.py:187: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/unit/test_portfolio_site.py::test_package_preserves_full_resolution_probe_and_pixel_centers
+FAILED tests/unit/test_portfolio_site.py::test_rejects_corrupt_packaged_artifact
+FAILED tests/unit/test_portfolio_site.py::test_probe_values_checked_even_if_hash_is_updated
+FAILED tests/unit/test_portfolio_site.py::test_route_centers_checked_independently_of_scene
+FAILED tests/unit/test_portfolio_site.py::test_rejects_synthetic_data_mode - ...
+5 failed, 72 passed, 372 warnings in 70.42s (0:01:10)
+

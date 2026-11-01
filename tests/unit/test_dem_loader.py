@@ -22,27 +22,19 @@ class TestDEMLoader:
         assert "lat" in dem.coords
         assert "lon" in dem.coords
         assert dem.shape == (100, 100)
-        # CRS may be stored as EPSG:49900, PROJ string, or in tags
-        # Check if CRS is in attrs or if it's a Mars CRS (check for Mars radius or EPSG:49900)
-        crs = dem.attrs.get("crs", None)
-        if crs is None:
-            # Check tags for CRS info
-            with rasterio.open(synthetic_dem) as src:
-                crs_info = src.tags().get("CRS_INFO", None)
-                if crs_info:
-                    crs = crs_info
-        # Accept either EPSG:49900 or PROJ string or None (if CRS not supported)
-        assert crs is None or "49900" in str(crs) or "3396190" in str(crs) or "Mars" in str(crs), \
-            f"Expected Mars CRS, got: {crs}"
+        with rasterio.open(synthetic_dem) as src:
+            assert rasterio.crs.CRS.from_wkt(dem.attrs["crs"]) == src.crs
+            assert dem.attrs["transform"] == list(src.transform)[:6]
+        assert dem.x.values[0] == pytest.approx(180.005)
+        assert dem.y.values[0] == pytest.approx(40.995)
 
     def test_clip_to_roi(self, loader, synthetic_dem, test_roi):
         """Test ROI clipping."""
         dem = loader.load(synthetic_dem)
         clipped = loader.clip_to_roi(dem, test_roi)
 
-        # Clipped should be smaller (approximately)
-        assert clipped.shape[0] <= dem.shape[0]
-        assert clipped.shape[1] <= dem.shape[1]
+        # The ROI covers the entire raster; retaining every cell is required.
+        assert clipped.shape == dem.shape
 
         # All coordinates should be within ROI (within tolerance)
         lat_min = float(clipped.coords["lat"].min())

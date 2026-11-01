@@ -1,0 +1,3 @@
+usage: verify_portfolio_demo.py [-h] [--compare COMPARE] [--report REPORT]
+                                [output]
+verify_portfolio_demo.py: error: Report already exists; retain prior evidence and choose a new path

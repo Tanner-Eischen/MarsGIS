@@ -7,31 +7,15 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
 from marshab.config import get_config
 from marshab.utils.logging import get_logger
 
-from .routes import (
-    ai_query,
-    analysis,
-    download,
-    examples,
-    export,
-    health,
-    mission_scenarios,
-    ml_recommendation,
-    navigation,
-    progress,
-    projects,
-    route_analysis,
-    site_analysis,
-    solar_analysis,
-    status,
-    visualization,
-)
+from .routes import explorer, health, portfolio
+from .static import register_webui
 
 logger = get_logger(__name__)
 
@@ -244,40 +228,45 @@ def create_app() -> FastAPI:
             print(f"[{time.strftime('%H:%M:%S')}] {request.method} {request.url.path} - ERROR: {e} ({process_time:.3f}s)")
             raise
 
-    # Root route
-    @app.get("/")
-    async def root():
-        """Root endpoint with API information."""
-        return {
-            "name": "MarsHab API",
-            "version": "0.1.0",
-            "description": "Mars Habitat Site Selection and Rover Navigation System API",
-            "docs": "/docs",
-            "api_base": "/api/v1",
-            "endpoints": {
-                "status": "/api/v1/status",
-                "health": "/api/v1/health/live",
-                "docs": "/docs"
-            }
-        }
+    # Public unified deployments expose only the bounded, validated workflow.
+    # Keep research endpoints opt-in there while preserving local compatibility.
+    if _env_truthy("MARSHAB_ENABLE_EXPERIMENTAL_API", "true"):
+        from .routes import (
+            ai_query,
+            analysis,
+            download,
+            examples,
+            export,
+            mission_scenarios,
+            ml_recommendation,
+            navigation,
+            progress,
+            projects,
+            route_analysis,
+            site_analysis,
+            solar_analysis,
+            status,
+            visualization,
+        )
 
-    # Include routers
-    app.include_router(status.router, prefix="/api/v1", tags=["status"])
-    app.include_router(download.router, prefix="/api/v1", tags=["download"])
-    app.include_router(analysis.router, prefix="/api/v1", tags=["analysis"])
-    app.include_router(navigation.router, prefix="/api/v1/navigation", tags=["navigation"])
-    app.include_router(visualization.router, prefix="/api/v1", tags=["visualization"])
-    app.include_router(site_analysis.router, tags=["analysis"])
-    app.include_router(route_analysis.router, tags=["analysis"])
-    app.include_router(mission_scenarios.router, tags=["mission"])
-    app.include_router(export.router, tags=["export"])
-    app.include_router(projects.router, tags=["projects"])
+        app.include_router(status.router, prefix="/api/v1", tags=["status"])
+        app.include_router(download.router, prefix="/api/v1", tags=["download"])
+        app.include_router(analysis.router, prefix="/api/v1", tags=["analysis"])
+        app.include_router(navigation.router, prefix="/api/v1/navigation", tags=["navigation"])
+        app.include_router(visualization.router, prefix="/api/v1", tags=["visualization"])
+        app.include_router(site_analysis.router, tags=["analysis"])
+        app.include_router(route_analysis.router, tags=["analysis"])
+        app.include_router(mission_scenarios.router, tags=["mission"])
+        app.include_router(export.router, tags=["export"])
+        app.include_router(projects.router, tags=["projects"])
+        app.include_router(examples.router, tags=["examples"])
+        app.include_router(progress.router, tags=["progress"])
+        app.include_router(solar_analysis.router, prefix="/api/v1", tags=["solar"])
+        app.include_router(ml_recommendation.router, prefix="/api/v1", tags=["machine-learning"])
+        app.include_router(ai_query.router, prefix="/api/v1", tags=["ai"])
     app.include_router(health.router, tags=["health"])
-    app.include_router(examples.router, tags=["examples"])
-    app.include_router(progress.router, tags=["progress"])
-    app.include_router(solar_analysis.router, prefix="/api/v1", tags=["solar"])
-    app.include_router(ml_recommendation.router, prefix="/api/v1", tags=["machine-learning"])
-    app.include_router(ai_query.router, prefix="/api/v1", tags=["ai"])
+    app.include_router(portfolio.router, tags=["portfolio"])
+    app.include_router(explorer.router, tags=["explorer"])
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):
@@ -314,6 +303,8 @@ def create_app() -> FastAPI:
             headers=headers,
         )
 
+    # Register client files last so API and WebSocket routing takes precedence.
+    register_webui(app)
     return app
 
 

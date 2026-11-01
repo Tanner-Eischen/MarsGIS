@@ -1,0 +1,192 @@
+{
+  "additional_build_and_lint_inputs_sha256": {
+    ".dockerignore": "1ab8f7947eedfaac385641a145885a752f7d7fe3dd0d8e4d1e9399a03cae4396",
+    ".ruff.toml": "4044f4c3e31d6a672113cd9091a6f86531cf3991ccd9f6c2231d1535ca76c0c6",
+    "Dockerfile": "36b013d1eb2fec87ac6bbe73b1597393cce40356dc49d72e1ce3677b6cb1385e",
+    "webui/eslint.config.mjs": "b714d5cc8bbbbf0d2a7e20d8537d2f5d1063bc1239c79bb707c40c4866262dc9",
+    "webui/postcss.config.js": "639447353cae1b98f22ea41db7de7a01fcd7c7ec82bde7d4ba20db33dc4bbbfa",
+    "webui/tailwind.config.js": "181da50caf0dc4653725364a6351190840809525b3b869f314e652a7343d5a0a",
+    "webui/tsconfig.node.json": "0a1b95e5484f75b3fc228a8b091d8295390a057644af7f2b1e613e890c6873f4"
+  },
+  "backend_python_files": 94,
+  "backend_sha256": "d3a76ec64c221ec453709bb4fce72399115f5f4332fcdd90198e89cce1a9a8d1",
+  "base_image_id": "sha256:026b1fb772805cd2e554a277510e9012e3a226b2f8e5928708b42d71a07ba52d",
+  "cached_source_downloads": false,
+  "candidate_image_id": "sha256:3d6a00a1f0fe2a975a79bc41bd6a5332e57ab09178e585f13a2a6d2a20a18aa2",
+  "checks": {
+    "actual_loopback_http": "passed",
+    "backend_lint": "passed",
+    "backend_targeted_tests": {
+      "passed": 81,
+      "seconds": 14.83,
+      "warnings": 5
+    },
+    "frontend_build": "passed",
+    "frontend_lint": {
+      "errors": 0,
+      "existing_warnings": 15
+    },
+    "frontend_targeted_tests": {
+      "passed": 26,
+      "seconds": 9.83
+    },
+    "health_no_download_teardown_assertions": {
+      "passed": 5,
+      "seconds": 3.8,
+      "warnings": 1
+    },
+    "missing_source_live200_ready503": "passed",
+    "native_runtime_pins": {
+      "passed": 72
+    },
+    "resource_gate": "passed"
+  },
+  "client_cancellation_scope": "Transport/publication cancellation only; accepted server work drains under unchanged single worker slot",
+  "controlled_burst_statuses": [
+    202,
+    409,
+    409
+  ],
+  "dependency_probe_removed": true,
+  "derivative_dockerfile": "inputs/Derivative.Dockerfile",
+  "frontend_files_delivered_and_hashed": 19,
+  "http_scenarios": [
+    {
+      "end": {
+        "lat": 18.384727,
+        "lon": 77.41188
+      },
+      "max_slope_deg": 25,
+      "source": "ctx",
+      "start": {
+        "lat": 18.38001,
+        "lon": 77.385212
+      }
+    },
+    {
+      "end": {
+        "lat": 12,
+        "lon": -179
+      },
+      "max_slope_deg": 25,
+      "source": "mola16",
+      "start": {
+        "lat": 10,
+        "lon": 179
+      }
+    }
+  ],
+  "limitations": [
+    "No browser/WebGL/keyboard/mobile interaction was performed.",
+    "The derivative uses a cached runtime and preserved preexisting dirty source/profile changes; it is not a pristine source or original-Dockerfile rebuild.",
+    "Memory observations apply only to the recorded selected-point/export/three-request journey, not general headroom or production capacity.",
+    "No public source access, deployment, visibility change, push, cloud-plan change or paid model call occurred.",
+    "Fixed historical-science reproduction remains separately documented; this gate did not rerun it."
+  ],
+  "original_dockerfile_executed": false,
+  "original_reference_regenerated": false,
+  "owned_application_containers_removed": true,
+  "owned_change_source_sha256": {
+    "docs/implementation/MH03_NON_UI_CONTRACTS.md": "a76fcb19119ceb65907def2cf695c9b625c82489fc220a3871830839a7fc04ef",
+    "marshab/core/explorer_service.py": "b7c93aef53ca00dc3d99cad44fd42dde861431a5d2d6081023a55dc61bb13201",
+    "marshab/web/build_identity.py": "4f0514c1bbb7088bd448ab203957353713d2f10b9a2927ddcdca005254e31d04",
+    "marshab/web/routes/explorer.py": "51a72017947e61644f2b3d92ce96a059cc2e96344cea6bb5f454aabb4883be70",
+    "marshab/web/routes/health.py": "12b734a56bcbdd488767fb3616fe40b8c034a032982acae8eedb33e5ce1582b2",
+    "scripts/smoke_unified_app.py": "acc1049167c7f724e5f1c6fd42ea6f45dbade7e9ccb20580b85acb5a0e4fa859",
+    "tests/api/test_explorer_api.py": "13da06e9348529b90a8d8a4bd05e3286c9894e8171d6cd321305df75098bad80",
+    "tests/api/test_health_api.py": "508f3110dbecf88fbd22ab26c3fe519eb537b113ce37bdb2b083e75913f21dea",
+    "webui/src/lib/explorer.test.ts": "54eb8c75f37a45d900102fe32495de5c10c1cca84009569ac8394523c698ef78",
+    "webui/src/lib/explorer.ts": "6ee99bc9a6c45a8037a2bd581c2b7a7b9e4a902390bd116e8fe229ab05d01100",
+    "webui/src/pages/MarsExplorer.test.tsx": "088896f49cb0a936d2da9894dd4c7ff736dbbd57a5c2865b3420d6ed6b85e41b",
+    "webui/src/pages/MarsExplorer.tsx": "152d2bea2fbb6ee105ba79ac8fdccebb80be8471e41c3c89248cb878d7aaef3e"
+  },
+  "profile": "Exact dirty source/frontend snapshot over an audited immutable cached runtime",
+  "resources": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "memory_limit_bytes": 1073741824,
+    "memory_peak_bytes": 368402432,
+    "memory_swap_limit_bytes": 1073741824,
+    "nano_cpus": 2000000000,
+    "oom_killed": false,
+    "running": true
+  },
+  "sanitized_log_sources": {
+    "backend-lint.log": {
+      "raw_log_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "sanitized_sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    "backend-tests.log": {
+      "raw_log_sha256": "dcb65878708f8886b993d00002779ba768d6576e04a00cb2838b9783813790dd",
+      "sanitized_sha256": "dcb65878708f8886b993d00002779ba768d6576e04a00cb2838b9783813790dd"
+    },
+    "candidate-pip-check.log": {
+      "raw_log_sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "sanitized_sha256": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf"
+    },
+    "container-http-smoke.log": {
+      "raw_log_sha256": "9e7289bf467d8707d33a641ee04617ad721e30433e63124546a781e5ca4c28ff",
+      "sanitized_sha256": "df0100c0c74f1cb44fe3d177ef942dfc9d4ab2f333e25c0b0cb97cfe018d1dcd"
+    },
+    "derivative-build.log": {
+      "raw_log_sha256": "6b70149ebd3368b01335326a75a725eb52d7aee6c7242639f08d4bb2b55a464a",
+      "sanitized_sha256": "2cb2cb2916e0d814f221fd5b4ecb03fc8db28c8188a87c7e9a1f664916f8f8f0"
+    },
+    "frontend-build.log": {
+      "raw_log_sha256": "72a2d7d70121daaebe23c19943610a2a4867c52fb30cf30c5318a0a1e95645e3",
+      "sanitized_sha256": "72a2d7d70121daaebe23c19943610a2a4867c52fb30cf30c5318a0a1e95645e3"
+    },
+    "frontend-lint.log": {
+      "raw_log_sha256": "236d7962a0b77352ff22eb593733815a73f880b457d8d75a135198505879d151",
+      "sanitized_sha256": "d6e2eae3399769839dd11c0e36893abd46582f8057c4bde563b2191c7199f82d"
+    },
+    "frontend-tests.log": {
+      "raw_log_sha256": "c19aae5c38a05dcc47c2977440834702a2685c5b5f1f48f75b5208a3be62faba",
+      "sanitized_sha256": "734ed52b56018ae824c34bcd20786602f6da15756436e826c3a35f438759b758"
+    },
+    "health-no-download-tests.log": {
+      "raw_log_sha256": "5eaf5bc91b922ae66e8e54af97f118b0101878e057036ed68d4ca421d170ff77",
+      "sanitized_sha256": "5eaf5bc91b922ae66e8e54af97f118b0101878e057036ed68d4ca421d170ff77"
+    },
+    "missing-source-server.log": {
+      "raw_log_sha256": "ba0578e5f2de73f66fdd433448a70a758e95e3188dca96f5e84735d1044c256a",
+      "sanitized_sha256": "f0db75c73358af0aa9bf06b6a3b59300b46ac88d23b6893f1a654d7da2874321"
+    },
+    "native-package-pin-audit.log": {
+      "raw_log_sha256": "8419add5099a328b2b6e1090e86a0b9dfb1115a2ddbc8bc495c4283c6280aa9b",
+      "sanitized_sha256": "2ae37b44714c6529c987c6b9daec5d882a3ad9efe681d1ed2499de7435de769f"
+    },
+    "positive-server.log": {
+      "raw_log_sha256": "0f7138c11a66df3bab3ca1973cda551e0eeff863d829b65029176a3f3d4b1977",
+      "sanitized_sha256": "a4a5276c393453c7f93d8556feeca7a30c505cfa51c40da0408df85a889ec890"
+    }
+  },
+  "schema_version": 1,
+  "source_ancestry_commit": "c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+  "source_ancestry_scope": "Ancestry only; no pristine commit or original-Dockerfile build claim",
+  "source_files_unchanged_since_snapshot": true,
+  "source_manifest_sha256": "a4245ee3d93f3e8f7f14f9d6cb963c8e1e35dda3cdd35b31679c14689519dcb9",
+  "status": "passed",
+  "timestamp_utc": "2026-11-01T07:00:18.902564+00:00",
+  "unrelated_containers_modified": false,
+  "verification_environments": {
+    "actual_http": {
+      "docker": {
+        "Architecture": "x86_64",
+        "OSType": "linux",
+        "OperatingSystem": "Ubuntu 24.04.3 LTS",
+        "ServerVersion": "29.1.3"
+      },
+      "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.36",
+      "python": "3.11.18"
+    },
+    "backend_units": "Windows Python3.11.15 patched development environment",
+    "frontend": "Node22.20.0/npm11.13.0; CLI JSDOM tests and TypeScript/Vite build"
+  }
+}

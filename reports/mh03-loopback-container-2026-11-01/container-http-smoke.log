@@ -1,0 +1,4 @@
+PASS: ctx selected-point route, spherical length, matching 3D coordinates and GeoJSON (80 vertices)
+PASS: mola16 selected-point route, spherical length, matching 3D coordinates and GeoJSON (33 vertices)
+PASS: actual loopback burst returns 409 while one scientific worker runs; prior export unchanged
+PASS: real global map tiles and the lazy 3D viewer asset

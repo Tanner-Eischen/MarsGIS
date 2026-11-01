@@ -3,7 +3,13 @@
 .gitignore
 .gitattributes
 .cursor
-.venv
+.tmp
+.env
+.env.*
+**/.env
+**/.env.*
+.venv*
+**/.venv*
 venv
 ENV
 env
@@ -16,15 +22,17 @@ __pycache__
 htmlcov
 .coverage
 .tox
+.ruff_cache/
 tests/
 *.egg-info
 .eggs
 dist
 build
 
-# Node (API image does not build webui; Render builds it separately)
+# Node builds inside the frontend stage.
 webui/node_modules
 webui/dist
+webui/coverage/
 
 # Docs and dev-only files (not needed at runtime)
 docs/
@@ -34,15 +42,20 @@ mypy.ini
 test_nav*.json
 docker-compose*.yml
 
-# Data (mounted at runtime on Render; do not bake into image)
-data/raw
-data/processed
-data/cache
-data/output
+# Runtime data is separate from the small pinned source acquired during build.
+data/
 *.tif
 *.tiff
 *.geojson
 logs/
+output/
+reports/
+scratch/
+tmp/
+models/
+
+# The verified, public reference exports are part of the React build.
+!webui/public/portfolio/**
 
 # OS
 .DS_Store

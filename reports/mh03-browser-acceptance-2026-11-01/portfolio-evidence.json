@@ -1,0 +1,73 @@
+{
+  "asset_attributions": [
+    {
+      "assets": "Browser screenshots of this application and NASA/USGS-derived terrain",
+      "raw_dem_redistributed": false,
+      "source": "Source attribution/checksums retained in scientific receipts"
+    }
+  ],
+  "canonical_git_lf_backend_fingerprint": "9bfed21f6dc9a89ef468332bb45967b7b19699a7dccae569a8d28f7e1b052428",
+  "checks": {
+    "actual_browser": "passed",
+    "complete_512m_0_1cpu_journey": "passed",
+    "history_secrets_audit": "passed",
+    "keyboard_mobile_viewport": "passed",
+    "public_deployment": "not_run",
+    "real_delayed_response_cancellation": "passed",
+    "scientific_output_agreement": "passed",
+    "webgl_software_renderer": "passed"
+  },
+  "contribution": "Verified real-browser map/routing/WebGL/export workflows; fixed actual camera reset and graphics fallback; bounded worker memory lifecycle while preserving all scientific outputs.",
+  "evidence_references": [
+    "browser-cases.json",
+    "resources-512.json",
+    "scientific-agreement.json",
+    "publication-audit.json",
+    "provenance.json"
+  ],
+  "files_sha256": {
+    "browser-cases.json": "7cf3f580305db58a875f7c16cb0e866bed14b3881970a19ad1bb2c3f9afc8e57",
+    "cli/ctx-route.js": "123d4f4740335b5a1160c8b69487701dfc0cb30c189c1e30582d24cfca75ac35",
+    "cli/map-clicks.js": "18699f1ed4fd8d013a53f2c0957045567ffdc827db2d93906e7c090a0b6d0acb",
+    "cli/mola-keyboard.js": "e461c9db93f34e640e23c137b2bc63d0eb08a81b8169094c8eecee4837835e85",
+    "cli/no-webgl-case.js": "4c81a56129e5768092192f2cc95d0b70334e0c1e241e8f3ba5f214454c3f3f98",
+    "cli/no-webgl-init.js": "fde22d2d4646b9b3d2d9214f42738a9ec28760d555ce9714c30500ffaafee8cb",
+    "cli/real-cancellation.js": "aa331bd623cd5f88582d8787cd550936cd99c0ffc22c82b367cfaa4acfbcefce",
+    "cli/responsive-settled.js": "72138cafb31ac87de69404e351e457928381aeeb98d81a7ad709dc8ffcc50297",
+    "cli/stale-real-responses.js": "e3cb49921b903ed263ad3834660a92fec5a03350990e4f7a6856a9cd190d4eb6",
+    "cli/webgl-download-exaggeration-v2.js": "03c7763a5ae73d83b428514dde4349c288c25f1244baa3bb2f769f275e2d9e48",
+    "final-backend-lint.log": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+    "final-backend-tests.log": "b79d45791ff11270c42ca8df50e9c1535838b7a146af173f919fc2b87a637a42",
+    "final-frontend-118-tests.log": "404bd1e111bfa6323f6b5c5ca8d1279c2c82bdc52baf7461531746c0cab94db1",
+    "final-frontend-lint.log": "b1e4d1a84d8ab838fa14d184cde584d1d6e7392c59df3492c254df6f73e07c88",
+    "final-types.log": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+    "provenance.json": "5598960a22333d7ef44eb3360cb90f2f08b992ba1321cfa1ca8f20fcc061d1f2",
+    "publication-audit.json": "aecde9ae1d34032ad0f0180ccaa67f82c5bc4eaf38ec2154764a1fbec61465a8",
+    "resource-samples-decimated.json": "843c03d8fd915e57595e09eac8a6cd876162425511010db49784ed742642df01",
+    "resources-512.json": "a672072d24f7e2975dc5be04d07e3108d49d6ccaf25387cecdb3208007dc51a9",
+    "scientific-agreement.json": "be00d26ad3b127c7b023a02706a00d370aa28b49b182e61d9a10f605cf545fb3",
+    "screenshots/comparison-completed.png": "cf9f326f3fb85702a4d597e84aa6f207b806a1bb200355f5c2ad5e1c19b48b11",
+    "screenshots/ctx-webgl.png": "003373dc73dc6642d06dceb118918d4df31168281fedeb79074d6129784ee80c",
+    "screenshots/mobile-fresh-layout.png": "192535082fb36edb511b689490cfd271137b86d8948bfcc92d5ec3933cdb64df",
+    "screenshots/mola-desktop.png": "ef9dbb8738f0197cc70c54b2d8eef4d881f6ed45baf2180bf48b0b5304a80de1",
+    "screenshots/no-webgl.png": "0df7e77a64234438a978dc8e7492e586ded378529fd7788e8e838d2bef0a87ad",
+    "source-profile.json": "33e45bdade43af068d267a67a89ebc9a78edef0c96a0777414152813688eb073"
+  },
+  "headline_results": [],
+  "last_verified_utc": "2026-11-01T12:04:41.672866+00:00",
+  "limitations": [
+    "One pinned browser/softwareGPU and emulated mobile viewport, not cross-browser/hardware certification.",
+    "Observed512journey completes with cache reclaim pressure; no general headroom/capacity promise.",
+    "Public deployment verification is separate and owned by root."
+  ],
+  "project_id": "marshab",
+  "release_id": "marshab-browser-wave2-2026-11-01",
+  "schema_version": 1,
+  "source_access": "public",
+  "source_revision": "b5931e4e0c0d5024b0f70f5003a670a6a2b4545c",
+  "source_url": "https://github.com/Tanner-Eischen/MarsGIS",
+  "tested_revision": null,
+  "tested_revision_scope": "Staged runtime bytes and rebuilt frontend are bound by source-profile; final commit identity must be supplied separately, not retroactively relabeled",
+  "tested_source_fingerprint": "197047df690db53a94dbe14776919718d03708e362ec25ef41c87d22942ff5e4",
+  "versioned_evidence_urls": []
+}

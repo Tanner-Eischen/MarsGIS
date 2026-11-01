@@ -1,0 +1,182 @@
+{
+  "commits": 189,
+  "credential_findings": [
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "b5931e4e0c0d5024b0f70f5003a670a6a2b4545c",
+      "line": 69,
+      "path": "reports/mh03-original-container-2026-11-01/original-container-gate.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 72,
+      "path": "reports/mh03-coherent-profile-2026-11-01/verification.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 184,
+      "path": "reports/mh03-coherent-profile-2026-11-01/verification.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 96,
+      "path": "reports/mh03-loopback-container-2026-11-01/provenance.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 97,
+      "path": "reports/mh03-loopback-container-2026-11-01/provenance.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+      "line": 181,
+      "path": "reports/mh02-locked-reproduction-2026-11-01/fresh-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 69,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 172,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 218,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 336,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 385,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 452,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    },
+    {
+      "classification": "verified source-file SHA256 digest, not a credential",
+      "commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+      "line": 474,
+      "path": "reports/mh03-loopback-container-2026-11-01/source-manifest.json",
+      "rule": "generic-api-key"
+    }
+  ],
+  "image_objects": [
+    {
+      "bytes": 33544,
+      "object": "deb65922ef1af859fc55a0e39ce0b262a1dc74a8",
+      "path": ".tmp/deployed-marshab-web-after-push.png"
+    },
+    {
+      "bytes": 174205,
+      "object": "57c2237c7a82284bd96429063f3612dfa0cb99b1",
+      "path": ".tmp/deployed-marshab-web.png"
+    },
+    {
+      "bytes": 1224601,
+      "object": "9dea563a40d3e72e8fa9548cdc24bfe409e0f1ad",
+      "path": "docs/assets/jezero-comparison.png"
+    },
+    {
+      "bytes": 149646,
+      "object": "63078a06f1aa97834c575063f705c6110e561ddd",
+      "path": "webui/public/portfolio/layers/elevation.png"
+    },
+    {
+      "bytes": 179426,
+      "object": "689c84c1e663c1d5a77bfdef6a0749e5015cb6a4",
+      "path": "webui/public/portfolio/layers/hillshade.png"
+    },
+    {
+      "bytes": 342056,
+      "object": "de86376e14d3c5c78168a3f7d6a54f47be17a5ec",
+      "path": "webui/public/portfolio/layers/roughness.png"
+    },
+    {
+      "bytes": 439873,
+      "object": "6d1c7baf8d95b073e75160edac976d9ad1987eed",
+      "path": "webui/public/portfolio/layers/slope.png"
+    },
+    {
+      "bytes": 464156,
+      "object": "5c162d492b2c7f8923f73696a3578abbaa23a814",
+      "path": "webui/public/portfolio/layers/suitability.png"
+    }
+  ],
+  "large_blobs": [],
+  "real_credentials_found": 0,
+  "refs": [
+    "refs/audit/pull/1/head d949eec7da70a87515b13a8f3503f9506c5399e8",
+    "refs/audit/pull/10/head 2a4376b80cef8f7484fdaba4c37ee1bf51dc84c0",
+    "refs/audit/pull/11/head 3a1ac704168217faa32ecd51b66b754a87e139a5",
+    "refs/audit/pull/12/head b1435d1b8e961148f1981f41295571382867e8a1",
+    "refs/audit/pull/13/head 5a849b290ef50ae6ef73b01ddee4a2eae99ceb52",
+    "refs/audit/pull/14/head 829392d636abcedf8ca085e2b71e5bb91748b06f",
+    "refs/audit/pull/15/head 6ffd95925f58eb5183c123b0c6bfe60d0535041f",
+    "refs/audit/pull/16/head 0aa269afad10bae590d8d3ee47a28946631d6dbb",
+    "refs/audit/pull/17/head 4a20e1d494736d575a7fa63a92ecef067e33a261",
+    "refs/audit/pull/18/head 6acb9f0739667bbdd5ad376526a83ea11cc04aea",
+    "refs/audit/pull/19/head 17f3b0678d4f3191c8c65352434c87ec45fa41ba",
+    "refs/audit/pull/2/head 7bbd81884a28582441b82fd9a098cebb9829fabb",
+    "refs/audit/pull/20/head e49a26a84ff8b7f2f37ba470ce3b6686237fdca0",
+    "refs/audit/pull/21/head 135e38db7f3d1bfafedabd04fd4d636a2ec5ba1f",
+    "refs/audit/pull/22/head 72e2fb4e8b14476aa11d3701d295b4ce3e3e2202",
+    "refs/audit/pull/23/head 72e2fb4e8b14476aa11d3701d295b4ce3e3e2202",
+    "refs/audit/pull/24/head 3b02e4cc823069d6f311f3aaf0423ceac5879140",
+    "refs/audit/pull/25/head 642bbfbae9a642cc3b95211e518ec46dc5268e4b",
+    "refs/audit/pull/26/head a01f836840ed8a455aec96bf368ce325c6dc7252",
+    "refs/audit/pull/27/head ee1d4815e2f09da3e85e11268c3fd8aa3ce75d5f",
+    "refs/audit/pull/28/head 459973dba92dc5b82f9d24519fd333577646ae3a",
+    "refs/audit/pull/28/merge 6b2ca496f1edfebad0c6d01495e83cde275cb4ca",
+    "refs/audit/pull/3/head 405a5c39257b83718b0640fe9c25fc42b9bbf591",
+    "refs/audit/pull/4/head 79d1a052b719a9d79690edcfeda65883b98b3fb9",
+    "refs/audit/pull/5/head 99fc80c1b1a8909a709eb910337b3afc21564aa2",
+    "refs/audit/pull/6/head b2132bbcd373a26f8cdb143817adaf1a7c9c9ea7",
+    "refs/audit/pull/7/head e737ddce8de1b6eddbcbdee42c7cd92305b15a75",
+    "refs/audit/pull/8/head 30d43f92bfc8f3c301eda7a296f9535b9b7f8ac8",
+    "refs/audit/pull/9/head 736b3b31f848dba81e975be3ec29da811ba17485",
+    "refs/heads/codex/portfolio-validation b5931e4e0c0d5024b0f70f5003a670a6a2b4545c",
+    "refs/heads/main 4eb93e615c985edca10643b3c0752587d9dc7a21",
+    "refs/remotes/origin/HEAD 4eb93e615c985edca10643b3c0752587d9dc7a21",
+    "refs/remotes/origin/codex/fix-othroprojection-hirise-rendering-endpoint a01f836840ed8a455aec96bf368ce325c6dc7252",
+    "refs/remotes/origin/codex/implement-marsgis-tiled-map-pipeline ee81fb352071ac27459d8389967fe1b8c7ad9396",
+    "refs/remotes/origin/codex/portfolio-validation 459973dba92dc5b82f9d24519fd333577646ae3a",
+    "refs/remotes/origin/main 4eb93e615c985edca10643b3c0752587d9dc7a21",
+    "refs/tags/v1 8d9dde5c9f04543ed014b53926df73bb23b52948"
+  ],
+  "source_access_audit": "All remote branches/tags and advertised PR heads/merge refs fetched and included; no history rewrite",
+  "unique_blobs": 1118,
+  "unresolved_secret_findings": 0
+}

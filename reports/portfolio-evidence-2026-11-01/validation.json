@@ -1,0 +1,72 @@
+{
+  "fresh_checks": [
+    {
+      "command": "python -B scripts/verify_portfolio_demo.py webui/public/portfolio",
+      "environment": "local win32; Python 3.11.15",
+      "evidence_path": "independent_static_reference.log",
+      "freshly_executed": true,
+      "kind": "independent_static_reference",
+      "status": "passed",
+      "timestamp_utc": "2026-11-01T05:16:50.189514+00:00"
+    },
+    {
+      "command": "python -m ruff check scripts/export_portfolio_handoff.py",
+      "environment": "local win32; Python 3.11.15",
+      "evidence_path": "export_lint.log",
+      "freshly_executed": true,
+      "kind": "export_lint",
+      "status": "passed",
+      "timestamp_utc": "2026-11-01T05:16:50.189514+00:00"
+    }
+  ],
+  "gaps": {
+    "browser_interaction": "not_run",
+    "fresh_locked_workflow_regeneration": "not_run",
+    "independent_full_graph_shortest_path_check": "not_run",
+    "patched_live_deployment": "not_run",
+    "public_showcase_publication": "pending"
+  },
+  "last_verified_utc": "2026-11-01T05:16:50.189514+00:00",
+  "recorded_runtime_evidence": {
+    "base_revision": "459973dba92dc5b82f9d24519fd333577646ae3a",
+    "docker": {
+      "all_download_checksums_verified": true,
+      "configuration_inputs_verified": 5,
+      "container_removed": true,
+      "cpu_limit": 2,
+      "final_inventory_matches_audit": true,
+      "frontend_bytes_match_native": true,
+      "full_fresh_candidate_calculation": true,
+      "image_id": "sha256:026b1fb772805cd2e554a277510e9012e3a226b2f8e5928708b42d71a07ba52d",
+      "memory_limit_bytes": 1073741824,
+      "memory_peak_bytes": 734089216,
+      "resource_profile": "LOCAL1GiB/twoCPU; separatefromoldRenderexample",
+      "source_files_verified": 102
+    },
+    "evidence_date": "2026-10-31",
+    "freshly_executed": false,
+    "frontend_tests": {
+      "browser": false,
+      "evidence_reused_for_identical_source": true,
+      "linux": 103,
+      "source_files_matched": 97,
+      "windows": 103
+    },
+    "python_tests": {
+      "coverage_percent": 58,
+      "failed": 0,
+      "passed": 437,
+      "platform": "WindowsCPython3.11.15",
+      "skipped": [
+        {
+          "name": "tests.api.test_overlay_tiles_cog.TestOverlayTilesCog.test_dem_window_tif_returns_tiff_when_cog_set",
+          "reason": "dem-window disk cache uses colons in filename, invalid on Windows"
+        }
+      ]
+    },
+    "release_id": "0.1.1-portfolio-2026-10-31",
+    "source_record_sha256": "efc32457b1b53184da644c4a0f43345154daef3a42fbb65c556b803925acfb40"
+  },
+  "reference_output_hashes_checked": 5,
+  "schema_version": 1
+}

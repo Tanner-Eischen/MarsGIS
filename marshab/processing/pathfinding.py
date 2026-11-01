@@ -21,16 +21,26 @@ class AStarPathfinder:
             cost_map: 2D array of traversability costs
             cell_size_m: Size of each cell in meters
         """
-        self.cost_map = cost_map
-        self.cell_size_m = cell_size_m
-        self.height, self.width = cost_map.shape
+        costs = np.asarray(cost_map, dtype=float)
+        if costs.ndim != 2 or costs.size == 0:
+            raise ValueError("Cost map must be a nonempty 2D array")
+        if np.any(costs < 0):
+            raise ValueError("Traversability costs must be nonnegative")
+        if not np.isfinite(cell_size_m) or cell_size_m <= 0:
+            raise ValueError("Cell size must be finite and positive")
+        # NaN and positive infinity both represent impassable cells.
+        self.cost_map = np.where(np.isfinite(costs), costs, np.inf)
+        self.cell_size_m = float(cell_size_m)
+        self.height, self.width = costs.shape
+        finite_costs = costs[np.isfinite(costs)]
+        self.min_cost = float(np.min(finite_costs)) if finite_costs.size else 0.0
 
     def heuristic(
         self,
         a: tuple[int, int],
         b: tuple[int, int]
     ) -> float:
-        """Calculate heuristic distance (Euclidean).
+        """Calculate a lower bound using Euclidean distance times minimum cost.
 
         Args:
             a: Start position (row, col)
@@ -46,7 +56,7 @@ class AStarPathfinder:
             raise ValueError(f"heuristic: b must be (row, col) tuple, got {type(b)}: {b}")
         a = tuple(a)
         b = tuple(b)
-        return np.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2) * self.cell_size_m
+        return np.hypot(a[0] - b[0], a[1] - b[1]) * self.cell_size_m * self.min_cost
 
     def get_neighbors(
         self,
@@ -86,7 +96,13 @@ class AStarPathfinder:
             # Calculate move cost (diagonal moves cost more)
             # Diagonal: both dr and dc are non-zero
             is_diagonal = dr != 0 and dc != 0
-            move_cost = self.cell_size_m * (1.414 if is_diagonal else 1.0)
+            # A diagonal must not pass between touching obstacles.
+            if is_diagonal and (
+                not np.isfinite(self.cost_map[row + dr, col])
+                or not np.isfinite(self.cost_map[row, col + dc])
+            ):
+                continue
+            move_cost = self.cell_size_m * (np.sqrt(2.0) if is_diagonal else 1.0)
             total_cost = cell_cost * move_cost
 
             neighbors.append((new_row, new_col, total_cost))

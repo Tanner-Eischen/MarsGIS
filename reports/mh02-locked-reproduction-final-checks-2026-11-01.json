@@ -1,0 +1,31 @@
+{
+  "cached_dem_unchanged": true,
+  "compact_evidence_checksum_files_verified": 25,
+  "comparison_tests": {
+    "command": "python -m pytest -q -o addopts= -p no:cacheprovider --disable-warnings tests/unit/test_reference_numerical_comparison.py",
+    "passed": 7,
+    "seconds": 6.25,
+    "warnings": 8
+  },
+  "format": {
+    "command": "python -I -m ruff format --check scripts/compare_reference_numerics.py tests/unit/test_reference_numerical_comparison.py",
+    "exit_code": 0
+  },
+  "lint": {
+    "command": "python -I -m ruff check marshab tests scripts",
+    "exit_code": 0
+  },
+  "only_source_overlay": "pyproject.toml",
+  "post_workflow_archive_unchanged": true,
+  "post_workflow_python_files_exact": 102,
+  "qualification": "Precommit checks of reconstructed source plus explicit packaging overlay; no Docker/browser/publication claim",
+  "schema_version": 1,
+  "source_commit": "82e24bac7de34f1cb80d648f71fd8c794a16b012",
+  "source_sha256": {
+    "docs/implementation/MH02_LOCKED_REPRODUCTION.md": "02f5229d89b20fc16659e3f783fa245a392900f60e84199d0e56804aa300d569",
+    "scripts/compare_reference_numerics.py": "fbe54f147768b9f210cbabfdb4089c918d9122aefd2cb38c23ed1473d555b77e",
+    "tests/unit/test_reference_numerical_comparison.py": "a76b1115d7363974e52fdb52b08ca5bfe18c96cdbcfeca3fae16ac4d49520aa5"
+  },
+  "status": "passed",
+  "timestamp_utc": "2026-11-01T06:12:38.088870+00:00"
+}

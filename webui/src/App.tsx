@@ -1,34 +1,41 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import { GeoPlanProvider } from './context/GeoPlanContext'
-import { OverlayLayerProvider } from './contexts/OverlayLayerContext'
-import AnalysisDashboard from './pages/AnalysisDashboard'
-import MissionControl from './pages/MissionControl'
-import DecisionLab from './pages/DecisionLab'
-import DataSettings from './pages/DataSettings'
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import MarsExplorer from "./pages/MarsExplorer";
 
-function App() {
+const PortfolioShowcase = lazy(() => import("./pages/PortfolioShowcase"));
+
+// API-dependent research tools are available locally, outside the public demo.
+const ExperimentalWorkspace = import.meta.env.DEV
+  ? lazy(() => import("./pages/ExperimentalWorkspace"))
+  : null;
+
+export default function App() {
   return (
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <GeoPlanProvider>
-        <OverlayLayerProvider>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<AnalysisDashboard />} />
-              <Route path="/mission" element={<MissionControl />} />
-              <Route path="/decision-lab" element={<DecisionLab />} />
-              <Route path="/settings" element={<DataSettings />} />
-            </Routes>
-          </Layout>
-        </OverlayLayerProvider>
-      </GeoPlanProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MarsExplorer />} />
+        <Route
+          path="/comparison"
+          element={
+            <Suspense fallback={<p role="status">Loading site comparison…</p>}>
+              <PortfolioShowcase />
+            </Suspense>
+          }
+        />
+        {ExperimentalWorkspace && (
+          <Route
+            path="/experimental/*"
+            element={
+              <Suspense
+                fallback={<p role="status">Loading experimental workspace…</p>}
+              >
+                <ExperimentalWorkspace />
+              </Suspense>
+            }
+          />
+        )}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
-  )
+  );
 }
-
-export default App

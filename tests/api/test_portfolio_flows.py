@@ -21,6 +21,7 @@ def _configure_paths(monkeypatch, tmp_path: Path) -> Path:
             f"  cache_dir: \"{cache_dir.as_posix()}\"\n"
             f"  output_dir: \"{output_dir.as_posix()}\"\n"
             "navigation:\n"
+            "  enable_smoothing: false\n"
             "  max_roughness_m: 100.0\n"
             "  cliff_threshold_m: 1000.0\n"
         ),
@@ -29,6 +30,7 @@ def _configure_paths(monkeypatch, tmp_path: Path) -> Path:
 
     monkeypatch.setenv("MARSHAB_CONFIG_PATH", str(config_path))
     monkeypatch.setenv("MARSHAB_DEMO_SEED", "42")
+    monkeypatch.setenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "true")
     reset_config()
     return output_dir
 

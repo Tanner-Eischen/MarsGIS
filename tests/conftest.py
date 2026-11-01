@@ -1,14 +1,93 @@
 """Pytest configuration and shared fixtures."""
 
+import os
+import socket
+import urllib.request
 from pathlib import Path
 
 import numpy as np
 import pytest
 import rasterio
+import yaml
 from rasterio.transform import from_bounds
 
 from marshab.config import AnalysisConfig, Config, PathsConfig
 from marshab.types import BoundingBox, CriteriaWeights, SiteOrigin
+
+
+@pytest.fixture(scope="session")
+def dem_small_cog(tmp_path_factory) -> Path:
+    """Generate the small reader/tile fixture locally, without a binary download.
+
+    This legacy reader fixture deliberately uses CRS_INFO metadata, matching
+    scripts/create_dem_fixture.py. Scientific CRS contracts have separate tests.
+    """
+    path = tmp_path_factory.mktemp("raster-fixtures") / "dem_small.cog.tif"
+    rng = np.random.default_rng(42)
+    elevation = rng.integers(-2000, 3000, (256, 256), dtype=np.int16)
+    elevation[:128, 128:] = -32768
+    with rasterio.open(
+        path, "w", driver="GTiff", height=256, width=256, count=1,
+        dtype="int16", transform=from_bounds(0, 0, 2, 2, 256, 256),
+        nodata=-32768, tiled=True, blockxsize=64, blockysize=64, compress="lzw",
+    ) as dst:
+        dst.write(elevation, 1)
+        dst.update_tags(CRS_INFO="EPSG:49900")
+    return path
+
+
+@pytest.fixture(autouse=True)
+def isolated_offline_runtime(monkeypatch, tmp_path):
+    """No test inherits developer data, deployment settings, or network access.
+
+    Tests that exercise synthetic fallback must opt in explicitly. Downloader
+    unit tests replace urlopen with their own local response objects.
+    """
+    from marshab.config import reset_config
+    from marshab.web.routes.visualization._helpers import TILE_CACHE
+
+    for key in list(os.environ):
+        if key.startswith("MARSHAB_"):
+            monkeypatch.delenv(key)
+    config_path = tmp_path / "isolated_config.yaml"
+    config_path.write_text(yaml.safe_dump({
+        "paths": {
+            "data_dir": str(tmp_path / "data"),
+            "cache_dir": str(tmp_path / "cache"),
+            "output_dir": str(tmp_path / "output"),
+        },
+    }), encoding="utf-8")
+    monkeypatch.setenv("MARSHAB_CONFIG_PATH", str(config_path))
+    monkeypatch.setenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "false")
+    monkeypatch.setenv("MARSHAB_PREWARM_COG", "false")
+
+    def no_download(*args, **kwargs):
+        raise OSError("Network disabled in tests; provide a local fixture or mock response")
+
+    original_connect = socket.socket.connect
+
+    def local_connect(sock, address):
+        if isinstance(address, tuple) and address[0] not in {"127.0.0.1", "::1", "localhost"}:
+            raise OSError(f"Network disabled in tests: {address[0]}")
+        return original_connect(sock, address)
+
+    monkeypatch.setattr(urllib.request, "urlopen", no_download)
+    monkeypatch.setattr(socket.socket, "connect", local_connect)
+    original_raster_open = rasterio.open
+
+    def local_raster_open(path, *args, **kwargs):
+        # GDAL HTTP I/O bypasses Python's socket layer.
+        source = str(path).lower()
+        if "://" in source or source.startswith(("/vsicurl/", "/vsis3/", "/vsiaz/", "/vsigs/")):
+            raise OSError("Remote raster I/O disabled in tests; provide a local fixture")
+        return original_raster_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(rasterio, "open", local_raster_open)
+    TILE_CACHE._cache.clear()
+    reset_config()
+    yield
+    TILE_CACHE._cache.clear()
+    reset_config()
 
 
 @pytest.fixture

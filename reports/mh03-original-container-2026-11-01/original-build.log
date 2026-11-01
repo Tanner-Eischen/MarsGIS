@@ -1,0 +1,382 @@
+Sending build context to Docker daemon  23.56MB
+
+Step 1/23 : FROM node:22-bookworm-slim AS frontend
+22-bookworm-slim: Pulling from library/node
+Digest: sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da
+Status: Downloaded newer image for node:22-bookworm-slim
+ ---> 4b150b48b411
+Step 2/23 : WORKDIR /build/webui
+ ---> Running in 017d9129c6c9
+ ---> Removed intermediate container 017d9129c6c9
+ ---> 43d10e100271
+Step 3/23 : COPY webui/package.json webui/package-lock.json ./
+ ---> 889917cfa799
+Step 4/23 : RUN npm ci
+ ---> Running in aefc6a28cb08
+[91mnpm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+[0m[91mnpm warn deprecated mumath@3.3.4: Redundant dependency in your project.
+[0m
+added 568 packages, and audited 569 packages in 7s
+
+85 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[91mnpm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+[0m ---> Removed intermediate container aefc6a28cb08
+ ---> 5fd1a1d122b0
+Step 5/23 : COPY webui/ ./
+ ---> 66252c4097c3
+Step 6/23 : ENV VITE_API_URL=/api/v1
+ ---> Running in a89e67c02ce3
+ ---> Removed intermediate container a89e67c02ce3
+ ---> f219b36bf72f
+Step 7/23 : RUN npm run build
+ ---> Running in 150a1f0a8e58
+
+> marshab-webui@0.1.0 build
+> tsc && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 1798 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 0.92 kB │ gzip:   0.55 kB
+dist/assets/PortfolioShowcase-CLzcMlfY.css     11.50 kB │ gzip:   3.03 kB
+dist/assets/index-DeoliP4Y.css                 64.08 kB │ gzip:  16.15 kB
+dist/assets/PortfolioShowcase-CUlBNiz-.js      26.03 kB │ gzip:   9.24 kB
+dist/assets/index-BEdWjQ5j.js                 383.89 kB │ gzip: 120.55 kB
+dist/assets/TerrainScene3D-DWcsfKRX.js      1,771.64 kB │ gzip: 568.21 kB
+[91m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[0m✓ built in 5.74s
+ ---> Removed intermediate container 150a1f0a8e58
+ ---> 06fc4ff48775
+Step 8/23 : FROM python:3.11-slim-bookworm AS runtime
+3.11-slim-bookworm: Pulling from library/python
+Digest: sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd
+Status: Downloaded newer image for python:3.11-slim-bookworm
+ ---> 94a8fee35252
+Step 9/23 : WORKDIR /app
+ ---> Running in c61949de04d8
+ ---> Removed intermediate container c61949de04d8
+ ---> 66314588457e
+Step 10/23 : RUN apt-get update     && apt-get install --no-install-recommends -y ca-certificates libexpat1 libgomp1     && rm -rf /var/lib/apt/lists/*
+ ---> Running in 64f181fa64ba
+Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [360 kB]
+Fetched 9398 kB in 1s (10.4 MB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+ca-certificates is already the newest version (20250419~deb12u2).
+The following NEW packages will be installed:
+  libexpat1 libgomp1
+0 upgraded, 2 newly installed, 0 to remove and 1 not upgraded.
+Need to get 224 kB of archives.
+After this operation, 743 kB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian-security bookworm-security/main amd64 libexpat1 amd64 2.5.0-1+deb12u5 [108 kB]
+Get:2 http://deb.debian.org/debian bookworm/main amd64 libgomp1 amd64 12.2.0-14+deb12u1 [116 kB]
+[91mdebconf: delaying package configuration, since apt-utils is not installed
+[0mFetched 224 kB in 0s (1498 kB/s)
+Selecting previously unselected package libexpat1:amd64.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6701 files and directories currently installed.)
+Preparing to unpack .../libexpat1_2.5.0-1+deb12u5_amd64.deb ...
+Unpacking libexpat1:amd64 (2.5.0-1+deb12u5) ...
+Selecting previously unselected package libgomp1:amd64.
+Preparing to unpack .../libgomp1_12.2.0-14+deb12u1_amd64.deb ...
+Unpacking libgomp1:amd64 (12.2.0-14+deb12u1) ...
+Setting up libexpat1:amd64 (2.5.0-1+deb12u5) ...
+Setting up libgomp1:amd64 (12.2.0-14+deb12u1) ...
+Processing triggers for libc-bin (2.36-9+deb12u14) ...
+ ---> Removed intermediate container 64f181fa64ba
+ ---> 8984dbb1b3a2
+Step 11/23 : COPY requirements-bootstrap.lock requirements.lock ./
+ ---> 62c601566c66
+Step 12/23 : RUN pip install --no-cache-dir --require-hashes -r requirements-bootstrap.lock     && pip install --no-cache-dir --require-hashes -r requirements.lock
+ ---> Running in c9cdf983e822
+Requirement already satisfied: packaging==26.3 in /usr/local/lib/python3.11/site-packages (from -r requirements-bootstrap.lock (line 3)) (26.3)
+Collecting pip==26.2.2 (from -r requirements-bootstrap.lock (line 7))
+  Downloading pip-26.2.2-py3-none-any.whl (1.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 15.1 MB/s eta 0:00:00
+Collecting poetry-core==2.2.1 (from -r requirements-bootstrap.lock (line 11))
+  Downloading poetry_core-2.2.1-py3-none-any.whl (338 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 338.6/338.6 kB 142.6 MB/s eta 0:00:00
+Collecting setuptools==84.2.1 (from -r requirements-bootstrap.lock (line 15))
+  Downloading setuptools-84.2.1-py3-none-any.whl (876 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 876.3/876.3 kB 121.4 MB/s eta 0:00:00
+Collecting wheel==0.48.0 (from -r requirements-bootstrap.lock (line 19))
+  Downloading wheel-0.48.0-py3-none-any.whl (33 kB)
+Installing collected packages: wheel, setuptools, poetry-core, pip
+  Attempting uninstall: wheel
+    Found existing installation: wheel 0.46.3
+    Uninstalling wheel-0.46.3:
+      Successfully uninstalled wheel-0.46.3
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 79.0.1
+    Uninstalling setuptools-79.0.1:
+      Successfully uninstalled setuptools-79.0.1
+  Attempting uninstall: pip
+    Found existing installation: pip 24.0
+    Uninstalling pip-24.0:
+      Successfully uninstalled pip-24.0
+Successfully installed pip-26.2.2 poetry-core-2.2.1 setuptools-84.2.1 wheel-0.48.0
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0mIgnoring colorama: markers 'sys_platform == "win32"' don't match your environment
+Ignoring networkx: markers 'python_full_version >= "3.12"' don't match your environment
+Ignoring pyproj: markers 'python_full_version >= "3.12"' don't match your environment
+Collecting affine==3.0.1 (from -r requirements.lock (line 3))
+  Downloading affine-3.0.1-py3-none-any.whl (10 kB)
+Collecting annotated-doc==0.0.5 (from -r requirements.lock (line 7))
+  Downloading annotated_doc-0.0.5-py3-none-any.whl (5.3 kB)
+Collecting annotated-types==0.8.0 (from -r requirements.lock (line 11))
+  Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+Collecting anyio==4.14.2 (from -r requirements.lock (line 15))
+  Downloading anyio-4.14.2-py3-none-any.whl (125 kB)
+Collecting attrs==26.1.0 (from -r requirements.lock (line 22))
+  Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+Collecting certifi==2026.10.23 (from -r requirements.lock (line 29))
+  Downloading certifi-2026.10.23-py3-none-any.whl (135 kB)
+Collecting click==8.5.0 (from -r requirements.lock (line 37))
+  Downloading click-8.5.0-py3-none-any.whl (125 kB)
+Collecting click-plugins==1.1.1.2 (from -r requirements.lock (line 47))
+  Downloading click_plugins-1.1.1.2-py2.py3-none-any.whl (11 kB)
+Collecting cligj==0.7.2 (from -r requirements.lock (line 53))
+  Downloading cligj-0.7.2-py3-none-any.whl (7.1 kB)
+Collecting cloudpickle==3.1.2 (from -r requirements.lock (line 59))
+  Downloading cloudpickle-3.1.2-py3-none-any.whl (22 kB)
+Collecting contourpy==1.3.3 (from -r requirements.lock (line 67))
+  Downloading contourpy-1.3.3-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (355 kB)
+Collecting cycler==0.12.1 (from -r requirements.lock (line 141))
+  Downloading cycler-0.12.1-py3-none-any.whl (8.3 kB)
+Collecting fastapi==0.140.0 (from -r requirements.lock (line 145))
+  Downloading fastapi-0.140.0-py3-none-any.whl (130 kB)
+Collecting fiona==1.10.1 (from -r requirements.lock (line 149))
+  Downloading fiona-1.10.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (17.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.3/17.3 MB 99.9 MB/s  0:00:00
+Collecting fonttools==4.68.0 (from -r requirements.lock (line 176))
+  Downloading fonttools-4.68.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.5/5.5 MB 144.5 MB/s  0:00:00
+Collecting geopandas==1.1.2 (from -r requirements.lock (line 243))
+  Downloading geopandas-1.1.2-py3-none-any.whl (341 kB)
+Collecting h11==0.16.0 (from -r requirements.lock (line 247))
+  Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Collecting httptools==0.9.0 (from -r requirements.lock (line 251))
+  Downloading httptools-0.9.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (499 kB)
+Collecting idna==3.20 (from -r requirements.lock (line 371))
+  Downloading idna-3.20-py3-none-any.whl (69 kB)
+Collecting imageio==2.38.1 (from -r requirements.lock (line 375))
+  Downloading imageio-2.38.1-py3-none-any.whl (328 kB)
+Collecting joblib==1.6.0 (from -r requirements.lock (line 379))
+  Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+Collecting kiwisolver==1.5.1 (from -r requirements.lock (line 385))
+  Downloading kiwisolver-1.5.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (1.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 165.2 MB/s  0:00:00
+Collecting lazy-loader==0.6 (from -r requirements.lock (line 528))
+  Downloading lazy_loader-0.6-py3-none-any.whl (8.8 kB)
+Collecting markdown-it-py==4.2.0 (from -r requirements.lock (line 532))
+  Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+Collecting matplotlib==3.11.2 (from -r requirements.lock (line 536))
+  Downloading matplotlib-3.11.2-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (9.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.9/9.9 MB 91.3 MB/s  0:00:00
+Collecting mdurl==0.1.2 (from -r requirements.lock (line 591))
+  Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+Collecting narwhals==2.28.0 (from -r requirements.lock (line 595))
+  Downloading narwhals-2.28.0-py3-none-any.whl (490 kB)
+Collecting networkx==3.6.1 (from -r requirements.lock (line 599))
+  Downloading networkx-3.6.1-py3-none-any.whl (2.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 156.5 MB/s  0:00:00
+Collecting numpy==1.26.4 (from -r requirements.lock (line 607))
+  Downloading numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (18.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 18.3/18.3 MB 123.8 MB/s  0:00:00
+Requirement already satisfied: packaging==26.3 in /usr/local/lib/python3.11/site-packages (from -r requirements.lock (line 660)) (26.3)
+Collecting pandas==2.3.3 (from -r requirements.lock (line 671))
+  Downloading pandas-2.3.3-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (12.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.8/12.8 MB 165.7 MB/s  0:00:00
+Collecting pillow==13.0.0 (from -r requirements.lock (line 731))
+  Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.1/7.1 MB 159.6 MB/s  0:00:00
+Collecting plotly==5.24.1 (from -r requirements.lock (line 820))
+  Downloading plotly-5.24.1-py3-none-any.whl (19.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 19.1/19.1 MB 156.8 MB/s  0:00:00
+Collecting pydantic==2.14.1 (from -r requirements.lock (line 824))
+  Downloading pydantic-2.14.1-py3-none-any.whl (488 kB)
+Collecting pydantic-core==2.50.1 (from -r requirements.lock (line 831))
+  Downloading pydantic_core-2.50.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.2 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 160.2 MB/s  0:00:00
+Collecting pydantic-settings==2.16.1 (from -r requirements.lock (line 970))
+  Downloading pydantic_settings-2.16.1-py3-none-any.whl (80 kB)
+Collecting pygments==2.21.0 (from -r requirements.lock (line 974))
+  Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 147.5 MB/s  0:00:00
+Collecting pyogrio==0.13.0 (from -r requirements.lock (line 978))
+  Downloading pyogrio-0.13.0-cp311-abi3-manylinux_2_28_x86_64.whl (33.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 33.3/33.3 MB 145.8 MB/s  0:00:00
+Collecting pyparsing==3.3.3 (from -r requirements.lock (line 999))
+  Downloading pyparsing-3.3.3-py3-none-any.whl (126 kB)
+Collecting pyproj==3.7.2 (from -r requirements.lock (line 1005))
+  Downloading pyproj-3.7.2-cp311-cp311-manylinux_2_28_x86_64.whl (9.5 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.5/9.5 MB 148.0 MB/s  0:00:00
+Collecting python-dateutil==3.0.0 (from -r requirements.lock (line 1123))
+  Downloading python_dateutil-3.0.0-py2.py3-none-any.whl (94 kB)
+Collecting python-dotenv==1.2.4 (from -r requirements.lock (line 1129))
+  Downloading python_dotenv-1.2.4-py3-none-any.whl (23 kB)
+Collecting python-multipart==0.0.31 (from -r requirements.lock (line 1136))
+  Downloading python_multipart-0.0.31-py3-none-any.whl (29 kB)
+Collecting pytz==2026.5 (from -r requirements.lock (line 1140))
+  Downloading pytz-2026.5-py2.py3-none-any.whl (506 kB)
+Collecting pyyaml==6.0.3 (from -r requirements.lock (line 1144))
+  Downloading pyyaml-6.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (806 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 806.6/806.6 kB 177.3 MB/s  0:00:00
+Collecting rasterio==1.4.4 (from -r requirements.lock (line 1221))
+  Downloading rasterio-1.4.4-cp311-cp311-manylinux_2_28_x86_64.whl (35.9 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 35.9/35.9 MB 121.9 MB/s  0:00:00
+Collecting rich==13.9.4 (from -r requirements.lock (line 1265))
+  Downloading rich-13.9.4-py3-none-any.whl (242 kB)
+Collecting scikit-image==0.22.0 (from -r requirements.lock (line 1271))
+  Downloading scikit_image-0.22.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (14.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.7/14.7 MB 127.2 MB/s  0:00:00
+Collecting scikit-learn==1.9.1 (from -r requirements.lock (line 1294))
+  Downloading scikit_learn-1.9.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (9.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.3/9.3 MB 146.4 MB/s  0:00:00
+Collecting scipy==1.17.1 (from -r requirements.lock (line 1339))
+  Downloading scipy-1.17.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (35.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 35.3/35.3 MB 132.5 MB/s  0:00:00
+Collecting shapely==2.2.0 (from -r requirements.lock (line 1405))
+  Downloading shapely-2.2.0-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (2.3 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 207.3 MB/s  0:00:00
+Collecting shellingham==1.5.4 (from -r requirements.lock (line 1473))
+  Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+Collecting six==1.17.0 (from -r requirements.lock (line 1477))
+  Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+Collecting spiceypy==6.0.3 (from -r requirements.lock (line 1481))
+  Downloading spiceypy-6.0.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.7 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.7/1.7 MB 157.4 MB/s  0:00:00
+Collecting starlette==1.3.1 (from -r requirements.lock (line 1489))
+  Downloading starlette-1.3.1-py3-none-any.whl (73 kB)
+Collecting structlog==24.4.0 (from -r requirements.lock (line 1495))
+  Downloading structlog-24.4.0-py3-none-any.whl (67 kB)
+Collecting tenacity==9.2.1 (from -r requirements.lock (line 1499))
+  Downloading tenacity-9.2.1-py3-none-any.whl (32 kB)
+Collecting threadpoolctl==3.7.0 (from -r requirements.lock (line 1503))
+  Downloading threadpoolctl-3.7.0-py3-none-any.whl (26 kB)
+Collecting tifffile==2026.3.3 (from -r requirements.lock (line 1507))
+  Downloading tifffile-2026.3.3-py3-none-any.whl (243 kB)
+Collecting typer==0.20.1 (from -r requirements.lock (line 1511))
+  Downloading typer-0.20.1-py3-none-any.whl (47 kB)
+Collecting typing-extensions==4.16.0 (from -r requirements.lock (line 1515))
+  Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Collecting typing-inspection==0.4.4 (from -r requirements.lock (line 1527))
+  Downloading typing_inspection-0.4.4-py3-none-any.whl (14 kB)
+Collecting tzdata==2026.5 (from -r requirements.lock (line 1534))
+  Downloading tzdata-2026.5-py2.py3-none-any.whl (347 kB)
+Collecting uvicorn==0.24.0.post1 (from -r requirements.lock (line 1540))
+  Downloading uvicorn-0.24.0.post1-py3-none-any.whl (59 kB)
+Collecting uvloop==0.23.0 (from -r requirements.lock (line 1544))
+  Downloading uvloop-0.23.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.0 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.0/4.0 MB 148.9 MB/s  0:00:00
+Collecting watchfiles==1.3.0 (from -r requirements.lock (line 1607))
+  Downloading watchfiles-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (458 kB)
+Collecting websockets==12.0 (from -r requirements.lock (line 1642))
+  Downloading websockets-12.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (130 kB)
+Collecting xarray==2023.12.0 (from -r requirements.lock (line 1718))
+  Downloading xarray-2023.12.0-py3-none-any.whl (1.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 217.3 MB/s  0:00:00
+Installing collected packages: pytz, websockets, uvloop, tzdata, typing-extensions, threadpoolctl, tenacity, structlog, six, shellingham, pyyaml, python-multipart, python-dotenv, pyparsing, pygments, pillow, numpy, networkx, narwhals, mdurl, lazy-loader, kiwisolver, idna, httptools, h11, fonttools, cycler, cloudpickle, click, certifi, attrs, annotated-types, annotated-doc, uvicorn, typing-inspection, tifffile, spiceypy, shapely, scipy, python-dateutil, pyproj, pyogrio, pydantic-core, plotly, markdown-it-py, joblib, imageio, contourpy, cligj, click-plugins, anyio, affine, watchfiles, starlette, scikit-learn, scikit-image, rich, rasterio, pydantic, pandas, matplotlib, fiona, xarray, typer, pydantic-settings, geopandas, fastapi
+
+Successfully installed affine-3.0.1 annotated-doc-0.0.5 annotated-types-0.8.0 anyio-4.14.2 attrs-26.1.0 certifi-2026.10.23 click-8.5.0 click-plugins-1.1.1.2 cligj-0.7.2 cloudpickle-3.1.2 contourpy-1.3.3 cycler-0.12.1 fastapi-0.140.0 fiona-1.10.1 fonttools-4.68.0 geopandas-1.1.2 h11-0.16.0 httptools-0.9.0 idna-3.20 imageio-2.38.1 joblib-1.6.0 kiwisolver-1.5.1 lazy-loader-0.6 markdown-it-py-4.2.0 matplotlib-3.11.2 mdurl-0.1.2 narwhals-2.28.0 networkx-3.6.1 numpy-1.26.4 pandas-2.3.3 pillow-13.0.0 plotly-5.24.1 pydantic-2.14.1 pydantic-core-2.50.1 pydantic-settings-2.16.1 pygments-2.21.0 pyogrio-0.13.0 pyparsing-3.3.3 pyproj-3.7.2 python-dateutil-3.0.0 python-dotenv-1.2.4 python-multipart-0.0.31 pytz-2026.5 pyyaml-6.0.3 rasterio-1.4.4 rich-13.9.4 scikit-image-0.22.0 scikit-learn-1.9.1 scipy-1.17.1 shapely-2.2.0 shellingham-1.5.4 six-1.17.0 spiceypy-6.0.3 starlette-1.3.1 structlog-24.4.0 tenacity-9.2.1 threadpoolctl-3.7.0 tifffile-2026.3.3 typer-0.20.1 typing-extensions-4.16.0 typing-inspection-0.4.4 tzdata-2026.5 uvicorn-0.24.0.post1 uvloop-0.23.0 watchfiles-1.3.0 websockets-12.0 xarray-2023.12.0
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+[0m ---> Removed intermediate container c9cdf983e822
+ ---> 1ea2381f36fb
+Step 13/23 : COPY pyproject.toml README.md marshab_config.yaml ./
+ ---> 6c196dbe54b8
+Step 14/23 : COPY marshab/ ./marshab/
+ ---> 9266c2cb79cf
+Step 15/23 : COPY scripts/ ./scripts/
+ ---> 6431b695a76c
+Step 16/23 : RUN pip install --no-cache-dir --no-deps --no-build-isolation -e .
+ ---> Running in 3fc6796190d4
+Obtaining <container-package-source>
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: marshab
+  Building editable for marshab (pyproject.toml): started
+  Building editable for marshab (pyproject.toml): finished with status 'done'
+  Created wheel for marshab: filename=marshab-0.1.1-py3-none-any.whl size=5919 sha256=08b66dd62e18e2bf8d577606dd02aaf20fc51d5ba7ba7a61db87b6202d66e838
+  Stored in directory: /tmp/pip-ephem-wheel-cache-020cjo8c/wheels/57/0f/98/bb57b2b57b95807699b822a35c022f139d38a02c27922f27ce
+Successfully built marshab
+Installing collected packages: marshab
+Successfully installed marshab-0.1.1
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+[0m ---> Removed intermediate container 3fc6796190d4
+ ---> 86880b48bb96
+Step 17/23 : RUN python scripts/prepare_planetary_data.py --output-dir /app/reference
+ ---> Running in cab9f668b656
+Verified global MOLA: /app/reference/mola16.img (d18d9b9ab8c5516d02e157dd2cde0f1d0d160c21940e953ba22391269a545e7b)
+Verified detailed CTX: /app/reference/jezero_ctx20m.tif (16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b)
+ ---> Removed intermediate container cab9f668b656
+ ---> b77a7d64a446
+Step 18/23 : COPY --from=frontend /build/webui/dist/ ./webui/dist/
+ ---> 739a38a39964
+Step 19/23 : ENV PYTHONUNBUFFERED=1     PYTHONDONTWRITEBYTECODE=1     MARSHAB_WEB_HOST=0.0.0.0     MARSHAB_WEB_PORT=5000     MARSHAB_WEB_WORKERS=1     WEB_CONCURRENCY=1     MARSHAB_WEB_RELOAD=false     MARSHAB_WEBUI_DIST=/app/webui/dist     MARSHAB_PORTFOLIO_REFERENCE_DIR=/app/webui/dist/portfolio     MARSHAB_REFERENCE_DEM_PATH=/app/reference/jezero_ctx20m.tif     MARSHAB_GLOBAL_DEM_PATH=/app/reference/mola16.img     MARSHAB_PATHS__DATA_DIR=/app/data     MARSHAB_PATHS__CACHE_DIR=/app/data/cache     MARSHAB_PATHS__OUTPUT_DIR=/app/data/output     MARSHAB_MOLA_COG_BOOTSTRAP_MODE=skip     MARSHAB_MOLA_COG_REQUIRED=false     MARSHAB_PREWARM_COG=false     MARSHAB_TILE_ALLOW_DOWNLOAD=false     MARSHAB_ALLOW_SYNTHETIC_TILES=false     MARSHAB_ENABLE_EXPERIMENTAL_API=false     MARSHAB_CORS_ALLOW_ALL=false
+ ---> Running in cd6f0b06f980
+ ---> Removed intermediate container cd6f0b06f980
+ ---> a9c8f27115ba
+Step 20/23 : RUN useradd --create-home --uid 10001 marshab     && mkdir -p /app/data/cache /app/data/output     && chown -R marshab:marshab /app/data
+ ---> Running in 667fa55f6874
+ ---> Removed intermediate container 667fa55f6874
+ ---> 216828e7187b
+Step 21/23 : USER marshab
+ ---> Running in 83b9ba8355af
+ ---> Removed intermediate container 83b9ba8355af
+ ---> b247f1eacd39
+Step 22/23 : EXPOSE 5000
+ ---> Running in d24331918eca
+ ---> Removed intermediate container d24331918eca
+ ---> c351622d917d
+Step 23/23 : CMD ["python", "-m", "marshab.web.server"]
+ ---> Running in 23a55c5ed222
+ ---> Removed intermediate container 23a55c5ed222
+ ---> 215303ce3216
+Successfully built 215303ce3216
+Successfully tagged marshab-original:20261101-f9068e930c
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            BuildKit is currently disabled; enable it by removing the DOCKER_BUILDKIT=0
+            environment-variable.
+

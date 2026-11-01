@@ -1,0 +1,119 @@
+{
+  "archive_unchanged": true,
+  "cached_dem": {
+    "bytes": 9662387,
+    "fresh_checksum_verified": true,
+    "new_download": false,
+    "sha256": "16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b"
+  },
+  "embedded_source_git_identity": {
+    "dirty": true,
+    "git_revision": "unavailable",
+    "qualification": "Source archive has no Git checkout; external commit/archive/source-byte audit supplies identity without rewriting generated manifest"
+  },
+  "environment": {
+    "dependency_consistency": "pip check passed",
+    "fresh_environment": true,
+    "platform": "Windows",
+    "python": "3.11.15",
+    "scientific_packages": {
+      "marshab": "0.1.1",
+      "matplotlib": "3.11.2",
+      "numpy": "1.26.4",
+      "pyproj": "3.7.2",
+      "rasterio": "1.4.4",
+      "scipy": "1.17.1",
+      "xarray": "2023.12.0"
+    },
+    "uv": "0.11.28"
+  },
+  "fixed_workflow": {
+    "command": "python -I -B source/scripts/run_portfolio_demo.py --source cached-jezero-ctx.tif --output-dir new-output",
+    "exit_code": 0,
+    "finished_utc": "2026-11-01T06:06:04.3289743Z",
+    "seconds": 45.5614726,
+    "source_output_manifest_sha256": "30d0255fd7f237f39fe8e560f1514de5428fdc8abfe405395685e2b6be392b68",
+    "started_utc": "2026-11-01T06:05:18.7536008Z"
+  },
+  "installed_locked_package_count": 82,
+  "large_outputs_and_environment_excluded": true,
+  "limitations": [
+    "One fixed scenario and one fresh Windows/Python profile only.",
+    "This is not an unmodified baseline installation; the packaging overlay and external locks are explicit inputs.",
+    "No repeated-run, container resource, browser, WebGL, deployment or public-access checks were run.",
+    "No cross-platform PNG/TIFF byte-identity guarantee is made."
+  ],
+  "lock_sha256": {
+    "requirements-bootstrap.lock": "197a511e817f3eecc07c845895d7d0f49f48c3b270f3c08494f2d1355a62d916",
+    "requirements-dev.lock": "68ad7a5b8c4244fad5f2b53b373e9fed50f956236292cf090247617a5a5a52f7",
+    "requirements.lock": "9a77bf9af51a3762ee2c9998af9fc1982f1e8eb57a878cbaf27a4cfbf66ca7b4"
+  },
+  "packaging_overlay": {
+    "first_party_distribution_metadata_version": "0.1.1",
+    "path": "inputs/pyproject-overlay.toml",
+    "scope": "Existing patched package metadata only; scientific Python files unchanged",
+    "sha256": "2fd4972761edbeb3b42af00aa895d73475c1ed3e4595956e8cb3adc46ca2521b",
+    "target": "pyproject.toml"
+  },
+  "profile": "committed_source_reconstruction_with_explicit_packaging_metadata_overlay",
+  "recorded_at_utc": "2026-11-01T06:11:24.053532+00:00",
+  "sanitized_log_sources": {
+    "archived-package-install.log": {
+      "raw_local_sha256": "edd582cfd291acca1b0afc110c61fac8b9bdf44293c113760139d25cb32e99f7",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "1969e516aac551914ee721e12d612ccc3e5947e7781942ff5c9b1af665c08700"
+    },
+    "bootstrap-install.log": {
+      "raw_local_sha256": "40522c1e9c75ed2d3a2359ba426a4ef0854bf9a4a5cd37bf7a7c5e686ca8a416",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "ea06abcf9cab33a7b4128d009bbb54e87781dc9e29e100a0b06621ad4f7cb6d5"
+    },
+    "environment-create.log": {
+      "raw_local_sha256": "55a9a1e0b3768b210fe3ef69917dad995f809e4333799aafd98f2c82e65c5c36",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "76af97dedc18275ca6cd1d7599a9a635f755539f1420706272f2e8512a8f0ab1"
+    },
+    "fixed-workflow.log": {
+      "raw_local_sha256": "02f68a45ddfcfccfeedf915b2dda17b4b7e974da06cc7b51e2fe94896f739281",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "114aacfdb6037c80abf482ce246690b2d18f1bdba5b71efa0e75e237387862d6"
+    },
+    "pip-check.log": {
+      "raw_local_sha256": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf"
+    },
+    "requirements-dev.lock-install.log": {
+      "raw_local_sha256": "876530458c7578a4f836647e24ee17b3215853b5f6fbcf966aefc3ccf48c57bd",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "d2be88398a6638c44cace97da30ee9d42e295d91d058e9cacd720cef0b5aaf57"
+    },
+    "requirements.lock-install.log": {
+      "raw_local_sha256": "ddcb1c39256c8699e195744341d8d6bfef86b4ec887c4f71588034b89271c108",
+      "sanitization": "Workspace, repository and user-profile filesystem prefixes replaced; original local logs retained outside repository",
+      "sanitized_sha256": "8375cd5e6c5dc6cd938e5a70db4babce4e546c6267533b06ff4a26360db02104"
+    }
+  },
+  "schema_version": 1,
+  "source_archive_command": "git archive --format=zip --output source.zip 82e24bac7de34f1cb80d648f71fd8c794a16b012",
+  "source_archive_sha256": "791662cf6c50be11358677309851a6ba080189304b78d8de2d861f14b05c4fe8",
+  "source_commit": "82e24bac7de34f1cb80d648f71fd8c794a16b012",
+  "source_identity_audit": {
+    "installed_python_files_exact": 93,
+    "method": "Compare every extracted archive entry with its ZIP bytes; compare all installed marshab Python files with archived bytes; evaluate applicable exact lock requirements against installed package versions",
+    "only_original_archive_entry_overlaid": "pyproject.toml",
+    "source_python_files_exact": 102
+  },
+  "status": "passed",
+  "validation": {
+    "comparison_tests_sha256": "a76b1115d7363974e52fdb52b08ca5bfe18c96cdbcfeca3fae16ac4d49520aa5",
+    "comparison_tool_sha256": "fbe54f147768b9f210cbabfdb4089c918d9122aefd2cb38c23ed1473d555b77e",
+    "comparison_unit_tests": {
+      "passed": 7,
+      "seconds": 6.25,
+      "warnings": 8
+    },
+    "graph_optimality": "passed",
+    "numerical_historical_comparison": "passed"
+  }
+}

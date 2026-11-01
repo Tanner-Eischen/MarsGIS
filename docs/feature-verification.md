@@ -1,0 +1,58 @@
+# Feature verification matrix
+
+Audit date: 2026-10-27. Cloned `Tanner-Eischen/MarsGIS` at `4eb93e615c985edca10643b3c0752587d9dc7a21`. Evidence below distinguishes the local corrected revision from its original baseline. No browser/platform UI was accessed. HTTP deployment probes used CLI requests only.
+
+**Verified** means the stated bounded behavior ran successfully. **Implemented but unverified** means code exists without sufficient runtime/scientific evidence. **Incomplete** means a known defect or missing part prevents the advertised behavior. **Unsupported** means no defensible implemented/live capability supports the claim.
+
+| Feature / path | Original finding | Current classification and evidence | Required correction / scope decision |
+| --- | --- | --- | --- |
+| Credential-free real DEM acquisition | Setup stripped CRS, stored CTX under a MOLA filename, and demo inferred provenance from filename existence | **Verified** for fixed public CTX product: strict `acquire_dem`, pinned SHA-256, real 9.7 MB download and repeated verified local read | Fixed source only; other datasets need their own provenance and validation |
+| DEM ingestion | Projected coordinates treated as lon/lat; no-overlap could return whole DEM; clipping trimmed cells for a test; resampling lost transform | **Verified** within north-up explicit-CRS contract: `test_dem_georeferencing.py`, loader/integration tests | Rotation, south-up and missing CRS explicitly rejected; do not reinterpret stripped old caches |
+| Terrain derivatives | TRI used abs(center minus neighbor mean); hillshade swapped altitude/zenith terms; pixel spacing could use wrong nominal resolution | **Verified** for stated methods: `test_numerical_terrain_routing.py`, analytical gradients, neighborhood references and sun-normal tests | Corrected definitions; numerical algorithm validation does not validate DEM uncertainty or physical suitability |
+| Suitability masks and weights | Constant/all-invalid normalization lost masks; TOPSIS NaNs poisoned whole criteria | **Verified**: `test_numerical_mcdm.py`, hand calculations, joint masks, weight sensitivity | Scores remain relative and criteria must be scientifically justified |
+| Request reproducibility | Pipeline mutated shared default weights, used configured nominal scale | **Verified** corrected per-run configuration and actual spacing: `test_pipeline_reproducibility.py`, real-kernel A-B-A tests | Legacy cache/data selection still needs provenance work |
+| Grid route solver | Inadmissible heuristic for costs <1; approximate diagonal cost; NaN/corner handling unsafe | **Verified** bounded eight-connected solver: independent SciPy Dijkstra tests, low/zero-cost and barrier fixtures | Large-grid search cap exists; smoothing and waypoint downsampling are not optimality guarantees |
+| Suitability raster export | Assigned Earth EPSG:4326 and reconstructed transform from requested ROI | **Verified** source grid/CRS/mask preservation: `test_portfolio_exports.py` and real-output verifier | Missing CRS/transform and mismatched grids now reject explicitly |
+| Flagship candidate comparison | Old script mixed solar/science proxies; emitted no suitability TIFF/full route GeoJSON | **Verified** measured DEM -> local grid -> terrain -> score -> 3 routes -> exports/report/manifest; output verifier passed | Candidate cells only, no engineering habitat-site certification; source and versions in manifest |
+| Real-route geographic export | Old script could export native x/y pixel/projected coordinates as lat/lon | **Verified** for flagship: inverse projection to Mars degrees, round trips and exported pixel-center assertions | Planetary GeoJSON is declared; no Earth RFC 7946 compliance claim |
+| FastAPI analysis/site-score/decision-brief contracts | Mostly mocked or synthetic checks; implied scientific validation | **Verified** only as tested contracts with generated inputs; `tests/api/test_portfolio_flows.py` and full offline suite | Real-data API workflows remain **implemented but unverified**; flagship CLI bypasses legacy orchestration |
+| Navigation API / waypoint exports | Existence checks do not prove numerical routing/coordinates across branches | **Implemented but unverified** for complete real-data workflow; local contract tests run | Keep out of validated end-to-end claims until native projected DEM flow is tested |
+| Cache provenance / dataset fallback | DataManager accepts size or SOURCE_URL as evidence of real data; analysis retries mola_200m as mola | **Incomplete**: size/tag is not provenance, response does not always expose actual dataset | Flagship bypasses these heuristics; fix explicit requested/used/source metadata before advertising general dataset support |
+| Raster service resampled windows | Target-shape branch can reconstruct ROI envelope and mix affine/GDAL tuple order | **Implemented but unverified** | Audit and independently test this contract before using it as scientific export evidence; flagship does not use it |
+| Science value criterion | `processing/criteria.py` returns uniform 0.5 | **Unsupported** as an observation-based science metric | Excluded from flagship; would require documented external measurements |
+| Dust overlay | Visualization generator explicitly uses synthetic because TES DCI loading absent | **Unsupported** as observational dust data | Excluded from README claims |
+| Solar potential / energy | Local-normal orientation and altitude factors questionable; API catches terrain failure and returns unlabelled sine/cosine synthetic map | **Incomplete**, existing tests do not establish physical correctness | Excluded; needs incidence, units, invalid masks, provenance and seasonal/model validation |
+| Mission scenario / economics | Demo creates invented site grids/straight routes; impact equations heuristic | **Unsupported** as a validated mission prediction | Demo presentation only; excluded |
+| SITE coordinate transform | Geodetic equations declared planetocentric; inverse NotImplementedError | **Incomplete** | Excluded; flagship uses explicit spherical pyproj transforms with real round-trip tests |
+| Natural-language query / brief | Local keyword parser and deterministic rules | **Implemented but unverified** beyond tested contracts | Describe as rules-based, not a paid/general-purpose LLM capability |
+| Project CRUD | Temporary/local persistence API tests | **Verified** test contracts only | Persistence, concurrency and deployment recovery not evaluated |
+| React interface reachability | Source routes Dashboard, Mission Control, Decision Lab and Settings exist | **Implemented but unverified** interactively; `npm run lint` and `npm run build` pass locally | No UI inspection per repository instructions. 15 preexisting lint warnings; build warns about large Plotly bundle |
+| Frontend dependencies | npm clean install succeeded | **Incomplete** deployment hardening: npm reported 36 vulnerabilities (2 low, 7 moderate, 25 high, 2 critical) | No automatic breaking dependency migration; investigate/update before public deployment |
+| Render frontend and API | README advertised live URLs | **Unsupported currently**: frontend root, API `/api/v1/health/live` and `/api/v1/health/ready` returned 404 | Removed live claims; no deployment changes made |
+| Health/readiness | Checks config/directories rather than usable DEM | **Verified** liveness contract; scientific/data readiness **incomplete** | Require actual source availability/readability and workflow check before claiming readiness |
+| CI | Ran selected smoke/unit tests; fixtures absent could trigger multi-GB download | **Verified locally** full offline suite; CI configured for Windows/Linux full suite and separate real DEM job | Check the PR and Actions for results from the exact pushed revision |
+| Docker/Conda/Render configuration | Alternative dependencies and large global download configuration | **Implemented but unverified** | Validated reproduction uses new pip locks, not these legacy environments |
+
+## Evidence and scope decisions
+
+`tests/conftest.py` creates temporary raster fixtures/storage and blocks unintended urllib/socket downloads. Intended synthetic smoke tests explicitly opt in; production synthetic access is not enabled by the test harness. An empty mission test fixture was replaced with actual local generated DEM data. Generated synthetic rasters now contain their true Mars geographic CRS and explicit synthetic tags.
+
+The complete suite passed locally: **317 passed, one skipped**, with **54% total coverage**. It includes contract mocks; its pass count alone is not evidence of scientific correctness. The new numerical modules, source checksum, real demonstration and independent export verifier provide that narrower evidence. Local Linux/Docker execution and browser interactions remain unverified. A Windows-only legacy DEM-window cache test remains skipped because its filename contains colons.
+
+P0/P1 deliverables are the strict demonstrated scientific path, numerical checks, reproducible environment, honest documentation and portfolio figure. General dataset expansion, solar, ML, global reprojection, mission economics, frontend security updates and hosting are separate work, not hidden acceptance requirements for this example.
+
+## Unified website revision (2026-10-28)
+
+The website now uses a single FastAPI service for React, the actual Python scientific workflow and per-run downloads. This supersedes the initial CLI-only readiness assessment above for the new `/api/v1/portfolio/*` path. Legacy API/terrain-cache features remain outside the validated path and are disabled by the production container configuration.
+
+| Website feature | Evidence and status |
+| --- | --- |
+| Scientific controls | Component tests exercise five layer switches, candidate selection with keyboard markers, all-route toggle, zoom/fit, exact cell probes, downloads and retries. These run in a virtual DOM, not a browser. |
+| Actual server computation | A real POST202 calculation completed against the pinned CTX DEM, then the HTTP smoke script verified every returned artifact checksum. |
+| Same-origin hosting | FastAPI tests cover React/deep links, registered API precedence, JSON404 for unknown APIs,404 for missing assets and containment/traversal rules. |
+| Run isolation | Tests cover concurrent409, atomic publication, failure preserving old data and run-specific artifact URLs. Retained live results are capped; the reference is always retained. |
+| Dependency audit | Updated dependencies; npm audit reports zero known vulnerabilities. The old vulnerability count above describes the original baseline. |
+| Production scope | Container disables unrestricted experimental download/analysis/solar APIs and uses one worker. |
+| Unified container | Compose configuration validates. A CI job builds/runs the actual image with512 MB and executes real science over HTTP. Local Docker build/run was unavailable because its daemon was stopped. |
+| Deployment | **Verified live** at [marshab.onrender.com](https://marshab.onrender.com) on2026-10-28. The public smoke check completed fresh real-DEM science and verified all result checksums. See [deployment evidence](live-verification.md). The old Vercel/split API is not this runtime. |
+| Remaining browser gap | No browser/platform UI, screenshot or browser automation was used. Rendering/interaction in a real browser remains unverified under the repository restriction. |

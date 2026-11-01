@@ -7,6 +7,8 @@ from typing import Literal, Optional
 import numpy as np
 import pandas as pd
 import xarray as xr
+from pyproj import CRS, Transformer
+from rasterio.transform import Affine
 from scipy import ndimage
 
 try:
@@ -17,6 +19,7 @@ except ImportError:
 from marshab.config import get_config
 from marshab.config.criteria_config import DEFAULT_CRITERIA
 from marshab.core.data_manager import DataManager
+from marshab.core.raster_service import get_cell_spacing_from_dem
 from marshab.exceptions import AnalysisError
 from marshab.models import BoundingBox, SiteCandidate, TerrainMetrics
 from marshab.processing.criteria import CriteriaExtractor
@@ -72,9 +75,10 @@ class AnalysisResults:
         for site in self.sites:
             site_dict = site.model_dump()
             # Convert polygon_coords list to string for CSV storage
-            if site_dict.get('polygon_coords'):
+            if site_dict.get("polygon_coords"):
                 import json
-                site_dict['polygon_coords'] = json.dumps(site_dict['polygon_coords'])
+
+                site_dict["polygon_coords"] = json.dumps(site_dict["polygon_coords"])
             sites_data.append(site_dict)
         sites_df = pd.DataFrame(sites_data)
         sites_df.to_csv(output_dir / "sites.csv", index=False)
@@ -97,7 +101,7 @@ class AnalysisPipeline:
         threshold: float = 0.7,
         criteria_weights: Optional[dict[str, float]] = None,
         mcdm_method: Literal["weighted_sum", "topsis"] = "weighted_sum",
-        progress_callback: Optional[Callable[[str, float, str], None]] = None
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
     ) -> AnalysisResults:
         """Run complete analysis pipeline.
 
@@ -133,22 +137,35 @@ class AnalysisPipeline:
             if progress_callback:
                 progress_callback("dem_loading", 0.2, "DEM loaded successfully")
 
-            # Extract cell size from DEM (use resolution from config if available, else estimate from bounds)
-            if dataset in config.data_sources:
-                cell_size_m = config.data_sources[dataset].resolution_m
-            else:
-                # Estimate from DEM bounds
-                if hasattr(dem, 'rio') and hasattr(dem.rio, 'res'):
-                    cell_size_m = float(abs(dem.rio.res[0]))
-                elif hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                    # Fallback: estimate from bounds
-                    bounds = dem.rio.bounds()
-                    width_m = (bounds.right - bounds.left) * 111000 * np.cos(np.radians(roi.lat_min))
-                    cell_size_m = width_m / dem.shape[1] if dem.shape[1] > 0 else 200.0
+            # Native pixel spacing takes precedence over nominal dataset resolution.
+            default_spacing = (
+                config.data_sources[dataset].resolution_m
+                if dataset in config.data_sources
+                else 463.0
+            )
+            row_spacing_m, col_spacing_m = get_cell_spacing_from_dem(dem, default=default_spacing)
+            cell_size_m = float(np.sqrt(row_spacing_m * col_spacing_m))
+
+            # Pixel indices refer to centers. Use the actual affine and source
+            # geographic CRS rather than mapping the requested ROI onto a window.
+            affine = None
+            geographic = None
+            if dem.attrs.get("transform") is not None or dem.attrs.get("crs") is not None:
+                if dem.attrs.get("transform") is None or dem.attrs.get("crs") is None:
+                    raise ValueError("DEM georeferencing requires both CRS and affine transform")
+                affine = Affine(*list(dem.attrs["transform"])[:6])
+                crs = CRS.from_user_input(dem.attrs["crs"])
+                geographic = Transformer.from_crs(crs, crs.geodetic_crs, always_xy=True)
+
+            def pixel_lonlat(row, col):
+                if affine is not None:
+                    x, y = affine * (col + 0.5, row + 0.5)
+                    lon, lat = geographic.transform(x, y)
                 else:
-                    # Final fallback: use default or estimate from ROI
-                    width_m = (roi.lon_max - roi.lon_min) * 111000 * np.cos(np.radians(roi.lat_min))
-                    cell_size_m = width_m / dem.shape[1] if dem.shape[1] > 0 else 200.0
+                    # Compatibility for synthetic in-memory arrays lacking georeferencing.
+                    lon = roi.lon_min + ((col + 0.5) / dem.shape[1]) * (roi.lon_max - roi.lon_min)
+                    lat = roi.lat_max - ((row + 0.5) / dem.shape[0]) * (roi.lat_max - roi.lat_min)
+                return float(lon) % 360.0, float(lat)
 
             logger.info("DEM loaded", shape=dem.shape, cell_size_m=cell_size_m)
 
@@ -156,7 +173,7 @@ class AnalysisPipeline:
             if progress_callback:
                 progress_callback("terrain_metrics", 0.2, "Analyzing terrain metrics...")
             logger.info("Analyzing terrain")
-            terrain_analyzer = TerrainAnalyzer(cell_size_m=cell_size_m)
+            terrain_analyzer = TerrainAnalyzer(cell_size_m=(row_spacing_m, col_spacing_m))
             metrics = terrain_analyzer.analyze(dem)
             if progress_callback:
                 progress_callback("terrain_metrics", 0.5, "Terrain metrics calculated")
@@ -171,7 +188,7 @@ class AnalysisPipeline:
                 progress_callback("criteria_extraction", 0.7, "Criteria extracted")
 
             # 4. Configure weights
-            criteria_config = DEFAULT_CRITERIA
+            criteria_config = DEFAULT_CRITERIA.model_copy(deep=True)
 
             if criteria_weights:
                 # Update weights with custom values
@@ -189,15 +206,23 @@ class AnalysisPipeline:
 
             # Filter weights and beneficial to only include criteria that were actually extracted
             # This ensures weights sum correctly even if some criteria are missing
-            weights = {name: c.weight for name, c in criteria_config.criteria.items() if name in criteria}
-            beneficial = {name: c.beneficial for name, c in criteria_config.criteria.items() if name in criteria}
+            weights = {
+                name: c.weight for name, c in criteria_config.criteria.items() if name in criteria
+            }
+            beneficial = {
+                name: c.beneficial
+                for name, c in criteria_config.criteria.items()
+                if name in criteria
+            }
 
             # Re-normalize weights to sum to 1.0 for the actually extracted criteria
             total_weight = sum(weights.values())
             if total_weight > 0:
                 weights = {name: w / total_weight for name, w in weights.items()}
             else:
-                raise ValueError("No valid criteria weights found - all criteria may have zero weight")
+                raise ValueError(
+                    "No valid criteria weights found - all criteria may have zero weight"
+                )
 
             # Validate weights sum to 1.0 (with tolerance for floating point)
             total_weight = sum(weights.values())
@@ -208,12 +233,7 @@ class AnalysisPipeline:
             if progress_callback:
                 progress_callback("mcdm_evaluation", 0.7, "Evaluating suitability...")
             logger.info("Evaluating suitability")
-            suitability = MCDMEvaluator.evaluate(
-                criteria,
-                weights,
-                beneficial,
-                method=mcdm_method
-            )
+            suitability = MCDMEvaluator.evaluate(criteria, weights, beneficial, method=mcdm_method)
             if progress_callback:
                 progress_callback("mcdm_evaluation", 0.9, "Suitability evaluation complete")
 
@@ -232,7 +252,7 @@ class AnalysisPipeline:
                     mean_suitability=mean_suit,
                     max_suitability=max_suit,
                     suitable_pixels=suitable_count,
-                    total_pixels=total_count
+                    total_pixels=total_count,
                 )
             except Exception as e:
                 logger.warning("Failed to log MCDM evaluation stats", error=str(e))
@@ -263,7 +283,7 @@ class AnalysisPipeline:
 
             # Calculate properties for each region
             sites: list[SiteCandidate] = []
-            cell_area_km2 = (cell_size_m ** 2) / 1e6  # Convert m² to km²
+            cell_area_km2 = (cell_size_m**2) / 1e6  # Convert m² to km²
 
             for site_id in range(1, num_features + 1):
                 region_mask = labeled_array == site_id
@@ -287,9 +307,15 @@ class AnalysisPipeline:
 
                 # Calculate mean properties for this region (handle empty arrays)
                 mean_slope = float(np.nanmean(region_slope)) if region_slope.size > 0 else 0.0
-                mean_roughness = float(np.nanmean(region_roughness)) if region_roughness.size > 0 else 0.0
-                mean_elevation = float(np.nanmean(region_elevation)) if region_elevation.size > 0 else 0.0
-                mean_suitability = float(np.nanmean(region_suitability)) if region_suitability.size > 0 else 0.0
+                mean_roughness = (
+                    float(np.nanmean(region_roughness)) if region_roughness.size > 0 else 0.0
+                )
+                mean_elevation = (
+                    float(np.nanmean(region_elevation)) if region_elevation.size > 0 else 0.0
+                )
+                mean_suitability = (
+                    float(np.nanmean(region_suitability)) if region_suitability.size > 0 else 0.0
+                )
 
                 # Find centroid (in pixel coordinates)
                 try:
@@ -305,98 +331,41 @@ class AnalysisPipeline:
                             # Skip this site if we can't find a centroid
                             continue
                 except (ValueError, RuntimeError) as e:
-                    logger.warning(f"Failed to calculate centroid for site {site_id}, skipping", error=str(e))
+                    logger.warning(
+                        f"Failed to calculate centroid for site {site_id}, skipping", error=str(e)
+                    )
                     continue
 
-                # Convert pixel coordinates to lat/lon
-                try:
-                    if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                        bounds = dem.rio.bounds()
-                        lon = float(bounds.left + (centroid_x / dem.shape[1]) * (bounds.right - bounds.left))
-                        lat = float(bounds.top - (centroid_y / dem.shape[0]) * (bounds.top - bounds.bottom))
-                    else:
-                        # Fallback: estimate from ROI bounds
-                        lon = float(roi.lon_min + (centroid_x / dem.shape[1]) * (roi.lon_max - roi.lon_min))
-                        lat = float(roi.lat_max - (centroid_y / dem.shape[0]) * (roi.lat_max - roi.lat_min))
-                except (ValueError, ZeroDivisionError) as e:
-                    logger.warning(f"Failed to convert centroid to lat/lon for site {site_id}, skipping", error=str(e))
-                    continue
+                lon, lat = pixel_lonlat(centroid_y, centroid_x)
 
-                # Extract polygon boundary from region_mask
+                # Pad the mask so edge-touching regions also have closed cell boundaries.
                 polygon_coords = None
                 try:
                     if sk_measure is not None:
-                        # Find contours of the region
-                        contours = sk_measure.find_contours(region_mask.astype(float), 0.5)
-                        if len(contours) > 0:
-                            # Use the largest contour (outer boundary)
-                            largest_contour = max(contours, key=len)
-                            # Convert pixel coordinates to lat/lon
-                            if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                                try:
-                                    bounds = dem.rio.bounds()
-                                    lon_min = bounds.left
-                                    lon_max = bounds.right
-                                    lat_max = bounds.top
-                                    lat_min = bounds.bottom
-                                except (AttributeError, TypeError):
-                                    # Fallback if bounds() doesn't work
-                                    lon_min = roi.lon_min
-                                    lon_max = roi.lon_max
-                                    lat_max = roi.lat_max
-                                    lat_min = roi.lat_min
-                            else:
-                                lon_min = roi.lon_min
-                                lon_max = roi.lon_max
-                                lat_max = roi.lat_max
-                                lat_min = roi.lat_min
-
-                            # Convert contour coordinates (y, x) to (lon, lat)
-                            polygon_coords = []
-                            for y_px, x_px in largest_contour:
-                                lon_px = float(lon_min + (x_px / dem.shape[1]) * (lon_max - lon_min))
-                                lat_px = float(lat_max - (y_px / dem.shape[0]) * (lat_max - lat_min))
-                                polygon_coords.append([lon_px, lat_px])
-
-                            # Ensure polygon is closed (first point == last point)
-                            if len(polygon_coords) > 0 and polygon_coords[0] != polygon_coords[-1]:
-                                polygon_coords.append(polygon_coords[0])
-                    else:
-                        # Fallback without scikit-image: use bounding box polygon
-                        y_indices, x_indices = np.where(region_mask)
-                        if len(y_indices) > 0 and len(x_indices) > 0:
-                            y_min = float(np.min(y_indices))
-                            y_max = float(np.max(y_indices))
-                            x_min = float(np.min(x_indices))
-                            x_max = float(np.max(x_indices))
-                            if hasattr(dem, 'rio') and hasattr(dem.rio, 'bounds'):
-                                try:
-                                    bounds = dem.rio.bounds()
-                                    lon_min = bounds.left
-                                    lon_max = bounds.right
-                                    lat_max = bounds.top
-                                    lat_min = bounds.bottom
-                                except (AttributeError, TypeError):
-                                    lon_min = roi.lon_min
-                                    lon_max = roi.lon_max
-                                    lat_max = roi.lat_max
-                                    lat_min = roi.lat_min
-                            else:
-                                lon_min = roi.lon_min
-                                lon_max = roi.lon_max
-                                lat_max = roi.lat_max
-                                lat_min = roi.lat_min
-                            # Construct rectangle polygon (clockwise)
+                        contours = sk_measure.find_contours(
+                            np.pad(region_mask.astype(float), 1), 0.5
+                        )
+                        if contours:
+                            largest_contour = max(contours, key=len) - 1
                             polygon_coords = [
-                                [float(lon_min + (x_min / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_min / dem.shape[0]) * (lat_max - lat_min))],
-                                [float(lon_min + (x_max / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_min / dem.shape[0]) * (lat_max - lat_min))],
-                                [float(lon_min + (x_max / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_max / dem.shape[0]) * (lat_max - lat_min))],
-                                [float(lon_min + (x_min / dem.shape[1]) * (lon_max - lon_min)), float(lat_max - (y_max / dem.shape[0]) * (lat_max - lat_min))],
+                                list(pixel_lonlat(row, col)) for row, col in largest_contour
                             ]
-                            # Close polygon
-                            polygon_coords.append(polygon_coords[0])
-                except Exception as e:
-                    logger.warning(f"Failed to extract polygon for site {site_id}, using point geometry", error=str(e))
+                    else:
+                        rows, cols = np.where(region_mask)
+                        corners = [
+                            (rows.min() - 0.5, cols.min() - 0.5),
+                            (rows.min() - 0.5, cols.max() + 0.5),
+                            (rows.max() + 0.5, cols.max() + 0.5),
+                            (rows.max() + 0.5, cols.min() - 0.5),
+                        ]
+                        polygon_coords = [list(pixel_lonlat(row, col)) for row, col in corners]
+                    if polygon_coords and polygon_coords[0] != polygon_coords[-1]:
+                        polygon_coords.append(polygon_coords[0])
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to extract polygon for site {site_id}, using point geometry",
+                        error=str(exc),
+                    )
 
                 # Create site with temporary rank (will be updated after sorting)
                 site = SiteCandidate(
@@ -419,7 +388,7 @@ class AnalysisPipeline:
             for rank, site in enumerate(sites, start=1):
                 # Update rank by creating a new instance (Pydantic models are immutable)
                 site_dict = site.model_dump()
-                site_dict['rank'] = rank
+                site_dict["rank"] = rank
                 sites[rank - 1] = SiteCandidate(**site_dict)
 
             # Get top site
@@ -434,7 +403,9 @@ class AnalysisPipeline:
             )
 
             if progress_callback:
-                progress_callback("site_extraction", 1.0, f"Analysis complete: {len(sites)} sites found")
+                progress_callback(
+                    "site_extraction", 1.0, f"Analysis complete: {len(sites)} sites found"
+                )
 
             return AnalysisResults(
                 sites=sites,
@@ -466,23 +437,23 @@ class AnalysisPipeline:
 
         # Save complete results as pickle
         results_file = output_dir / "analysis_results.pkl"
-        with open(results_file, 'wb') as f:
-            pickle.dump({
-                'dem': results.dem,
-                'metrics': results.metrics,
-                'sites': results.sites,
-                'suitability': results.suitability,
-                'criteria': results.criteria
-            }, f)
+        with open(results_file, "wb") as f:
+            pickle.dump(
+                {
+                    "dem": results.dem,
+                    "metrics": results.metrics,
+                    "sites": results.sites,
+                    "suitability": results.suitability,
+                    "criteria": results.criteria,
+                },
+                f,
+            )
 
         logger.info(f"Saved analysis results pickle to {results_file}")
 
         # Save sites as GeoJSON
         if results.sites:
-            sites_geojson = {
-                "type": "FeatureCollection",
-                "features": []
-            }
+            sites_geojson = {"type": "FeatureCollection", "features": []}
 
             for site in results.sites:
                 feature = {
@@ -494,25 +465,19 @@ class AnalysisPipeline:
                         "mean_roughness": site.mean_roughness,
                         "mean_elevation_m": site.mean_elevation_m,
                         "suitability_score": site.suitability_score,
-                        "rank": site.rank
-                    }
+                        "rank": site.rank,
+                    },
                 }
 
                 if site.polygon_coords:
-                    feature["geometry"] = {
-                        "type": "Polygon",
-                        "coordinates": [site.polygon_coords]
-                    }
+                    feature["geometry"] = {"type": "Polygon", "coordinates": [site.polygon_coords]}
                 else:
-                    feature["geometry"] = {
-                        "type": "Point",
-                        "coordinates": [site.lon, site.lat]
-                    }
+                    feature["geometry"] = {"type": "Point", "coordinates": [site.lon, site.lat]}
 
                 sites_geojson["features"].append(feature)
 
             sites_file = output_dir / "sites.geojson"
-            with open(sites_file, 'w') as f:
+            with open(sites_file, "w") as f:
                 json.dump(sites_geojson, f, indent=2)
 
             logger.info(f"Saved sites GeoJSON to {sites_file}")
@@ -520,20 +485,22 @@ class AnalysisPipeline:
         # Save CSV file with sites data
         sites_csv_file = output_dir / "sites.csv"
         import pandas as pd
+
         sites_data = []
         for site in results.sites:
-            sites_data.append({
-                'site_id': site.site_id,
-                'lat': site.lat,
-                'lon': site.lon,
-                'area_km2': site.area_km2,
-                'mean_slope_deg': site.mean_slope_deg,
-                'mean_roughness': site.mean_roughness,
-                'mean_elevation_m': site.mean_elevation_m,
-                'suitability_score': site.suitability_score,
-                'rank': site.rank
-            })
+            sites_data.append(
+                {
+                    "site_id": site.site_id,
+                    "lat": site.lat,
+                    "lon": site.lon,
+                    "area_km2": site.area_km2,
+                    "mean_slope_deg": site.mean_slope_deg,
+                    "mean_roughness": site.mean_roughness,
+                    "mean_elevation_m": site.mean_elevation_m,
+                    "suitability_score": site.suitability_score,
+                    "rank": site.rank,
+                }
+            )
         df = pd.DataFrame(sites_data)
         df.to_csv(sites_csv_file, index=False)
         logger.info(f"Saved sites CSV to {sites_csv_file}")
-

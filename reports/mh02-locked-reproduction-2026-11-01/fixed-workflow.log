@@ -1,0 +1,162 @@
+2026-11-01 01:05:39 [info     ] Starting terrain analysis      shape=(593, 563)
+2026-11-01 01:05:39 [info     ] Calculating slope...
+2026-11-01 01:05:39 [debug    ] Calculated slope               max_deg=35.10582013207141 mean_deg=7.110925652528879 min_deg=0.015659826454493674
+2026-11-01 01:05:39 [info     ] Calculating aspect...
+2026-11-01 01:05:39 [debug    ] Calculated slope               max_deg=35.10582013207141 mean_deg=7.110925652528879 min_deg=0.015659826454493674
+2026-11-01 01:05:39 [debug    ] Calculated aspect              flat_pixels=191 valid_pixels=333668
+2026-11-01 01:05:39 [info     ] Calculating roughness...
+2026-11-01 01:05:44 [debug    ] Calculated roughness           max=17.200853345461464 mean=3.548247942311407
+2026-11-01 01:05:44 [info     ] Calculating TRI...
+2026-11-01 01:05:44 [debug    ] Calculated TRI                 max=10.58123779296875 mean=1.948276464804554
+2026-11-01 01:05:44 [info     ] Calculating hillshade...
+2026-11-01 01:05:44 [debug    ] Calculated hillshade           max=248.03519352898536 mean=172.31161052572273 min=50.89334902771237
+2026-11-01 01:05:44 [info     ] Terrain analysis complete      roughness_mean=3.548247942311407 slope_max=35.10582013207141 slope_mean=7.110925652528879 slope_std=5.321941533326949 tri_mean=1.948276464804554
+2026-11-01 01:05:44 [info     ] Generating traversability cost surface
+2026-11-01 01:05:44 [info     ] Cost surface generated         max_finite_cost=8.307363510131836 mean_cost=2.662517547607422 passable_fraction=0.9000805729364791
+2026-11-01 01:05:44 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(193, 455) start=(10, 10)
+2026-11-01 01:05:44 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(193, 455) max_nodes=333859 start=(10, 10)
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=172 progress_pct=1.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=421 progress_pct=2.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=458 progress_pct=3.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=330 progress_pct=4.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=310 progress_pct=5.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=405 progress_pct=6.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=420 progress_pct=7.0%
+2026-11-01 01:05:44 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=554 progress_pct=8.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=30042 open_set_size=696 progress_pct=9.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=33380 open_set_size=863 progress_pct=10.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=36718 open_set_size=894 progress_pct=11.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=40056 open_set_size=896 progress_pct=12.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=43394 open_set_size=935 progress_pct=13.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=46732 open_set_size=1018 progress_pct=14.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=50070 open_set_size=1008 progress_pct=15.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=53408 open_set_size=1102 progress_pct=16.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=56746 open_set_size=1096 progress_pct=17.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=60084 open_set_size=1248 progress_pct=18.0%
+2026-11-01 01:05:45 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=63422 open_set_size=1371 progress_pct=19.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=66760 open_set_size=1595 progress_pct=20.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=70098 open_set_size=1764 progress_pct=21.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=73436 open_set_size=1765 progress_pct=22.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=76774 open_set_size=1709 progress_pct=23.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=80112 open_set_size=1807 progress_pct=24.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=83450 open_set_size=1801 progress_pct=25.0%
+2026-11-01 01:05:46 [info     ] Path found                     nodes_explored=85996 path_length=514 total_cost=27898.494775157837
+2026-11-01 01:05:46 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(193, 455) start=(10, 10)
+2026-11-01 01:05:46 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(193, 455) max_nodes=333859 start=(10, 10)
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=538 progress_pct=1.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=632 progress_pct=2.0%
+2026-11-01 01:05:46 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=365 progress_pct=3.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=626 progress_pct=4.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=935 progress_pct=5.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=899 progress_pct=6.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=1057 progress_pct=7.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=1278 progress_pct=8.0%
+2026-11-01 01:05:47 [info     ] Path found                     nodes_explored=29768 path_length=477 total_cost=10779.209229614198
+2026-11-01 01:05:47 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(545, 548) start=(10, 10)
+2026-11-01 01:05:47 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(545, 548) max_nodes=333859 start=(10, 10)
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=162 progress_pct=1.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=429 progress_pct=2.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=516 progress_pct=3.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=470 progress_pct=4.0%
+2026-11-01 01:05:47 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=348 progress_pct=5.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=534 progress_pct=6.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=503 progress_pct=7.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=559 progress_pct=8.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=30042 open_set_size=676 progress_pct=9.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=33380 open_set_size=822 progress_pct=10.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=36718 open_set_size=868 progress_pct=11.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=40056 open_set_size=1030 progress_pct=12.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=43394 open_set_size=1004 progress_pct=13.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=46732 open_set_size=1023 progress_pct=14.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=50070 open_set_size=853 progress_pct=15.0%
+2026-11-01 01:05:48 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=53408 open_set_size=760 progress_pct=16.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=56746 open_set_size=891 progress_pct=17.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=60084 open_set_size=967 progress_pct=18.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=63422 open_set_size=1028 progress_pct=19.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=66760 open_set_size=1261 progress_pct=20.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=70098 open_set_size=1344 progress_pct=21.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=73436 open_set_size=1369 progress_pct=22.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=76774 open_set_size=1338 progress_pct=23.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=80112 open_set_size=1337 progress_pct=24.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=83450 open_set_size=1416 progress_pct=25.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=86788 open_set_size=1560 progress_pct=26.0%
+2026-11-01 01:05:49 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=90126 open_set_size=1641 progress_pct=27.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=93464 open_set_size=1736 progress_pct=28.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=96802 open_set_size=1933 progress_pct=29.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=100140 open_set_size=2134 progress_pct=30.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=103478 open_set_size=2266 progress_pct=31.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=106816 open_set_size=2339 progress_pct=32.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=110154 open_set_size=2533 progress_pct=33.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=113492 open_set_size=2587 progress_pct=34.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=116830 open_set_size=2675 progress_pct=35.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=120168 open_set_size=2821 progress_pct=36.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=123506 open_set_size=2887 progress_pct=37.0%
+2026-11-01 01:05:50 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=126844 open_set_size=3031 progress_pct=38.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=130182 open_set_size=3012 progress_pct=39.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=133520 open_set_size=3133 progress_pct=40.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=136858 open_set_size=3167 progress_pct=41.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=140196 open_set_size=3204 progress_pct=42.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=143534 open_set_size=3219 progress_pct=43.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=146872 open_set_size=3084 progress_pct=44.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=150210 open_set_size=3030 progress_pct=45.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=153548 open_set_size=3046 progress_pct=46.0%
+2026-11-01 01:05:51 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=156886 open_set_size=3074 progress_pct=47.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=160224 open_set_size=3025 progress_pct=48.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=163562 open_set_size=3139 progress_pct=49.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=166900 open_set_size=3133 progress_pct=50.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=170238 open_set_size=3133 progress_pct=51.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=173576 open_set_size=3203 progress_pct=52.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=176914 open_set_size=3239 progress_pct=53.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=180252 open_set_size=3344 progress_pct=54.0%
+2026-11-01 01:05:52 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=183590 open_set_size=3441 progress_pct=55.0%
+2026-11-01 01:05:53 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=186928 open_set_size=3579 progress_pct=56.0%
+2026-11-01 01:05:53 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=190266 open_set_size=3577 progress_pct=57.0%
+2026-11-01 01:05:53 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=193604 open_set_size=3555 progress_pct=58.0%
+2026-11-01 01:05:53 [info     ] Path found                     nodes_explored=196833 path_length=766 total_cost=35873.34682222687
+2026-11-01 01:05:53 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(545, 548) start=(10, 10)
+2026-11-01 01:05:53 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(545, 548) max_nodes=333859 start=(10, 10)
+2026-11-01 01:05:53 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=1270 progress_pct=1.0%
+2026-11-01 01:05:53 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=1039 progress_pct=2.0%
+2026-11-01 01:05:53 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=1329 progress_pct=3.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=3455 progress_pct=4.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=2552 progress_pct=5.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=3887 progress_pct=6.0%
+2026-11-01 01:05:54 [info     ] Path found                     nodes_explored=22318 path_length=588 total_cost=15766.15582626635
+2026-11-01 01:05:54 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(207, 380) start=(10, 10)
+2026-11-01 01:05:54 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(207, 380) max_nodes=333859 start=(10, 10)
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=177 progress_pct=1.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=429 progress_pct=2.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=474 progress_pct=3.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=319 progress_pct=4.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=315 progress_pct=5.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=414 progress_pct=6.0%
+2026-11-01 01:05:54 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=425 progress_pct=7.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=537 progress_pct=8.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=30042 open_set_size=702 progress_pct=9.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=33380 open_set_size=848 progress_pct=10.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=36718 open_set_size=896 progress_pct=11.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=40056 open_set_size=876 progress_pct=12.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=43394 open_set_size=941 progress_pct=13.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=46732 open_set_size=971 progress_pct=14.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=50070 open_set_size=985 progress_pct=15.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=53408 open_set_size=1067 progress_pct=16.0%
+2026-11-01 01:05:55 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=56746 open_set_size=1069 progress_pct=17.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=60084 open_set_size=1137 progress_pct=18.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=63422 open_set_size=1247 progress_pct=19.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=66760 open_set_size=1495 progress_pct=20.0%
+2026-11-01 01:05:56 [info     ] Path found                     nodes_explored=69464 path_length=444 total_cost=25936.577287194934
+2026-11-01 01:05:56 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(207, 380) start=(10, 10)
+2026-11-01 01:05:56 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(207, 380) max_nodes=333859 start=(10, 10)
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=1117 progress_pct=1.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=923 progress_pct=2.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=455 progress_pct=3.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=575 progress_pct=4.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=762 progress_pct=5.0%
+2026-11-01 01:05:56 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=1029 progress_pct=6.0%
+2026-11-01 01:05:57 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=1160 progress_pct=7.0%
+2026-11-01 01:05:57 [info     ] Path found                     nodes_explored=26236 path_length=402 total_cost=9395.189027078664
+2026-11-01 01:05:57 [info     ] Exporting suitability GeoTIFF  output_path=<isolated-workspace>\outputs\fixed-reference\suitability.tif
+2026-11-01 01:05:57 [info     ] Suitability GeoTIFF exported   file_size_mb=1.426324
+Real CTX DEM verified: 16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b
+Grid: [593, 563]; candidates: 3
+Artifacts: <isolated-workspace>\outputs\fixed-reference

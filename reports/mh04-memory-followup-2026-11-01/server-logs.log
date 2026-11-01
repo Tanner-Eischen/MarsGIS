@@ -1,0 +1,642 @@
+============================================================
+Starting MarsHab Web API Server
+============================================================
+Server will be available at: http://0.0.0.0:5000
+API docs available at: http://0.0.0.0:5000/docs
+Workers: 1
+============================================================
+============================================================
+MarsHab Web API - Starting up...
+============================================================
+2026-11-01 12:25:52 [info     ] Starting MarsHab web API
+[OK] Config loaded
+[OK] Directories created
+[INFO] MARSHAB_MOLA_COG_PATH not set; skipping COG bootstrap
+2026-11-01 12:25:52 [info     ] No plugins config found, skipping plugin loading config_path=/app/data/config/plugins.yaml
+[OK] Plugins loaded
+============================================================
+MarsHab Web API - Ready!
+Server: http://localhost:5000
+API Docs: http://localhost:5000/docs
+============================================================
+[12:25:52] GET /api/v1/health/ready
+[12:25:52] GET /api/v1/health/ready - 200 (0.074s)
+INFO:     172.17.0.1:42896 - "GET /api/v1/health/ready HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/health/live
+[12:25:52] GET /api/v1/health/live - 200 (0.001s)
+INFO:     172.17.0.1:55992 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/health/live
+[12:25:52] GET /api/v1/health/live - 200 (0.001s)
+INFO:     172.17.0.1:55994 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/health/ready
+[12:25:52] GET /api/v1/health/ready - 200 (0.001s)
+INFO:     172.17.0.1:56006 - "GET /api/v1/health/ready HTTP/1.1" 200 OK
+[12:25:52] GET /
+[12:25:52] GET / - 200 (0.003s)
+INFO:     172.17.0.1:56018 - "GET / HTTP/1.1" 200 OK
+[12:25:52] GET /assets/index-NEGn6WHu.js
+[12:25:52] GET /assets/index-NEGn6WHu.js - 200 (0.001s)
+INFO:     172.17.0.1:56032 - "GET /assets/index-NEGn6WHu.js HTTP/1.1" 200 OK
+[12:25:52] GET /assets/TerrainScene3D-D7T12Tjm.js
+[12:25:52] GET /assets/TerrainScene3D-D7T12Tjm.js - 200 (0.000s)
+INFO:     172.17.0.1:56034 - "GET /assets/TerrainScene3D-D7T12Tjm.js HTTP/1.1" 200 OK
+[12:25:52] GET /assets/index-DeoliP4Y.css
+[12:25:52] GET /assets/index-DeoliP4Y.css - 200 (0.001s)
+INFO:     172.17.0.1:56044 - "GET /assets/index-DeoliP4Y.css HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/explorer/metadata
+[12:25:52] GET /api/v1/explorer/metadata - 200 (0.001s)
+INFO:     172.17.0.1:56058 - "GET /api/v1/explorer/metadata HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/explorer/tiles/mola/0/0/0.png
+[12:25:52] GET /api/v1/explorer/tiles/mola/0/0/0.png - 200 (0.030s)
+INFO:     172.17.0.1:56062 - "GET /api/v1/explorer/tiles/mola/0/0/0.png HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/explorer/tiles/mola/0/1/0.png
+[12:25:52] GET /api/v1/explorer/tiles/mola/0/1/0.png - 200 (0.023s)
+INFO:     172.17.0.1:56072 - "GET /api/v1/explorer/tiles/mola/0/1/0.png HTTP/1.1" 200 OK
+[12:25:52] POST /api/v1/explorer/routes
+[12:25:52] POST /api/v1/explorer/routes - 202 (0.002s)
+INFO:     172.17.0.1:56076 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+2026-11-01 12:25:52 [info     ] Starting A* pathfinding        cost_map_shape=(26, 92) goal=(6, 85) start=(20, 6)
+2026-11-01 12:25:52 [info     ] A* pathfinding starting        cost_map_shape=(26, 92) goal=(6, 85) max_nodes=2392 start=(20, 6)
+2026-11-01 12:25:52 [info     ] A* pathfinding progress        max_nodes=2392 nodes_explored=1000 open_set_size=274 progress_pct=41.8%
+2026-11-01 12:25:52 [info     ] Path found                     nodes_explored=1837 path_length=80 total_cost=1792.149948113478
+[12:25:52] GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125
+[12:25:52] GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125 - 200 (0.005s)
+INFO:     172.17.0.1:56080 - "GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125 HTTP/1.1" 200 OK
+[12:25:52] GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125/geojson
+[12:25:52] GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125/geojson - 200 (0.002s)
+INFO:     172.17.0.1:56090 - "GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125/geojson HTTP/1.1" 200 OK
+[12:25:52] POST /api/v1/explorer/routes
+[12:25:52] POST /api/v1/explorer/routes - 202 (0.002s)
+INFO:     172.17.0.1:56098 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+2026-11-01 12:25:52 [info     ] Starting A* pathfinding        cost_map_shape=(38, 38) goal=(2, 34) start=(34, 2)
+2026-11-01 12:25:52 [info     ] A* pathfinding starting        cost_map_shape=(38, 38) goal=(2, 34) max_nodes=1444 start=(34, 2)
+2026-11-01 12:25:52 [info     ] Path found                     nodes_explored=33 path_length=33 total_cost=166598.40441734696
+[12:25:53] GET /api/v1/explorer/routes/379d058723f649c9aa729526524fccf8
+[12:25:53] GET /api/v1/explorer/routes/379d058723f649c9aa729526524fccf8 - 200 (0.003s)
+INFO:     172.17.0.1:56108 - "GET /api/v1/explorer/routes/379d058723f649c9aa729526524fccf8 HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/routes/379d058723f649c9aa729526524fccf8/geojson
+[12:25:53] GET /api/v1/explorer/routes/379d058723f649c9aa729526524fccf8/geojson - 200 (0.001s)
+INFO:     172.17.0.1:56120 - "GET /api/v1/explorer/routes/379d058723f649c9aa729526524fccf8/geojson HTTP/1.1" 200 OK
+[12:25:53] POST /api/v1/explorer/routes
+[12:25:53] POST /api/v1/explorer/routes
+[12:25:53] POST /api/v1/explorer/routes
+[12:25:53] POST /api/v1/explorer/routes - 202 (0.016s)
+INFO:     172.17.0.1:56132 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+[12:25:53] POST /api/v1/explorer/routes - 409 (0.038s)
+INFO:     172.17.0.1:56124 - "POST /api/v1/explorer/routes HTTP/1.1" 409 Conflict
+[12:25:53] POST /api/v1/explorer/routes - 409 (0.041s)
+INFO:     172.17.0.1:56148 - "POST /api/v1/explorer/routes HTTP/1.1" 409 Conflict
+2026-11-01 12:25:53 [info     ] Starting A* pathfinding        cost_map_shape=(26, 92) goal=(6, 85) start=(20, 6)
+2026-11-01 12:25:53 [info     ] A* pathfinding starting        cost_map_shape=(26, 92) goal=(6, 85) max_nodes=2392 start=(20, 6)
+2026-11-01 12:25:53 [info     ] A* pathfinding progress        max_nodes=2392 nodes_explored=1000 open_set_size=274 progress_pct=41.8%
+2026-11-01 12:25:53 [info     ] Path found                     nodes_explored=1837 path_length=80 total_cost=1792.149948113478
+[12:25:53] GET /api/v1/explorer/routes/4789cacd268f4023aed5a8c414d64d1e
+[12:25:53] GET /api/v1/explorer/routes/4789cacd268f4023aed5a8c414d64d1e - 200 (0.005s)
+INFO:     172.17.0.1:56150 - "GET /api/v1/explorer/routes/4789cacd268f4023aed5a8c414d64d1e HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125/geojson
+[12:25:53] GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125/geojson - 200 (0.002s)
+INFO:     172.17.0.1:56160 - "GET /api/v1/explorer/routes/5655416032be49ac849b9d93b98bb125/geojson HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/portfolio/status
+[12:25:53] GET /api/v1/portfolio/status - 200 (0.373s)
+INFO:     172.17.0.1:56170 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/missing-endpoint
+[12:25:53] GET /api/v1/missing-endpoint - 404 (0.000s)
+INFO:     172.17.0.1:56178 - "GET /api/v1/missing-endpoint HTTP/1.1" 404 Not Found
+[12:25:53] GET /assets/missing-file.js
+[12:25:53] GET /assets/missing-file.js - 404 (0.000s)
+INFO:     172.17.0.1:56188 - "GET /assets/missing-file.js HTTP/1.1" 404 Not Found
+[12:25:53] GET /explore/jezero
+[12:25:53] GET /explore/jezero - 200 (0.001s)
+INFO:     172.17.0.1:56194 - "GET /explore/jezero HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/2.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/2.png - 200 (0.013s)
+INFO:     172.17.0.1:56202 - "GET /api/v1/explorer/tiles/mola/3/0/2.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/3.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/3.png - 200 (0.019s)
+INFO:     172.17.0.1:56208 - "GET /api/v1/explorer/tiles/mola/3/0/3.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/4.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/4.png - 200 (0.023s)
+INFO:     172.17.0.1:56220 - "GET /api/v1/explorer/tiles/mola/3/0/4.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/5.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/0/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56230 - "GET /api/v1/explorer/tiles/mola/3/0/5.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/2.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/2.png - 200 (0.018s)
+INFO:     172.17.0.1:56236 - "GET /api/v1/explorer/tiles/mola/3/1/2.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/3.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/3.png - 200 (0.019s)
+INFO:     172.17.0.1:56244 - "GET /api/v1/explorer/tiles/mola/3/1/3.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/4.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/4.png - 200 (0.021s)
+INFO:     172.17.0.1:56252 - "GET /api/v1/explorer/tiles/mola/3/1/4.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/5.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/1/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56256 - "GET /api/v1/explorer/tiles/mola/3/1/5.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/2.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/2.png - 200 (0.021s)
+INFO:     172.17.0.1:56268 - "GET /api/v1/explorer/tiles/mola/3/2/2.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/3.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/3.png - 200 (0.021s)
+INFO:     172.17.0.1:56274 - "GET /api/v1/explorer/tiles/mola/3/2/3.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/4.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/4.png - 200 (0.021s)
+INFO:     172.17.0.1:56288 - "GET /api/v1/explorer/tiles/mola/3/2/4.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/5.png
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/2/5.png - 200 (0.021s)
+INFO:     172.17.0.1:56292 - "GET /api/v1/explorer/tiles/mola/3/2/5.png HTTP/1.1" 200 OK
+[12:25:53] GET /api/v1/explorer/tiles/mola/3/3/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/2.png - 200 (0.021s)
+INFO:     172.17.0.1:56308 - "GET /api/v1/explorer/tiles/mola/3/3/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/3.png - 200 (0.020s)
+INFO:     172.17.0.1:56324 - "GET /api/v1/explorer/tiles/mola/3/3/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/4.png - 200 (0.022s)
+INFO:     172.17.0.1:56332 - "GET /api/v1/explorer/tiles/mola/3/3/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/3/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56344 - "GET /api/v1/explorer/tiles/mola/3/3/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/2.png - 200 (0.020s)
+INFO:     172.17.0.1:56348 - "GET /api/v1/explorer/tiles/mola/3/4/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/3.png - 200 (0.019s)
+INFO:     172.17.0.1:56352 - "GET /api/v1/explorer/tiles/mola/3/4/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/4.png - 200 (0.021s)
+INFO:     172.17.0.1:56364 - "GET /api/v1/explorer/tiles/mola/3/4/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/4/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56378 - "GET /api/v1/explorer/tiles/mola/3/4/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/2.png - 200 (0.020s)
+INFO:     172.17.0.1:56392 - "GET /api/v1/explorer/tiles/mola/3/5/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/3.png - 200 (0.021s)
+INFO:     172.17.0.1:56398 - "GET /api/v1/explorer/tiles/mola/3/5/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/4.png - 200 (0.021s)
+INFO:     172.17.0.1:56412 - "GET /api/v1/explorer/tiles/mola/3/5/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/5/5.png - 200 (0.023s)
+INFO:     172.17.0.1:56418 - "GET /api/v1/explorer/tiles/mola/3/5/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/2.png - 200 (0.018s)
+INFO:     172.17.0.1:56428 - "GET /api/v1/explorer/tiles/mola/3/6/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/3.png - 200 (0.022s)
+INFO:     172.17.0.1:56430 - "GET /api/v1/explorer/tiles/mola/3/6/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/4.png - 200 (0.023s)
+INFO:     172.17.0.1:56432 - "GET /api/v1/explorer/tiles/mola/3/6/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/6/5.png - 200 (0.024s)
+INFO:     172.17.0.1:56438 - "GET /api/v1/explorer/tiles/mola/3/6/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/2.png - 200 (0.021s)
+INFO:     172.17.0.1:56442 - "GET /api/v1/explorer/tiles/mola/3/7/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/3.png - 200 (0.022s)
+INFO:     172.17.0.1:56444 - "GET /api/v1/explorer/tiles/mola/3/7/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/4.png - 200 (0.022s)
+INFO:     172.17.0.1:56454 - "GET /api/v1/explorer/tiles/mola/3/7/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/7/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56456 - "GET /api/v1/explorer/tiles/mola/3/7/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/2.png - 200 (0.022s)
+INFO:     172.17.0.1:56458 - "GET /api/v1/explorer/tiles/mola/3/8/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/3.png - 200 (0.023s)
+INFO:     172.17.0.1:56468 - "GET /api/v1/explorer/tiles/mola/3/8/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/4.png - 200 (0.022s)
+INFO:     172.17.0.1:56484 - "GET /api/v1/explorer/tiles/mola/3/8/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/8/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56492 - "GET /api/v1/explorer/tiles/mola/3/8/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/2.png - 200 (0.022s)
+INFO:     172.17.0.1:56508 - "GET /api/v1/explorer/tiles/mola/3/9/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/3.png - 200 (0.022s)
+INFO:     172.17.0.1:56522 - "GET /api/v1/explorer/tiles/mola/3/9/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/4.png - 200 (0.022s)
+INFO:     172.17.0.1:56528 - "GET /api/v1/explorer/tiles/mola/3/9/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/9/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56534 - "GET /api/v1/explorer/tiles/mola/3/9/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/2.png - 200 (0.022s)
+INFO:     172.17.0.1:56544 - "GET /api/v1/explorer/tiles/mola/3/10/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/3.png - 200 (0.021s)
+INFO:     172.17.0.1:56546 - "GET /api/v1/explorer/tiles/mola/3/10/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/4.png - 200 (0.022s)
+INFO:     172.17.0.1:56552 - "GET /api/v1/explorer/tiles/mola/3/10/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/10/5.png - 200 (0.047s)
+INFO:     172.17.0.1:56560 - "GET /api/v1/explorer/tiles/mola/3/10/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/2.png - 200 (0.021s)
+INFO:     172.17.0.1:56562 - "GET /api/v1/explorer/tiles/mola/3/11/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/3.png - 200 (0.020s)
+INFO:     172.17.0.1:56578 - "GET /api/v1/explorer/tiles/mola/3/11/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/4.png - 200 (0.025s)
+INFO:     172.17.0.1:56584 - "GET /api/v1/explorer/tiles/mola/3/11/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/11/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56586 - "GET /api/v1/explorer/tiles/mola/3/11/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/2.png - 200 (0.019s)
+INFO:     172.17.0.1:56590 - "GET /api/v1/explorer/tiles/mola/3/12/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/3.png - 200 (0.027s)
+INFO:     172.17.0.1:56606 - "GET /api/v1/explorer/tiles/mola/3/12/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/4.png - 200 (0.021s)
+INFO:     172.17.0.1:56608 - "GET /api/v1/explorer/tiles/mola/3/12/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/5.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/12/5.png - 200 (0.023s)
+INFO:     172.17.0.1:56612 - "GET /api/v1/explorer/tiles/mola/3/12/5.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/2.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/2.png - 200 (0.018s)
+INFO:     172.17.0.1:56618 - "GET /api/v1/explorer/tiles/mola/3/13/2.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/3.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/3.png - 200 (0.020s)
+INFO:     172.17.0.1:56620 - "GET /api/v1/explorer/tiles/mola/3/13/3.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/4.png
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/4.png - 200 (0.026s)
+INFO:     172.17.0.1:56624 - "GET /api/v1/explorer/tiles/mola/3/13/4.png HTTP/1.1" 200 OK
+[12:25:54] GET /api/v1/explorer/tiles/mola/3/13/5.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/13/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56638 - "GET /api/v1/explorer/tiles/mola/3/13/5.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/2.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/2.png - 200 (0.020s)
+INFO:     172.17.0.1:56644 - "GET /api/v1/explorer/tiles/mola/3/14/2.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/3.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/3.png - 200 (0.019s)
+INFO:     172.17.0.1:56650 - "GET /api/v1/explorer/tiles/mola/3/14/3.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/4.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/4.png - 200 (0.022s)
+INFO:     172.17.0.1:56652 - "GET /api/v1/explorer/tiles/mola/3/14/4.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/5.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/14/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56664 - "GET /api/v1/explorer/tiles/mola/3/14/5.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/2.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/2.png - 200 (0.019s)
+INFO:     172.17.0.1:56668 - "GET /api/v1/explorer/tiles/mola/3/15/2.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/3.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/3.png - 200 (0.016s)
+INFO:     172.17.0.1:56684 - "GET /api/v1/explorer/tiles/mola/3/15/3.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/4.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/4.png - 200 (0.021s)
+INFO:     172.17.0.1:56686 - "GET /api/v1/explorer/tiles/mola/3/15/4.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/5.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/3/15/5.png - 200 (0.022s)
+INFO:     172.17.0.1:56692 - "GET /api/v1/explorer/tiles/mola/3/15/5.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/health/live
+[12:25:55] GET /api/v1/health/live - 200 (0.001s)
+INFO:     172.17.0.1:56698 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/health/live
+[12:25:55] GET /api/v1/health/live - 200 (0.000s)
+INFO:     172.17.0.1:56706 - "GET /api/v1/health/live HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/health/ready
+[12:25:55] GET /api/v1/health/ready - 200 (0.001s)
+INFO:     172.17.0.1:56714 - "GET /api/v1/health/ready HTTP/1.1" 200 OK
+[12:25:55] GET /
+[12:25:55] GET / - 200 (0.000s)
+INFO:     172.17.0.1:56722 - "GET / HTTP/1.1" 200 OK
+[12:25:55] GET /assets/index-NEGn6WHu.js
+[12:25:55] GET /assets/index-NEGn6WHu.js - 200 (0.000s)
+INFO:     172.17.0.1:56726 - "GET /assets/index-NEGn6WHu.js HTTP/1.1" 200 OK
+[12:25:55] GET /assets/TerrainScene3D-D7T12Tjm.js
+[12:25:55] GET /assets/TerrainScene3D-D7T12Tjm.js - 200 (0.000s)
+INFO:     172.17.0.1:56738 - "GET /assets/TerrainScene3D-D7T12Tjm.js HTTP/1.1" 200 OK
+[12:25:55] GET /assets/index-DeoliP4Y.css
+[12:25:55] GET /assets/index-DeoliP4Y.css - 200 (0.001s)
+INFO:     172.17.0.1:56742 - "GET /assets/index-DeoliP4Y.css HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/metadata
+[12:25:55] GET /api/v1/explorer/metadata - 200 (0.001s)
+INFO:     172.17.0.1:56752 - "GET /api/v1/explorer/metadata HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/0/0/0.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/0/0/0.png - 200 (0.000s)
+INFO:     172.17.0.1:56766 - "GET /api/v1/explorer/tiles/mola/0/0/0.png HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/tiles/mola/0/1/0.png
+[12:25:55] GET /api/v1/explorer/tiles/mola/0/1/0.png - 200 (0.000s)
+INFO:     172.17.0.1:56774 - "GET /api/v1/explorer/tiles/mola/0/1/0.png HTTP/1.1" 200 OK
+[12:25:55] POST /api/v1/explorer/routes
+[12:25:55] POST /api/v1/explorer/routes - 202 (0.013s)
+INFO:     172.17.0.1:56790 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+2026-11-01 12:25:55 [info     ] Starting A* pathfinding        cost_map_shape=(26, 92) goal=(6, 85) start=(20, 6)
+2026-11-01 12:25:55 [info     ] A* pathfinding starting        cost_map_shape=(26, 92) goal=(6, 85) max_nodes=2392 start=(20, 6)
+2026-11-01 12:25:55 [info     ] A* pathfinding progress        max_nodes=2392 nodes_explored=1000 open_set_size=274 progress_pct=41.8%
+2026-11-01 12:25:55 [info     ] Path found                     nodes_explored=1837 path_length=80 total_cost=1792.149948113478
+[12:25:55] GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5
+[12:25:55] GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5 - 200 (0.004s)
+INFO:     172.17.0.1:56800 - "GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5 HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5/geojson
+[12:25:55] GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5/geojson - 200 (0.002s)
+INFO:     172.17.0.1:56806 - "GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5/geojson HTTP/1.1" 200 OK
+[12:25:55] POST /api/v1/explorer/routes
+[12:25:55] POST /api/v1/explorer/routes - 202 (0.002s)
+INFO:     172.17.0.1:56812 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+2026-11-01 12:25:55 [info     ] Starting A* pathfinding        cost_map_shape=(38, 38) goal=(2, 34) start=(34, 2)
+2026-11-01 12:25:55 [info     ] A* pathfinding starting        cost_map_shape=(38, 38) goal=(2, 34) max_nodes=1444 start=(34, 2)
+2026-11-01 12:25:55 [info     ] Path found                     nodes_explored=33 path_length=33 total_cost=166598.40441734696
+[12:25:55] GET /api/v1/explorer/routes/ffe80259209b482f998a9983f37d6c18
+[12:25:55] GET /api/v1/explorer/routes/ffe80259209b482f998a9983f37d6c18 - 200 (0.003s)
+INFO:     172.17.0.1:56826 - "GET /api/v1/explorer/routes/ffe80259209b482f998a9983f37d6c18 HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/routes/ffe80259209b482f998a9983f37d6c18/geojson
+[12:25:55] GET /api/v1/explorer/routes/ffe80259209b482f998a9983f37d6c18/geojson - 200 (0.001s)
+INFO:     172.17.0.1:56840 - "GET /api/v1/explorer/routes/ffe80259209b482f998a9983f37d6c18/geojson HTTP/1.1" 200 OK
+[12:25:55] POST /api/v1/explorer/routes
+[12:25:55] POST /api/v1/explorer/routes
+[12:25:55] POST /api/v1/explorer/routes
+[12:25:55] POST /api/v1/explorer/routes - 202 (0.002s)
+INFO:     172.17.0.1:56876 - "POST /api/v1/explorer/routes HTTP/1.1" 202 Accepted
+[12:25:55] POST /api/v1/explorer/routes - 409 (0.014s)
+INFO:     172.17.0.1:56856 - "POST /api/v1/explorer/routes HTTP/1.1" 409 Conflict
+[12:25:55] POST /api/v1/explorer/routes - 409 (0.015s)
+INFO:     172.17.0.1:56872 - "POST /api/v1/explorer/routes HTTP/1.1" 409 Conflict
+2026-11-01 12:25:55 [info     ] Starting A* pathfinding        cost_map_shape=(26, 92) goal=(6, 85) start=(20, 6)
+2026-11-01 12:25:55 [info     ] A* pathfinding starting        cost_map_shape=(26, 92) goal=(6, 85) max_nodes=2392 start=(20, 6)
+2026-11-01 12:25:55 [info     ] A* pathfinding progress        max_nodes=2392 nodes_explored=1000 open_set_size=274 progress_pct=41.8%
+2026-11-01 12:25:55 [info     ] Path found                     nodes_explored=1837 path_length=80 total_cost=1792.149948113478
+[12:25:55] GET /api/v1/explorer/routes/441a7cd0e8b2498598aad675b12b7208
+[12:25:55] GET /api/v1/explorer/routes/441a7cd0e8b2498598aad675b12b7208 - 200 (0.004s)
+INFO:     172.17.0.1:56886 - "GET /api/v1/explorer/routes/441a7cd0e8b2498598aad675b12b7208 HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5/geojson
+[12:25:55] GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5/geojson - 200 (0.002s)
+INFO:     172.17.0.1:56896 - "GET /api/v1/explorer/routes/2f8be9cc77784e23befb46f8ac7411a5/geojson HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/portfolio/status
+[12:25:55] GET /api/v1/portfolio/status - 200 (0.000s)
+INFO:     172.17.0.1:56904 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:25:55] GET /api/v1/missing-endpoint
+[12:25:55] GET /api/v1/missing-endpoint - 404 (0.000s)
+INFO:     172.17.0.1:56918 - "GET /api/v1/missing-endpoint HTTP/1.1" 404 Not Found
+[12:25:55] GET /assets/missing-file.js
+[12:25:55] GET /assets/missing-file.js - 404 (0.000s)
+INFO:     172.17.0.1:56924 - "GET /assets/missing-file.js HTTP/1.1" 404 Not Found
+[12:25:55] GET /explore/jezero
+[12:25:55] GET /explore/jezero - 200 (0.000s)
+INFO:     172.17.0.1:56932 - "GET /explore/jezero HTTP/1.1" 200 OK
+[12:25:55] POST /api/v1/portfolio/run
+[12:25:55] POST /api/v1/portfolio/run - 202 (0.001s)
+INFO:     172.17.0.1:56936 - "POST /api/v1/portfolio/run HTTP/1.1" 202 Accepted
+[12:25:55] GET /api/v1/portfolio/status
+[12:25:55] GET /api/v1/portfolio/status - 200 (0.000s)
+INFO:     172.17.0.1:56946 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:25:55 [info     ] Starting terrain analysis      shape=(593, 563)
+2026-11-01 12:25:55 [info     ] Calculating slope...
+2026-11-01 12:25:55 [debug    ] Calculated slope               max_deg=35.10582013207141 mean_deg=7.110925652528879 min_deg=0.015659826454493674
+2026-11-01 12:25:55 [info     ] Calculating aspect...
+2026-11-01 12:25:56 [debug    ] Calculated slope               max_deg=35.10582013207141 mean_deg=7.110925652528879 min_deg=0.015659826454493674
+2026-11-01 12:25:56 [debug    ] Calculated aspect              flat_pixels=191 valid_pixels=333668
+2026-11-01 12:25:56 [info     ] Calculating roughness...
+[12:25:56] GET /api/v1/portfolio/status
+[12:25:56] GET /api/v1/portfolio/status - 200 (0.026s)
+INFO:     172.17.0.1:56954 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:25:57] GET /api/v1/portfolio/status
+[12:25:57] GET /api/v1/portfolio/status - 200 (0.006s)
+INFO:     172.17.0.1:56968 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:25:58 [debug    ] Calculated roughness           max=17.200853345461464 mean=3.548247942311407
+2026-11-01 12:25:58 [info     ] Calculating TRI...
+2026-11-01 12:25:58 [debug    ] Calculated TRI                 max=10.58123779296875 mean=1.948276464804554
+2026-11-01 12:25:58 [info     ] Calculating hillshade...
+2026-11-01 12:25:58 [debug    ] Calculated hillshade           max=248.03519352898533 mean=172.31161052572267 min=50.89334902771234
+2026-11-01 12:25:58 [info     ] Terrain analysis complete      roughness_mean=3.548247942311407 slope_max=35.10582013207141 slope_mean=7.110925652528879 slope_std=5.321941533326949 tri_mean=1.948276464804554
+2026-11-01 12:25:58 [info     ] Generating traversability cost surface
+2026-11-01 12:25:58 [info     ] Cost surface generated         max_finite_cost=8.307363510131836 mean_cost=2.662517547607422 passable_fraction=0.9000805729364791
+2026-11-01 12:25:58 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(193, 455) start=(10, 10)
+2026-11-01 12:25:58 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(193, 455) max_nodes=333859 start=(10, 10)
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=172 progress_pct=1.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=421 progress_pct=2.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=458 progress_pct=3.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=330 progress_pct=4.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=310 progress_pct=5.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=405 progress_pct=6.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=420 progress_pct=7.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=554 progress_pct=8.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=30042 open_set_size=696 progress_pct=9.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=33380 open_set_size=863 progress_pct=10.0%
+2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=36718 open_set_size=894 progress_pct=11.0%
+[12:25:58] GET /api/v1/portfolio/status
+[12:25:58] GET /api/v1/portfolio/status - 200 (0.006s)2026-11-01 12:25:58 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=40056 open_set_size=896 progress_pct=12.0%
+
+INFO:     172.17.0.1:56972 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=43394 open_set_size=935 progress_pct=13.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=46732 open_set_size=1018 progress_pct=14.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=50070 open_set_size=1008 progress_pct=15.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=53408 open_set_size=1102 progress_pct=16.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=56746 open_set_size=1096 progress_pct=17.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=60084 open_set_size=1248 progress_pct=18.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=63422 open_set_size=1371 progress_pct=19.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=66760 open_set_size=1595 progress_pct=20.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=70098 open_set_size=1764 progress_pct=21.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=73436 open_set_size=1765 progress_pct=22.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=76774 open_set_size=1709 progress_pct=23.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=80112 open_set_size=1807 progress_pct=24.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=83450 open_set_size=1801 progress_pct=25.0%
+2026-11-01 12:25:59 [info     ] Path found                     nodes_explored=85996 path_length=514 total_cost=27898.494775157837
+2026-11-01 12:25:59 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(193, 455) start=(10, 10)
+2026-11-01 12:25:59 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(193, 455) max_nodes=333859 start=(10, 10)
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=538 progress_pct=1.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=632 progress_pct=2.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=365 progress_pct=3.0%
+2026-11-01 12:25:59 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=626 progress_pct=4.0%
+[12:25:59] GET /api/v1/portfolio/status
+[12:26:00] GET /api/v1/portfolio/status - 200 (0.021s)
+INFO:     172.17.0.1:56982 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=935 progress_pct=5.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=899 progress_pct=6.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=1057 progress_pct=7.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=1278 progress_pct=8.0%
+2026-11-01 12:26:00 [info     ] Path found                     nodes_explored=29768 path_length=477 total_cost=10779.209229614198
+2026-11-01 12:26:00 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(545, 548) start=(10, 10)
+2026-11-01 12:26:00 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(545, 548) max_nodes=333859 start=(10, 10)
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=162 progress_pct=1.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=429 progress_pct=2.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=516 progress_pct=3.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=470 progress_pct=4.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=348 progress_pct=5.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=534 progress_pct=6.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=503 progress_pct=7.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=559 progress_pct=8.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=30042 open_set_size=676 progress_pct=9.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=33380 open_set_size=822 progress_pct=10.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=36718 open_set_size=868 progress_pct=11.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=40056 open_set_size=1030 progress_pct=12.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=43394 open_set_size=1004 progress_pct=13.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=46732 open_set_size=1023 progress_pct=14.0%
+2026-11-01 12:26:00 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=50070 open_set_size=853 progress_pct=15.0%
+[12:26:01] GET /api/v1/portfolio/status
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=53408 open_set_size=760 progress_pct=16.0%
+[12:26:01] GET /api/v1/portfolio/status - 200 (0.017s)
+INFO:     172.17.0.1:56990 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=56746 open_set_size=891 progress_pct=17.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=60084 open_set_size=967 progress_pct=18.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=63422 open_set_size=1028 progress_pct=19.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=66760 open_set_size=1261 progress_pct=20.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=70098 open_set_size=1344 progress_pct=21.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=73436 open_set_size=1369 progress_pct=22.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=76774 open_set_size=1338 progress_pct=23.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=80112 open_set_size=1337 progress_pct=24.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=83450 open_set_size=1416 progress_pct=25.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=86788 open_set_size=1560 progress_pct=26.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=90126 open_set_size=1641 progress_pct=27.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=93464 open_set_size=1736 progress_pct=28.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=96802 open_set_size=1933 progress_pct=29.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=100140 open_set_size=2134 progress_pct=30.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=103478 open_set_size=2266 progress_pct=31.0%
+2026-11-01 12:26:01 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=106816 open_set_size=2339 progress_pct=32.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=110154 open_set_size=2533 progress_pct=33.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=113492 open_set_size=2587 progress_pct=34.0%
+[12:26:02] GET /api/v1/portfolio/status
+[12:26:02] GET /api/v1/portfolio/status - 200 (0.016s)
+INFO:     172.17.0.1:57000 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=116830 open_set_size=2675 progress_pct=35.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=120168 open_set_size=2821 progress_pct=36.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=123506 open_set_size=2887 progress_pct=37.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=126844 open_set_size=3031 progress_pct=38.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=130182 open_set_size=3012 progress_pct=39.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=133520 open_set_size=3133 progress_pct=40.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=136858 open_set_size=3167 progress_pct=41.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=140196 open_set_size=3204 progress_pct=42.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=143534 open_set_size=3219 progress_pct=43.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=146872 open_set_size=3084 progress_pct=44.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=150210 open_set_size=3030 progress_pct=45.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=153548 open_set_size=3046 progress_pct=46.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=156886 open_set_size=3074 progress_pct=47.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=160224 open_set_size=3025 progress_pct=48.0%
+2026-11-01 12:26:02 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=163562 open_set_size=3139 progress_pct=49.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=166900 open_set_size=3133 progress_pct=50.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=170238 open_set_size=3133 progress_pct=51.0%
+[12:26:03] GET /api/v1/portfolio/status
+[12:26:03] GET /api/v1/portfolio/status - 200 (0.024s)
+INFO:     172.17.0.1:53282 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=173576 open_set_size=3203 progress_pct=52.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=176914 open_set_size=3239 progress_pct=53.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=180252 open_set_size=3344 progress_pct=54.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=183590 open_set_size=3441 progress_pct=55.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=186928 open_set_size=3579 progress_pct=56.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=190266 open_set_size=3577 progress_pct=57.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=193604 open_set_size=3555 progress_pct=58.0%
+2026-11-01 12:26:03 [info     ] Path found                     nodes_explored=196833 path_length=766 total_cost=35873.34682222687
+2026-11-01 12:26:03 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(545, 548) start=(10, 10)
+2026-11-01 12:26:03 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(545, 548) max_nodes=333859 start=(10, 10)
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=1270 progress_pct=1.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=1039 progress_pct=2.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=1329 progress_pct=3.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=3455 progress_pct=4.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=2552 progress_pct=5.0%
+2026-11-01 12:26:03 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=3887 progress_pct=6.0%
+2026-11-01 12:26:04 [info     ] Path found                     nodes_explored=22318 path_length=588 total_cost=15766.15582626635
+2026-11-01 12:26:04 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(207, 380) start=(10, 10)
+2026-11-01 12:26:04 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(207, 380) max_nodes=333859 start=(10, 10)
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=177 progress_pct=1.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=429 progress_pct=2.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=474 progress_pct=3.0%
+[12:26:04] GET /api/v1/portfolio/status
+[12:26:04] GET /api/v1/portfolio/status - 200 (0.001s)
+INFO:     172.17.0.1:53292 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=319 progress_pct=4.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=315 progress_pct=5.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=414 progress_pct=6.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=425 progress_pct=7.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=26704 open_set_size=537 progress_pct=8.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=30042 open_set_size=702 progress_pct=9.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=33380 open_set_size=848 progress_pct=10.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=36718 open_set_size=896 progress_pct=11.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=40056 open_set_size=876 progress_pct=12.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=43394 open_set_size=941 progress_pct=13.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=46732 open_set_size=971 progress_pct=14.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=50070 open_set_size=985 progress_pct=15.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=53408 open_set_size=1067 progress_pct=16.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=56746 open_set_size=1069 progress_pct=17.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=60084 open_set_size=1137 progress_pct=18.0%
+2026-11-01 12:26:04 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=63422 open_set_size=1247 progress_pct=19.0%
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=66760 open_set_size=1495 progress_pct=20.0%
+2026-11-01 12:26:05 [info     ] Path found                     nodes_explored=69464 path_length=444 total_cost=25936.577287194934
+2026-11-01 12:26:05 [info     ] Starting A* pathfinding        cost_map_shape=(593, 563) goal=(207, 380) start=(10, 10)
+2026-11-01 12:26:05 [info     ] A* pathfinding starting        cost_map_shape=(593, 563) goal=(207, 380) max_nodes=333859 start=(10, 10)
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=3338 open_set_size=1117 progress_pct=1.0%
+[12:26:05] GET /api/v1/portfolio/status2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=6676 open_set_size=923 progress_pct=2.0%
+
+[12:26:05] GET /api/v1/portfolio/status - 200 (0.022s)
+INFO:     172.17.0.1:53296 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=10014 open_set_size=455 progress_pct=3.0%
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=13352 open_set_size=575 progress_pct=4.0%
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=16690 open_set_size=762 progress_pct=5.0%
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=20028 open_set_size=1029 progress_pct=6.0%
+2026-11-01 12:26:05 [info     ] A* pathfinding progress        max_nodes=333859 nodes_explored=23366 open_set_size=1160 progress_pct=7.0%
+2026-11-01 12:26:05 [info     ] Path found                     nodes_explored=26236 path_length=402 total_cost=9395.189027078664
+2026-11-01 12:26:05 [info     ] Exporting suitability GeoTIFF  output_path=/app/data/output/portfolio-runs/023ded1cda4a4fee9bef64298dbebedd/analysis/suitability.tif
+2026-11-01 12:26:05 [info     ] Suitability GeoTIFF exported   file_size_mb=1.426324
+[12:26:07] GET /api/v1/portfolio/status
+[12:26:07] GET /api/v1/portfolio/status - 200 (0.002s)
+INFO:     172.17.0.1:53306 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:26:08] GET /api/v1/portfolio/status
+[12:26:08] GET /api/v1/portfolio/status - 200 (0.002s)
+INFO:     172.17.0.1:53314 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/status
+[12:26:09] GET /api/v1/portfolio/status - 200 (0.001s)
+INFO:     172.17.0.1:53318 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/scene
+[12:26:09] GET /api/v1/portfolio/scene - 200 (0.003s)
+INFO:     172.17.0.1:53322 - "GET /api/v1/portfolio/scene HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/terrain.tif
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/terrain.tif - 200 (0.010s)
+INFO:     172.17.0.1:53336 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/terrain.tif HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/suitability.tif
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/suitability.tif - 200 (0.002s)
+INFO:     172.17.0.1:53346 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/suitability.tif HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/routes.geojson
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/routes.geojson - 200 (0.001s)
+INFO:     172.17.0.1:53354 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/routes.geojson HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/report.md
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/report.md - 200 (0.001s)
+INFO:     172.17.0.1:53360 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/report.md HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/manifest.json
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/manifest.json - 200 (0.001s)
+INFO:     172.17.0.1:53374 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/manifest.json HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/comparison.png
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/comparison.png - 200 (0.002s)
+INFO:     172.17.0.1:53384 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/comparison.png HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/elevation.png
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/elevation.png - 200 (0.001s)
+INFO:     172.17.0.1:53396 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/elevation.png HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/slope.png
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/slope.png - 200 (0.001s)
+INFO:     172.17.0.1:53404 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/slope.png HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/roughness.png
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/roughness.png - 200 (0.001s)
+INFO:     172.17.0.1:53414 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/roughness.png HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/hillshade.png
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/hillshade.png - 200 (0.001s)
+INFO:     172.17.0.1:53430 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/hillshade.png HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/suitability.png
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/suitability.png - 200 (0.001s)
+INFO:     172.17.0.1:53444 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/layers/suitability.png HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/probe.bin
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/probe.bin - 200 (0.004s)
+INFO:     172.17.0.1:53452 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/probe.bin HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/status
+[12:26:09] GET /api/v1/portfolio/status - 200 (0.001s)
+INFO:     172.17.0.1:53456 - "GET /api/v1/portfolio/status HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/scene
+[12:26:09] GET /api/v1/portfolio/scene - 200 (0.003s)
+INFO:     172.17.0.1:53468 - "GET /api/v1/portfolio/scene HTTP/1.1" 200 OK
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/manifest.json
+[12:26:09] GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/manifest.json - 200 (0.001s)
+INFO:     172.17.0.1:53472 - "GET /api/v1/portfolio/files/023ded1cda4a4fee9bef64298dbebedd/manifest.json HTTP/1.1" 200 OK
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+2026-11-01 12:26:06,662 - matplotlib.font_manager - INFO - generated new fontManager

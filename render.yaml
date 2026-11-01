@@ -1,65 +1,43 @@
 services:
   - type: web
-    name: marshab-api
+    name: marshab
     runtime: docker
+    plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: conda run --no-capture-output -n marshab python -m marshab.web.server
     healthCheckPath: /api/v1/health/live
-    disk:
-      name: marshab-data
-      mountPath: /app/data
-      sizeGB: 50
     envVars:
-      - key: MARSHAB_DEMO_SEED
-        value: "42"
-      - key: WEB_CONCURRENCY
-        value: "1"
       - key: MARSHAB_WEB_WORKERS
+        value: "1"
+      - key: WEB_CONCURRENCY
         value: "1"
       - key: MARSHAB_WEB_RELOAD
         value: "false"
+      - key: MARSHAB_WEBUI_DIST
+        value: /app/webui/dist
+      - key: MARSHAB_PORTFOLIO_REFERENCE_DIR
+        value: /app/webui/dist/portfolio
+      - key: MARSHAB_REFERENCE_DEM_PATH
+        value: /app/reference/jezero_ctx20m.tif
+      - key: MARSHAB_GLOBAL_DEM_PATH
+        value: /app/reference/mola16.img
       - key: MARSHAB_PATHS__DATA_DIR
         value: /app/data
       - key: MARSHAB_PATHS__CACHE_DIR
         value: /app/data/cache
       - key: MARSHAB_PATHS__OUTPUT_DIR
         value: /app/data/output
-      - key: MARSHAB_CORS_ORIGINS
-        sync: false
-      - key: MARSHAB_ORTHO_BASEMAP_PATH
-        value: /app/data/cache/hirise.tif
-      - key: MARSHAB_GLOBAL_BASEMAP_STYLE
-        value: blendshade
-      - key: MARSHAB_GLOBAL_BASEMAP_PATH
-        value: /app/data/cache/mola_global_463m.cog.tif
-      - key: MARSHAB_MOLA_COG_PATH
-        value: /app/data/cache/mola_global_463m.cog.tif
-      - key: MARSHAB_MOLA_COG_URL
-        value: https://planetarymaps.usgs.gov/mosaic/Mars_MGS_MOLA_DEM_mosaic_global_463m.tif
       - key: MARSHAB_MOLA_COG_BOOTSTRAP_MODE
-        value: blocking
+        value: skip
       - key: MARSHAB_MOLA_COG_REQUIRED
-        value: "true"
+        value: "false"
       - key: MARSHAB_PREWARM_COG
-        value: "true"
+        value: "false"
       - key: MARSHAB_TILE_ALLOW_DOWNLOAD
         value: "false"
       - key: MARSHAB_ALLOW_SYNTHETIC_TILES
         value: "false"
-  - type: web
-    name: marshab-web
-    runtime: static
-    buildCommand: cd webui && npm ci && npm run build
-    staticPublishPath: webui/dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://marshab-api.onrender.com/api/v1
-      - key: VITE_WS_URL
-        value: wss://marshab-api.onrender.com
-      - key: VITE_GLOBAL_BASEMAP_STYLE
-        value: blendshade
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      - key: MARSHAB_ENABLE_EXPERIMENTAL_API
+        value: "false"
+      - key: MARSHAB_CORS_ALLOW_ALL
+        value: "false"

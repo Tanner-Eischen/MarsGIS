@@ -16,6 +16,7 @@ def _configure_test_paths(monkeypatch, tmp_path: Path) -> None:
 def test_pipeline_smoke_synthetic(monkeypatch, tmp_path: Path):
     """Run end-to-end site selection in deterministic synthetic mode."""
     monkeypatch.setenv("MARSHAB_DEMO_SEED", "42")
+    monkeypatch.setenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "true")
     _configure_test_paths(monkeypatch, tmp_path)
 
     pipeline = AnalysisPipeline()

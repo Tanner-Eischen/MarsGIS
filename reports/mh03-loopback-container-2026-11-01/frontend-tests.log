@@ -1,0 +1,16 @@
+
+> marshab-webui@0.1.0 test
+> vitest run --maxWorkers=1 src/lib/explorer.test.ts src/pages/MarsExplorer.test.tsx
+
+
+ RUN  v5.0.5 <repository>/webui
+
+
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  01:42:13
+   Duration  9.83s (tests 79%, environment 15%, import 5%, transform 1%)
+
+    Isolate  2 workers spawned · ~883ms startup each (spawn + environment, per file)
+             at least ~883ms faster with isolate: false — reuses workers across files instead of one per file
+

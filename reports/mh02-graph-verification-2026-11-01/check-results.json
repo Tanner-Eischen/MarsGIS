@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "timestamp_utc": "2026-11-01T05:40:51.5579727Z",
+  "source_revision": "459973dba92dc5b82f9d24519fd333577646ae3a",
+  "dirty_worktree": true,
+  "source_sha256": {
+    "marshab/analysis/verification.py": "5aaa8405eb208ad911d58c2866bbd98f6449fc290746634f8f9a49322388e5d8",
+    "tests/unit/test_independent_reference_verification.py": "fa331a388a9519e8dd8c8d8918d6331f7b156cd3e3c23ecd22fc13b436403e2d",
+    "tests/unit/test_portfolio_site.py": "2212f52781117121f3530a84aab464485e5a8529393ed5611921d36bbdbc80b2",
+    "scripts/verify_portfolio_demo.py": "ef6bdebee95198708fff8fe5ccf764e8bcf784c4097710a947fc2768094ea8cc",
+    "docs/implementation/MH02_GRAPH_VERIFICATION.md": "bbbf8d4b2251edfcebe3739d89a7f946bafe0b7cda2245ca65093fb7d3138776"
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "win32",
+    "numpy": "1.26.4",
+    "scipy": "1.17.1",
+    "rasterio": "1.4.4",
+    "pyproj": "3.7.2"
+  },
+  "checks": [
+    {
+      "kind": "format",
+      "exit_code": 0,
+      "command": "python -m ruff format --check marshab/analysis/verification.py tests/unit/test_independent_reference_verification.py tests/unit/test_portfolio_site.py",
+      "evidence": "format-check.log"
+    },
+    {
+      "kind": "lint",
+      "exit_code": 0,
+      "command": "python -m ruff check marshab/analysis/verification.py tests/unit/test_independent_reference_verification.py tests/unit/test_portfolio_site.py",
+      "evidence": "lint.log"
+    },
+    {
+      "evidence": "targeted-tests.log",
+      "warnings": 438,
+      "command": "python -m pytest -q -o addopts= -p no:cacheprovider --disable-warnings tests/unit/test_independent_reference_verification.py tests/unit/test_portfolio_exports.py tests/unit/test_numerical_terrain_routing.py tests/unit/test_portfolio_site.py tests/api/test_portfolio_service.py",
+      "kind": "targeted_tests",
+      "seconds": 73.03,
+      "exit_code": 0,
+      "passed": 77
+    },
+    {
+      "kind": "archived_verifier",
+      "exit_code": 0,
+      "command": "python -B scripts/verify_portfolio_demo.py webui/public/portfolio --report reports/mh02-graph-verification-2026-11-01/verification-final.json",
+      "evidence": "verification-final.json"
+    },
+    {
+      "kind": "report_overwrite_guard",
+      "actual_exit_code": 2,
+      "evidence": "report-overwrite-rejection.log",
+      "original_bytes_unchanged": true,
+      "expected_exit_code": 2
+    },
+    {
+      "exit_code": 0,
+      "kind": "git_diff_check"
+    }
+  ],
+  "initial_suite": {
+    "reason": "Generated packaging fixture lacked source CRS, graph conventions and software identity required by stronger verification",
+    "passed": 72,
+    "failed": 5,
+    "evidence": "initial-targeted-tests.log"
+  },
+  "limitations": [
+    "Full numerical workflow not regenerated in a fresh locked environment.",
+    "Container resource profile not rerun after graph-check change; earlier 1 GiB evidence remains historical.",
+    "No browser, WebGL, publication or live patched deployment verification."
+  ],
+  "previous_compact_packet_unchanged": true
+}

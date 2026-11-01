@@ -1,0 +1,34 @@
+{
+  "cpu_limit": 0.1,
+  "final_sample": {
+    "current": 366915584,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 6,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 536870912,
+    "stat": {
+      "active_file": 20971520,
+      "anon": 332075008,
+      "file": 27291648,
+      "file_mapped": 0,
+      "inactive_file": 6320128,
+      "kernel": 6967296,
+      "pgscan": 1567,
+      "pgsteal": 1542
+    },
+    "utc": "2026-11-01T11:53:58.326116+00:00"
+  },
+  "limit_reclaim_events": 6,
+  "maximum_sampled_anon_bytes": 500281344,
+  "maximum_sampled_file_bytes": 33603584,
+  "memory_limit_bytes": 536870912,
+  "observed_peak_bytes": 536870912,
+  "oom_events": 0,
+  "oom_kills": 0,
+  "verdict": "Recorded complete browser journey and full recompute finished at512MiB/0.1CPU withoutOOM; reclaim pressure observed, no general headroom/capacity guarantee"
+}

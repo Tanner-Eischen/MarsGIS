@@ -1,0 +1,80 @@
+{
+  "asset_attributions": [
+    {
+      "attribution": "NASA MOLA and MRO CTX/USGS source URLs/checksums retained in source metadata",
+      "publication_rights_review": "pending",
+      "raw_source_redistributed": false
+    }
+  ],
+  "checks": {
+    "browser_interaction": "not_run",
+    "controlled_resource_journey": "passed",
+    "native_container_http": "passed",
+    "original_multistage_build": "passed",
+    "pinned_source_acquisition": "passed",
+    "public_deployment": "not_run",
+    "runtime_dependency_pins": "passed",
+    "webgl_rendering": "not_run"
+  },
+  "contribution": "Validated the original multistage package from coherent committed source with real pinned source acquisition, exact dependency pins and genuine local HTTP source/route/export/overload/resource checks.",
+  "evidence_references": [
+    "provenance.json",
+    "original-container-gate.json",
+    "http-contracts.json",
+    "original-build.log"
+  ],
+  "files_sha256": {
+    "context-audit-build.log": "7e099810d81e941f334f26924218a917309d5559ebf83685d1d798f0c4e3cde3",
+    "http-contracts.json": "7bd8e707486306e8ba31e3d6c9f28a97ba232a24bdf9b23a3bc5323428695b91",
+    "inputs/Original.Dockerfile": "36b013d1eb2fec87ac6bbe73b1597393cce40356dc49d72e1ce3677b6cb1385e",
+    "inputs/context.dockerignore": "f4ecbbe80a4f59a53163e1e8a678e31e711705736d2bef2880ae1bef82fcf9e8",
+    "inputs/pyproject.toml": "2fd4972761edbeb3b42af00aa895d73475c1ed3e4595956e8cb3adc46ca2521b",
+    "inputs/requirements-bootstrap.lock": "6bbffac04b73418f8ac9abd3ed646662c798cd8cc328c0171c2a249125669546",
+    "inputs/requirements.lock": "a10fa6636d2c4ec1d22bf77c7e88f4dc9110aa926bc7aaf6785f35b68b6ed27d",
+    "original-build.log": "79e4e435466f58ee2255e1d2bd33d7ffc2d21ce1b5fcb9c766714b2fd8150d7e",
+    "original-container-gate.json": "7797aec4f290e4e39bddae4e90cc062b9a2b134c46e533ed016823aef0ba096d",
+    "original-http-smoke.log": "df0100c0c74f1cb44fe3d177ef942dfc9d4ab2f333e25c0b0cb97cfe018d1dcd",
+    "original-pip-check.log": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf",
+    "original-server.log": "98eb8e7ef2e82d5ee8dde73ca37758add0285e42e0c38cf982487fdc903f4633",
+    "provenance.json": "d31223dba3bdc46c39ba9b123502d04bcccf362b034420a574fb43dee2333ae4"
+  },
+  "headline_results": [],
+  "last_verified_utc": "2026-11-01T07:34:15.098608+00:00",
+  "limitations": [
+    "Local native Linux container only; no browser/WebGL/mobile/keyboard interaction.",
+    "No public source visibility, registry push, cloud plan change or deployment.",
+    "Observed memory applies to the recorded probes/journey, not general capacity or headroom.",
+    "No repeated expensive fixed-reference regeneration; that scenario is covered by separate numerical evidence.",
+    "Terrain scores/routes do not establish habitat safety or physical rover mobility."
+  ],
+  "observed_results": {
+    "burst_http_statuses": [
+      202,
+      409,
+      409
+    ],
+    "cpu_limit": 2,
+    "memory_limit_bytes": 1073741824,
+    "memory_peak_bytes": 340197376,
+    "oom_killed": false,
+    "real_route_sources": [
+      "ctx",
+      "mola16"
+    ],
+    "source_bytes": 42839987,
+    "static_files_hashed": 19
+  },
+  "owner_approval_state": "publication_pending",
+  "project_id": "marshab",
+  "public_access_state": "publication_pending",
+  "release_id": "marshab-original-container-2026-11-01",
+  "schema_version": 1,
+  "source_access": "private",
+  "source_archive_sha256": "ab4f547577df37091e4d3b4fed85a6c49f878dc396b1c632018d3f58cae5745e",
+  "source_revision": "6482f998619673329e5b6a4d7a51709e20a5823d",
+  "source_url": null,
+  "tested_revision": "6482f998619673329e5b6a4d7a51709e20a5823d",
+  "tested_revision_scope": "Clean committed source archive with checkout line-ending filters; context-only .dockerignore overlay; original Dockerfile unmodified",
+  "tested_source_fingerprint": "75a4d0685557f662f3958a8c393298c87022b7f509fb85ff6397cac1f83ad9ec",
+  "versioned_evidence_urls": []
+}

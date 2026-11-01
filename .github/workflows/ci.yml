@@ -5,143 +5,125 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
-  backend-smoke:
-    name: Backend Smoke Tests
-    runs-on: ubuntu-latest
-
+  backend:
+    name: Scientific tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Run smoke tests
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            requirements-bootstrap.lock
+            requirements-dev.lock
+      - name: Install pinned environment
         run: |
-          poetry run pytest -q \
-            tests/test_pipeline_smoke.py \
-            tests/test_route_smoke.py \
-            tests/api/test_portfolio_flows.py
+          python -m pip install --require-hashes -r requirements-bootstrap.lock
+          python -m pip install --require-hashes -r requirements-dev.lock
+          python -m pip install --no-deps --no-build-isolation -e .
+      - name: Lint
+        run: python -m ruff check marshab tests scripts
+      - name: Full offline suite
+        run: python -m pytest -q
+      - name: Verify checked-in scientific reference bytes
+        run: python scripts/build_portfolio_site.py --verify-only
 
-  lint-critical:
-    name: Ruff Critical Checks
+  real-dem:
+    name: Measured Jezero DEM demonstration
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            requirements-bootstrap.lock
+            requirements.lock
+      - run: |
+          python -m pip install --require-hashes -r requirements-bootstrap.lock
+          python -m pip install --require-hashes -r requirements.lock
+          python -m pip install --no-deps --no-build-isolation -e .
+      - name: Run strict real-data workflow (9.7 MB public source)
+        run: python scripts/run_portfolio_demo.py
+      - name: Check exported science and geometry independently
+        run: |
+          python scripts/run_portfolio_demo.py --output-dir data/output/repeat
+          python scripts/verify_portfolio_demo.py --compare data/output/repeat
+      - uses: actions/upload-artifact@v4
         with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
+          name: jezero-dem-analysis
+          path: data/output/portfolio_demo/
+          if-no-files-found: error
 
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Run Ruff lint
-        run: poetry run ruff check marshab tests scripts
-
-  backend-unit:
-    name: Backend Unit Tests
+  frontend:
+    name: Frontend lint and build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: latest
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Run unit tests
-        run: poetry run pytest tests/unit/ -v
-
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '22'
+          cache: npm
           cache-dependency-path: webui/package-lock.json
-
-      - name: Install frontend dependencies
+      - run: npm ci
         working-directory: webui
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
-
-      - name: Lint frontend
+      - run: npm run lint
         working-directory: webui
-        run: npm run lint
-
+      - run: npm test
+        working-directory: webui
+      - run: npm audit --audit-level=moderate
+        working-directory: webui
       - name: Ensure no hardcoded backend origin
+        shell: bash
         run: |
           if grep -R -n -E "fetch\([[:space:]]*['\"]http://localhost:5000/api/v1" webui/src; then
             echo "Hardcoded localhost fetch() origin found in webui/src."
             exit 1
           fi
-
-      - name: Build frontend
+      - run: npm run build
         working-directory: webui
-        run: npm run build
+
+  unified-app:
+    name: Unified container and real API workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the complete website and API image
+        run: docker build -t marshab:ci .
+      - name: Start the single-service deployment
+        run: docker run -d --name marshab-ci --memory=1g --memory-swap=1g --cpus=2 -p 127.0.0.1:5000:5000 marshab:ci
+      - name: Check container startup before the scientific workflow
+        run: |
+          for attempt in $(seq 1 60); do
+            if [ "$(docker inspect -f '{{.State.Running}}' marshab-ci)" != true ]; then
+              docker logs marshab-ci
+              exit 1
+            fi
+            if curl --fail --silent http://127.0.0.1:5000/api/v1/health/live; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs marshab-ci
+          exit 1
+      - name: Exercise real analysis and every exported artifact over HTTP
+        run: python scripts/smoke_unified_app.py --timeout 300
+      - name: Container logs and resource use
+        if: always()
+        run: |
+          docker logs marshab-ci || true
+          docker stats --no-stream marshab-ci || true
+          docker exec marshab-ci cat /sys/fs/cgroup/memory.peak || true
+      - name: Stop test container
+        if: always()
+        run: docker rm -f marshab-ci || true

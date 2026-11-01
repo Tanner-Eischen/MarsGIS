@@ -1,0 +1,129 @@
+{
+  "candidates": [
+    {
+      "col": 455,
+      "distance_m": 11510.924958366748,
+      "distance_only_route_terrain_cost_m_equivalent": 33654.316053606744,
+      "lat": 18.38472687720108,
+      "lon": 77.41187957799043,
+      "rank": 1,
+      "roughness_m": 0.06130308069948092,
+      "row": 193,
+      "score": 0.9994456647679095,
+      "slope_deg": 0.036490237539864204,
+      "straight_line_m": 9623.18034747349,
+      "terrain_cost_m_equivalent": 27898.49477515784
+    },
+    {
+      "col": 548,
+      "distance_m": 18000.67242667258,
+      "distance_only_route_terrain_cost_m_equivalent": 54694.68936283122,
+      "lat": 18.265944355952264,
+      "lon": 77.44488144261395,
+      "rank": 2,
+      "roughness_m": 0.08443618590421567,
+      "row": 545,
+      "score": 0.9993447041173696,
+      "slope_deg": 0.021263139990214595,
+      "straight_line_m": 15174.570834129048,
+      "terrain_cost_m_equivalent": 35873.34682222687
+    },
+    {
+      "col": 380,
+      "distance_m": 10036.366517139591,
+      "distance_only_route_terrain_cost_m_equivalent": 31892.511391669923,
+      "lat": 18.38000986251482,
+      "lon": 77.38521162871378,
+      "rank": 3,
+      "roughness_m": 0.09539250052542989,
+      "row": 207,
+      "score": 0.9992198376009627,
+      "slope_deg": 0.01791367102288654,
+      "straight_line_m": 8383.531475458298,
+      "terrain_cost_m_equivalent": 25936.577287194923
+    }
+  ],
+  "configuration": {
+    "beneficial": {
+      "roughness": false,
+      "slope": false
+    },
+    "candidate_edge_margin_cells": 5,
+    "candidate_separation_m": 1500,
+    "connectivity": 8,
+    "constraints": {
+      "max_roughness": 20.0,
+      "max_slope_deg": 15.0
+    },
+    "corner_cutting": false,
+    "cost": "1 + exp(2*slope/15)-1 + 5*(roughness/(20+1e-6))^2",
+    "roughness_window_cells": 5,
+    "smoothing": false,
+    "weights": {
+      "roughness": 0.3,
+      "slope": 0.7
+    }
+  },
+  "copied_artifacts": [
+    "report.md",
+    "comparison.png",
+    "routes.geojson"
+  ],
+  "grid": {
+    "crs_wkt": "PROJCRS[\"unknown\",BASEGEOGCRS[\"unknown\",DATUM[\"unknown\",ELLIPSOID[\"unknown\",3396190,0,LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]],PRIMEM[\"Reference meridian\",0,ANGLEUNIT[\"degree\",0.0174532925199433,ID[\"EPSG\",9122]]]],CONVERSION[\"unknown\",METHOD[\"Azimuthal Equidistant\",ID[\"EPSG\",1125]],PARAMETER[\"Latitude of natural origin\",18.35,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8801]],PARAMETER[\"Longitude of natural origin\",77.35,ANGLEUNIT[\"degree\",0.0174532925199433],ID[\"EPSG\",8802]],PARAMETER[\"False easting\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8806]],PARAMETER[\"False northing\",0,LENGTHUNIT[\"metre\",1],ID[\"EPSG\",8807]]],CS[Cartesian,2],AXIS[\"(E)\",east,ORDER[1],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]],AXIS[\"(N)\",north,ORDER[2],LENGTHUNIT[\"metre\",1,ID[\"EPSG\",9001]]]]",
+    "nodata": "NaN",
+    "resampling": "bilinear",
+    "resolution_m": 20.0,
+    "shape": [
+      593,
+      563
+    ],
+    "transform": [
+      20.0,
+      0.0,
+      -5629.315420582785,
+      0.0,
+      -20.0,
+      5929.017231561458
+    ],
+    "valid_cells": 333859
+  },
+  "historical_dirty_worktree": true,
+  "historical_source_revision": "4eb93e615c985edca10643b3c0752587d9dc7a21",
+  "reference_manifest_sha256": "59e9dea7d0d4e272d9df1916a1d7380c6c317743bc96820bef26c9bbade1a761",
+  "reference_not_regenerated": true,
+  "reference_output_sha256": {
+    "comparison.png": "60927accfd9903e2b069a9da3b14f3636755c3bf29178c1c1fdfa02c5524532d",
+    "report.md": "fb493cb8fe04a1bb8774c7dff25645b36e0a757fd8c5152adc1a954c6ccafe0a",
+    "routes.geojson": "96f8e4ad5991db021f33a05ea1577804e74230f19c0ad06fc8f5b9175b60fe87",
+    "suitability.tif": "b75ac67c499effef21ce7fd933b664aa215ec2de0fe57f54e389bf09e16746eb",
+    "terrain.tif": "503cbf0495e88fc9fd93b2abe12a6e7f2be4d594cd92495462315e50ba3ad464"
+  },
+  "schema_version": 1,
+  "source": {
+    "bytes": 9662387,
+    "citation": "https://www.usgs.gov/media/images/m20jezerocraterctxdemmosaic20m100jpg",
+    "crs_wkt": "PROJCS[\"Equirectangular Mars 2000 Sphere IAU\",GEOGCS[\"GCS_Mars_2000_Sphere\",DATUM[\"Mars_2000_(Sphere)\",SPHEROID[\"Mars_2000_Sphere_IAU\",3396190,0]],PRIMEM[\"Reference_Meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",0],PARAMETER[\"central_meridian\",0],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+    "elevation_units": "m above product's MOLA/DeltaGeoid reference",
+    "instrument": "NASA MRO CTX stereo, MOLA controlled",
+    "nodata": -3.4028226550889045e+38,
+    "sha256": "16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b",
+    "shape": [
+      1512,
+      1596
+    ],
+    "source_pixel_size_m": [
+      20.0,
+      20.0
+    ],
+    "transform": [
+      20.0,
+      0.0,
+      4573663.250853,
+      0.0,
+      -20.0,
+      1109693.140188
+    ],
+    "url": "https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif"
+  }
+}

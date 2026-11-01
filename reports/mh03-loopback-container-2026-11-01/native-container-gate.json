@@ -1,0 +1,577 @@
+{
+  "base_image_id": "sha256:026b1fb772805cd2e554a277510e9012e3a226b2f8e5928708b42d71a07ba52d",
+  "candidate_image_id": "sha256:3d6a00a1f0fe2a975a79bc41bd6a5332e57ab09178e585f13a2a6d2a20a18aa2",
+  "candidate_image_tag": "marshab-mh03:20261101-a489b854b0",
+  "commands": [
+    {
+      "command": [
+        "/usr/bin/docker",
+        "info",
+        "--format",
+        "{{json .}}"
+      ],
+      "exit_code": 0,
+      "label": "docker-info",
+      "seconds": 0.05780430699996941
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "image",
+        "inspect",
+        "marshab-release:20261031-pythonpatched"
+      ],
+      "exit_code": 0,
+      "label": "base-image-inspect",
+      "seconds": 0.05792934500004776
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "build",
+        "--pull=false",
+        "--network=none",
+        "-t",
+        "marshab-mh03:20261101-a489b854b0",
+        "<private-workspace>/context"
+      ],
+      "exit_code": 0,
+      "label": "derivative-build",
+      "seconds": 46.84860857199965
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "image",
+        "inspect",
+        "marshab-mh03:20261101-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "candidate-image-inspect",
+      "seconds": 0.06437604100028693
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "run",
+        "-d",
+        "--name",
+        "marshab-mh03-a489b854b0",
+        "--memory=1g",
+        "--memory-swap=1g",
+        "--cpus=2",
+        "--pids-limit=256",
+        "-p",
+        "127.0.0.1::5000",
+        "--mount",
+        "type=bind,source=<repository>/data/source/mola16.img,target=/app/reference/mola16.img,readonly",
+        "--mount",
+        "type=bind,source=<repository>/data/source/jezero_ctx_20m.tif,target=/app/reference/jezero_ctx20m.tif,readonly",
+        "-e",
+        "MARSHAB_BUILD_ID=mh03-local-a489b854b0",
+        "-e",
+        "MARSHAB_SOURCE_COMMIT=c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+        "-e",
+        "MARSHAB_WEB_WORKERS=1",
+        "-e",
+        "WEB_CONCURRENCY=1",
+        "-e",
+        "MARSHAB_ENABLE_EXPERIMENTAL_API=false",
+        "-e",
+        "MARSHAB_MOLA_COG_BOOTSTRAP_MODE=skip",
+        "marshab-mh03:20261101-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-start",
+      "seconds": 0.25929872500000783
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "port",
+        "marshab-mh03-a489b854b0",
+        "5000/tcp"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-port",
+      "seconds": 0.018713471999944886
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "exec",
+        "marshab-mh03-a489b854b0",
+        "python",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "exit_code": 0,
+      "label": "candidate-pip-check",
+      "seconds": 0.3551332309998543
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "exec",
+        "marshab-mh03-a489b854b0",
+        "python",
+        "-m",
+        "pip",
+        "list",
+        "--format=json"
+      ],
+      "exit_code": 0,
+      "label": "candidate-package-inventory",
+      "seconds": 0.26579214999947
+    },
+    {
+      "command": [
+        "/usr/bin/python3",
+        "<private-workspace>/context/scripts/smoke_unified_app.py",
+        "--base-url",
+        "http://127.0.0.1:32770",
+        "--timeout",
+        "150",
+        "--skip-comparison",
+        "--loopback-contracts",
+        "--report",
+        "<private-workspace>/logs/container-http.json"
+      ],
+      "exit_code": 0,
+      "label": "container-http-smoke",
+      "seconds": 2.1367273330006356
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "exec",
+        "marshab-mh03-a489b854b0",
+        "python",
+        "-c",
+        "import json;from pathlib import Path;r=Path('/sys/fs/cgroup');print(json.dumps({'memory_peak_bytes':int((r/'memory.peak').read_text()),'memory_events':dict((line.split()[0],int(line.split()[1])) for line in (r/'memory.events').read_text().splitlines())}))"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-resources",
+      "seconds": 0.08187962600004539
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "inspect",
+        "marshab-mh03-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-inspect",
+      "seconds": 0.016462271999444056
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "logs",
+        "marshab-mh03-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-server",
+      "seconds": 0.019886246000169194
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "stop",
+        "--time",
+        "15",
+        "marshab-mh03-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-stop",
+      "seconds": 0.47630475100049807
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "inspect",
+        "marshab-mh03-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-stopped-inspect",
+      "seconds": 0.019183217999852786
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "run",
+        "-d",
+        "--name",
+        "marshab-mh03-a489b854b0-missing-source",
+        "--memory=1g",
+        "--memory-swap=1g",
+        "--cpus=2",
+        "--pids-limit=256",
+        "-p",
+        "127.0.0.1::5000",
+        "--mount",
+        "type=bind,source=<repository>/data/source/mola16.img,target=/app/reference/mola16.img,readonly",
+        "--mount",
+        "type=bind,source=<repository>/data/source/jezero_ctx_20m.tif,target=/app/reference/jezero_ctx20m.tif,readonly",
+        "-e",
+        "MARSHAB_BUILD_ID=mh03-local-a489b854b0",
+        "-e",
+        "MARSHAB_SOURCE_COMMIT=c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+        "-e",
+        "MARSHAB_WEB_WORKERS=1",
+        "-e",
+        "WEB_CONCURRENCY=1",
+        "-e",
+        "MARSHAB_ENABLE_EXPERIMENTAL_API=false",
+        "-e",
+        "MARSHAB_MOLA_COG_BOOTSTRAP_MODE=skip",
+        "-e",
+        "MARSHAB_REFERENCE_DEM_PATH=/app/reference/not-provisioned.tif",
+        "marshab-mh03:20261101-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-start",
+      "seconds": 0.2458316759993977
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "port",
+        "marshab-mh03-a489b854b0-missing-source",
+        "5000/tcp"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-port",
+      "seconds": 0.016175251999811735
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "exec",
+        "marshab-mh03-a489b854b0-missing-source",
+        "python",
+        "-c",
+        "import json;from pathlib import Path;r=Path('/sys/fs/cgroup');print(json.dumps({'memory_peak_bytes':int((r/'memory.peak').read_text()),'memory_events':dict((line.split()[0],int(line.split()[1])) for line in (r/'memory.events').read_text().splitlines())}))"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-resources",
+      "seconds": 0.09438894300001266
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "inspect",
+        "marshab-mh03-a489b854b0-missing-source"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-inspect",
+      "seconds": 0.021226626000498072
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "logs",
+        "marshab-mh03-a489b854b0-missing-source"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-server",
+      "seconds": 0.022749309000573703
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "stop",
+        "--time",
+        "15",
+        "marshab-mh03-a489b854b0-missing-source"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-cleanup-stop",
+      "seconds": 0.5776941459998852
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "rm",
+        "marshab-mh03-a489b854b0-missing-source"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-missing-source-cleanup-remove",
+      "seconds": 0.04303231900030369
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "stop",
+        "--time",
+        "15",
+        "marshab-mh03-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-cleanup-stop",
+      "seconds": 0.01822847699986596
+    },
+    {
+      "command": [
+        "/usr/bin/docker",
+        "rm",
+        "marshab-mh03-a489b854b0"
+      ],
+      "exit_code": 0,
+      "label": "marshab-mh03-a489b854b0-cleanup-remove",
+      "seconds": 0.043851784999787924
+    }
+  ],
+  "container_id": "975775add39619d48098d09a367c7d4e708087b34064c98f7efac3800fe1b3eb",
+  "docker": {
+    "Architecture": "x86_64",
+    "OSType": "linux",
+    "OperatingSystem": "Ubuntu 24.04.3 LTS",
+    "ServerVersion": "29.1.3"
+  },
+  "dockerfile_sha256": "dfdb079cdb0c64b8e90b951eff8ffbe91e4a356ec4a54290ad7d53ee955c5743",
+  "http": {
+    "build": {
+      "backend_python_files": 94,
+      "backend_sha256": "d3a76ec64c221ec453709bb4fce72399115f5f4332fcdd90198e89cce1a9a8d1",
+      "build_id": "mh03-local-a489b854b0",
+      "capture_scope": "Cached once per process; restart after source changes; frontend assets are separate",
+      "declared_commit_scope": "Ancestry label only; actual backend byte identity is independent",
+      "declared_source_commit": "c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+      "fingerprint_definition": "SHA-256 of sorted compact JSON mapping package-relative Python paths to byte SHA-256",
+      "package_version": "0.1.1"
+    },
+    "delivered_assets_sha256": {
+      "/assets/TerrainScene3D-DWcsfKRX.js": "9209af3950e84490eca6b707369bee4a917b1997590a091c46e234eb7594d7f7",
+      "/assets/index-BEdWjQ5j.js": "893ed2ec3f76e90f65a14dd19ed7685722c720e81821f28620ded56151b7117a",
+      "/assets/index-DeoliP4Y.css": "7c2994ba9ff2db1fd7cb7f8ad31904bfb215686a29cff7e0042469f2cd86c10f"
+    },
+    "fixed_reference_recomputed": false,
+    "overload": {
+      "http_statuses": [
+        202,
+        409,
+        409
+      ],
+      "previous_export_unchanged": true,
+      "queued_requests": 0,
+      "requests": 3,
+      "status": "passed"
+    },
+    "ready_sources": {
+      "detail": {
+        "id": "ctx",
+        "sha256": "16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b"
+      },
+      "global": {
+        "id": "mola16",
+        "sha256": "d18d9b9ab8c5516d02e157dd2cde0f1d0d160c21940e953ba22391269a545e7b"
+      },
+      "status": "verified",
+      "verification_scope": "Pinned file checksums verified when the process source store initializes"
+    },
+    "routes": [
+      {
+        "analysis_spacing_m": 20.0,
+        "distance_m": 1619.6810116652966,
+        "export_sha256": "a45f1f43051c042a998e26079b405c6b0d4c9a66439ac199613d93b729e40dd8",
+        "request_id": "smoke_0704beb6172b452b8441410bdc92b69f",
+        "run_id": "84b5e20ac1fa42be801f60b69990daf6",
+        "source_id": "ctx",
+        "source_sha256": "16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b",
+        "status": "passed",
+        "terrain_cost_m_equivalent": 1792.1499481134774,
+        "vertices": 80
+      },
+      {
+        "analysis_spacing_m": 3704.4613373579646,
+        "distance_m": 166099.1563126481,
+        "export_sha256": "dd7ab5e422b7121473ae2321ccc70437dd5259443875994c170cb3b7b8e205a1",
+        "request_id": "smoke_3170efe1b1ed439f89ca03b6ef5f010b",
+        "run_id": "571cda205d99478eb595ed3eced9b07a",
+        "source_id": "mola16",
+        "source_sha256": "d18d9b9ab8c5516d02e157dd2cde0f1d0d160c21940e953ba22391269a545e7b",
+        "status": "passed",
+        "terrain_cost_m_equivalent": 166598.40441734696,
+        "vertices": 33
+      }
+    ],
+    "schema_version": 1,
+    "scope": "Actual HTTP transport and selected-point science; no browser or WebGL execution",
+    "status": "passed",
+    "timestamp_utc": "2026-11-01T06:48:48.070999+00:00"
+  },
+  "missing_source_http": {
+    "liveness_status": 200,
+    "no_source_path_leak": true,
+    "readiness": {
+      "build": {
+        "backend_python_files": 94,
+        "backend_sha256": "d3a76ec64c221ec453709bb4fce72399115f5f4332fcdd90198e89cce1a9a8d1",
+        "build_id": "mh03-local-a489b854b0",
+        "capture_scope": "Cached once per process; restart after source changes; frontend assets are separate",
+        "declared_commit_scope": "Ancestry label only; actual backend byte identity is independent",
+        "declared_source_commit": "c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+        "fingerprint_definition": "SHA-256 of sorted compact JSON mapping package-relative Python paths to byte SHA-256",
+        "package_version": "0.1.1"
+      },
+      "checks": {
+        "cache_dir": "ready",
+        "config": "ready",
+        "output_dir": "ready",
+        "planetary_sources": "not_ready"
+      },
+      "sources": {
+        "reason": "Existing pinned planetary sources are unavailable or invalid",
+        "status": "unavailable"
+      },
+      "status": "not_ready"
+    },
+    "readiness_status": 503,
+    "status": "passed"
+  },
+  "missing_source_resources": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "memory_limit_bytes": 1073741824,
+    "memory_peak_bytes": 123981824,
+    "memory_swap_limit_bytes": 1073741824,
+    "nano_cpus": 2000000000,
+    "oom_killed": false,
+    "running": true
+  },
+  "owned_container_names": [
+    "marshab-mh03-a489b854b0",
+    "marshab-mh03-a489b854b0-missing-source"
+  ],
+  "owned_containers_removed": true,
+  "packaged_frontend_files_sha256": {
+    "assets/PortfolioShowcase-CLzcMlfY.css": "110e3c15c577b9b78a60db15ec5871adb05724d7b2a8c24238971b10f1d75979",
+    "assets/PortfolioShowcase-CUlBNiz-.js": "eaa32102f6da238f1155968891a6ce75b8ffc40c9987f145e9abb91f6c63ece0",
+    "assets/TerrainScene3D-DWcsfKRX.js": "9209af3950e84490eca6b707369bee4a917b1997590a091c46e234eb7594d7f7",
+    "assets/index-BEdWjQ5j.js": "893ed2ec3f76e90f65a14dd19ed7685722c720e81821f28620ded56151b7117a",
+    "assets/index-DeoliP4Y.css": "7c2994ba9ff2db1fd7cb7f8ad31904bfb215686a29cff7e0042469f2cd86c10f",
+    "index.html": "c0eae00ea2369175070de9517aefd8cd317e461681094e9b0a867714a5f3cb35",
+    "portfolio/comparison.png": "60927accfd9903e2b069a9da3b14f3636755c3bf29178c1c1fdfa02c5524532d",
+    "portfolio/layers/elevation.png": "3a1bc671c9aab85c485b1408b30cf8f68561cd6f9436f6f9652080ead5f259dd",
+    "portfolio/layers/hillshade.png": "79753651af5fed8243adf6f2b7f3d99500092334d4279863c45d9ce5ce0dee4a",
+    "portfolio/layers/roughness.png": "5c91bd26498d5b9726516927a9b1c36314cc5dbfe9eb04e23f90c05e5065e3cd",
+    "portfolio/layers/slope.png": "bd03656d21de5e250e87015ddf9f9c34a4ce75f104b851355e21ce023fe586c6",
+    "portfolio/layers/suitability.png": "1c59595c8a1ff3a55707ce4c8912e38d421f6cf9b073216685f9dc73a5656009",
+    "portfolio/manifest.json": "59e9dea7d0d4e272d9df1916a1d7380c6c317743bc96820bef26c9bbade1a761",
+    "portfolio/probe.bin": "42c3cd5ba837e6939a4c3c52fe92d8c4bc68ea0499fdd6c71598b818252d7f92",
+    "portfolio/report.md": "fb493cb8fe04a1bb8774c7dff25645b36e0a757fd8c5152adc1a954c6ccafe0a",
+    "portfolio/routes.geojson": "96f8e4ad5991db021f33a05ea1577804e74230f19c0ad06fc8f5b9175b60fe87",
+    "portfolio/scene.json": "261858c6376dad15f42ac3e750dfafa0134964812df89dfe78757b8b3376c2e8",
+    "portfolio/suitability.tif": "b75ac67c499effef21ce7fd933b664aa215ec2de0fe57f54e389bf09e16746eb",
+    "portfolio/terrain.tif": "503cbf0495e88fc9fd93b2abe12a6e7f2be4d594cd92495462315e50ba3ad464"
+  },
+  "packaged_frontend_files_verified": 19,
+  "positive_container_stopped": true,
+  "profile": "Derivative of exact cached patched runtime; clean source/assets overlay; not original Dockerfile rebuild",
+  "resources": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "memory_limit_bytes": 1073741824,
+    "memory_peak_bytes": 368402432,
+    "memory_swap_limit_bytes": 1073741824,
+    "nano_cpus": 2000000000,
+    "oom_killed": false,
+    "running": true
+  },
+  "runtime_packages": {
+    "ImageIO": "2.38.1",
+    "PyYAML": "6.0.3",
+    "Pygments": "2.21.0",
+    "affine": "3.0.1",
+    "annotated-doc": "0.0.5",
+    "annotated-types": "0.8.0",
+    "anyio": "4.14.2",
+    "attrs": "26.1.0",
+    "certifi": "2026.10.23",
+    "click": "8.5.0",
+    "click-plugins": "1.1.1.2",
+    "cligj": "0.7.2",
+    "cloudpickle": "3.1.2",
+    "contourpy": "1.3.3",
+    "cycler": "0.12.1",
+    "fastapi": "0.140.0",
+    "fiona": "1.10.1",
+    "fonttools": "4.68.0",
+    "geopandas": "1.1.2",
+    "h11": "0.16.0",
+    "httptools": "0.9.0",
+    "idna": "3.20",
+    "joblib": "1.6.0",
+    "kiwisolver": "1.5.1",
+    "lazy-loader": "0.6",
+    "markdown-it-py": "4.2.0",
+    "marshab": "0.1.1",
+    "matplotlib": "3.11.2",
+    "mdurl": "0.1.2",
+    "narwhals": "2.28.0",
+    "networkx": "3.6.1",
+    "numpy": "1.26.4",
+    "packaging": "26.3",
+    "pandas": "2.3.3",
+    "pillow": "13.0.0",
+    "pip": "26.2.2",
+    "plotly": "5.24.1",
+    "poetry-core": "2.2.1",
+    "pydantic": "2.14.1",
+    "pydantic-settings": "2.16.1",
+    "pydantic_core": "2.50.1",
+    "pyogrio": "0.13.0",
+    "pyparsing": "3.3.3",
+    "pyproj": "3.7.2",
+    "python-dateutil": "3.0.0",
+    "python-dotenv": "1.2.4",
+    "python-multipart": "0.0.31",
+    "pytz": "2026.5",
+    "rasterio": "1.4.4",
+    "rich": "13.9.4",
+    "scikit-image": "0.22.0",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.17.1",
+    "setuptools": "84.2.1",
+    "shapely": "2.2.0",
+    "shellingham": "1.5.4",
+    "six": "1.17.0",
+    "spiceypy": "6.0.3",
+    "starlette": "1.3.1",
+    "structlog": "24.4.0",
+    "tenacity": "9.2.1",
+    "threadpoolctl": "3.7.0",
+    "tifffile": "2026.3.3",
+    "typer": "0.20.1",
+    "typing-inspection": "0.4.4",
+    "typing_extensions": "4.16.0",
+    "tzdata": "2026.5",
+    "uvicorn": "0.24.0.post1",
+    "uvloop": "0.23.0",
+    "watchfiles": "1.3.0",
+    "websockets": "12.0",
+    "wheel": "0.48.0",
+    "xarray": "2023.12.0"
+  },
+  "schema_version": 1,
+  "scope": "Actual native Linux derivative-container loopback HTTP gate; no browser/cloud deployment",
+  "source_ancestry_commit": "c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+  "source_manifest_sha256": "a4245ee3d93f3e8f7f14f9d6cb963c8e1e35dda3cdd35b31679c14689519dcb9",
+  "status": "passed",
+  "timestamp_utc": "2026-11-01T06:47:54.851480+00:00",
+  "unrelated_containers_modified": false
+}

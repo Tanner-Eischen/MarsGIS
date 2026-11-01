@@ -1,0 +1,107 @@
+{
+  "all_static_files_verified": 19,
+  "applicable_python_pins_verified": 72,
+  "backend_fingerprint": "75a4d0685557f662f3958a8c393298c87022b7f509fb85ff6397cac1f83ad9ec",
+  "backend_python_files": 94,
+  "baked_source_bytes": 42839987,
+  "baked_sources": {
+    "jezero_ctx20m.tif": {
+      "bytes": 9662387,
+      "mtime_epoch": 1793518042.0,
+      "sha256": "16a1aa66c3f48c1bca252795827db7b417876217aff0f5e1aff18027fab2327b"
+    },
+    "mola16.img": {
+      "bytes": 33177600,
+      "mtime_epoch": 1793518040.0,
+      "sha256": "d18d9b9ab8c5516d02e157dd2cde0f1d0d160c21940e953ba22391269a545e7b"
+    }
+  },
+  "base_images": {
+    "node:22-bookworm-slim": {
+      "architecture": "amd64",
+      "id": "sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da",
+      "os": "linux",
+      "repo_digests": [
+        "node@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da"
+      ]
+    },
+    "python:3.11-slim-bookworm": {
+      "architecture": "amd64",
+      "id": "sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+      "os": "linux",
+      "repo_digests": [
+        "python@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd"
+      ]
+    }
+  },
+  "build_kind": "Original committed multistage Dockerfile, not cached app derivative; real source acquisition RUN required",
+  "build_seconds": 191.133966783,
+  "cached_input_build_arguments": false,
+  "context_only_sentinels_excluded": true,
+  "dockerignore_overlay_sha256": "f4ecbbe80a4f59a53163e1e8a678e31e711705736d2bef2880ae1bef82fcf9e8",
+  "genuine_burst_statuses": [
+    202,
+    409,
+    409
+  ],
+  "image_id": "sha256:215303ce321634736b84d5654588fa993b6609a3167800b407a167d8716eb5ff",
+  "installed_python": "3.11.18",
+  "limitations": [
+    "Local native Linux container only; no browser/WebGL/mobile/keyboard interaction.",
+    "No public source visibility, registry push, cloud plan change or deployment.",
+    "Observed memory applies to the recorded probes/journey, not general capacity or headroom.",
+    "No repeated expensive fixed-reference regeneration; that scenario is covered by separate numerical evidence."
+  ],
+  "log_sanitization": {
+    "context-audit-build.log": {
+      "raw_log_sha256": "7512c29008b48df16019e09f1e45fe6bb55fd2b1eb4b0396c536c92e3fc0d8bd",
+      "sanitized_sha256": "7e099810d81e941f334f26924218a917309d5559ebf83685d1d798f0c4e3cde3"
+    },
+    "original-build.log": {
+      "additional_redaction": "Container-local editable package URI replaced with placeholder; raw original log retained locally",
+      "raw_log_sha256": "17ec4a76fe2728c2e1cb02b1cac2f17e228c5af674ca0cca10ffc39453b1e23c",
+      "sanitized_sha256": "79e4e435466f58ee2255e1d2bd33d7ffc2d21ce1b5fcb9c766714b2fd8150d7e"
+    },
+    "original-http-smoke.log": {
+      "raw_log_sha256": "9e7289bf467d8707d33a641ee04617ad721e30433e63124546a781e5ca4c28ff",
+      "sanitized_sha256": "df0100c0c74f1cb44fe3d177ef942dfc9d4ab2f333e25c0b0cb97cfe018d1dcd"
+    },
+    "original-pip-check.log": {
+      "raw_log_sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+      "sanitized_sha256": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf"
+    },
+    "original-server.log": {
+      "raw_log_sha256": "505bfe76986ca967f5d6556c2de486e6c5ed3277c7d48ab1d35afe841df53d01",
+      "sanitized_sha256": "98eb8e7ef2e82d5ee8dde73ca37758add0285e42e0c38cf982487fdc903f4633"
+    }
+  },
+  "only_archived_entry_changed": ".dockerignore",
+  "original_dockerfile_sha256": "36b013d1eb2fec87ac6bbe73b1597393cce40356dc49d72e1ce3677b6cb1385e",
+  "original_dockerfile_unchanged": true,
+  "own_containers_removed": true,
+  "resources": {
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "memory_limit_bytes": 1073741824,
+    "memory_peak_bytes": 340197376,
+    "memory_swap_limit_bytes": 1073741824,
+    "nano_cpus": 2000000000,
+    "oom_killed": false
+  },
+  "runtime_source_mounts": false,
+  "schema_version": 1,
+  "source_acquisition_run_executed": true,
+  "source_archive_representation": "Clean committed source with Git for Windows checkout line-ending filters; only .dockerignore context overlay",
+  "source_archive_sha256": "ab4f547577df37091e4d3b4fed85a6c49f878dc396b1c632018d3f58cae5745e",
+  "source_blobs": "All application/client/metadata/lock blobs are in the source commit; only context-exclusion overlay is supplied separately",
+  "source_commit": "6482f998619673329e5b6a4d7a51709e20a5823d",
+  "status": "passed",
+  "timestamp_utc": "2026-11-01T07:34:15.098608+00:00",
+  "unrelated_containers_modified": false
+}

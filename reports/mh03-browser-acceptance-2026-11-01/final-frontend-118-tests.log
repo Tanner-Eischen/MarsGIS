@@ -1,0 +1,16 @@
+
+> marshab-webui@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 <repository>/webui
+
+
+ Test Files  7 passed (7)
+      Tests  118 passed (118)
+   Start at  05:51:31
+   Duration  14.59s (tests 71%, environment 22%, import 6%, transform 2%)
+
+    Isolate  7 workers spawned · ~526ms startup each (spawn + environment, per file)
+             at least ~3.16s faster with isolate: false — reuses workers across files instead of one per file
+

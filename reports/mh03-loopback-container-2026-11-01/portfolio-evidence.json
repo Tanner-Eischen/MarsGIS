@@ -1,0 +1,89 @@
+{
+  "asset_attributions": [
+    {
+      "publication_rights_review": "pending",
+      "raw_source_redistributed": false,
+      "source": "NASA MOLA and MRO CTX/USGS source provenance recorded in HTTP/source manifests"
+    }
+  ],
+  "checks": {
+    "browser_interaction": "not_run",
+    "controlled_resource_journey": "passed",
+    "native_container_http": "passed",
+    "native_package_pins": "passed",
+    "public_deployment": "not_run",
+    "request_state_unit_tests": "passed",
+    "webgl_rendering": "not_run"
+  },
+  "contribution": "Connected request identity and stale-result guards to the observed-DEM explorer; separated verified source readiness from process liveness; exercised genuine packaged HTTP source/route/export and overload behavior.",
+  "evidence_references": [
+    "provenance.json",
+    "source-manifest.json",
+    "native-container-gate.json",
+    "native-package-pin-audit.json",
+    "http-contracts.json"
+  ],
+  "files_sha256": {
+    "backend-lint.log": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+    "backend-tests.log": "dcb65878708f8886b993d00002779ba768d6576e04a00cb2838b9783813790dd",
+    "candidate-pip-check.log": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf",
+    "container-http-smoke.log": "df0100c0c74f1cb44fe3d177ef942dfc9d4ab2f333e25c0b0cb97cfe018d1dcd",
+    "derivative-build.log": "2cb2cb2916e0d814f221fd5b4ecb03fc8db28c8188a87c7e9a1f664916f8f8f0",
+    "frontend-build.log": "72a2d7d70121daaebe23c19943610a2a4867c52fb30cf30c5318a0a1e95645e3",
+    "frontend-lint.log": "d6e2eae3399769839dd11c0e36893abd46582f8057c4bde563b2191c7199f82d",
+    "frontend-tests.log": "734ed52b56018ae824c34bcd20786602f6da15756436e826c3a35f438759b758",
+    "health-no-download-tests.log": "5eaf5bc91b922ae66e8e54af97f118b0101878e057036ed68d4ca421d170ff77",
+    "http-contracts.json": "cc2a555df7f8e61f7e966360c73187e2a20814fa3e3bde80db944947dcca9c0d",
+    "inputs/Derivative.Dockerfile": "dfdb079cdb0c64b8e90b951eff8ffbe91e4a356ec4a54290ad7d53ee955c5743",
+    "inputs/pyproject-profile.toml": "2fd4972761edbeb3b42af00aa895d73475c1ed3e4595956e8cb3adc46ca2521b",
+    "inputs/requirements-bootstrap.lock": "197a511e817f3eecc07c845895d7d0f49f48c3b270f3c08494f2d1355a62d916",
+    "inputs/requirements.lock": "9a77bf9af51a3762ee2c9998af9fc1982f1e8eb57a878cbaf27a4cfbf66ca7b4",
+    "missing-source-server.log": "f0db75c73358af0aa9bf06b6a3b59300b46ac88d23b6893f1a654d7da2874321",
+    "native-container-gate.json": "d97aac8f6949dd4a79c87287471071f9bbfd7c3065ef3095aab42106076d6310",
+    "native-package-pin-audit.json": "c0da8532317d180d31df5094a58d790099d2d358b74850911b81c468a397b11c",
+    "native-package-pin-audit.log": "2ae37b44714c6529c987c6b9daec5d882a3ad9efe681d1ed2499de7435de769f",
+    "positive-server.log": "a4a5276c393453c7f93d8556feeca7a30c505cfa51c40da0408df85a889ec890",
+    "provenance.json": "ae51f4a78edba3433c3808a89557a212f814073d38d1c9afacae8b5d7aa2096e",
+    "source-manifest.json": "a4245ee3d93f3e8f7f14f9d6cb963c8e1e35dda3cdd35b31679c14689519dcb9"
+  },
+  "headline_results": [],
+  "last_verified_utc": "2026-11-01T07:00:18.902564+00:00",
+  "limitations": [
+    "No browser/WebGL/keyboard/mobile interaction was performed.",
+    "The derivative uses a cached runtime and preserved preexisting dirty source/profile changes; it is not a pristine source or original-Dockerfile rebuild.",
+    "Memory observations apply only to the recorded selected-point/export/three-request journey, not general headroom or production capacity.",
+    "No public source access, deployment, visibility change, push, cloud-plan change or paid model call occurred.",
+    "Fixed historical-science reproduction remains separately documented; this gate did not rerun it.",
+    "Terrain-only scores and routes do not establish habitat safety or physical rover mobility.",
+    "Aborted client requests do not imply forcibly cancelled server calculations."
+  ],
+  "observed_results": {
+    "controlled_burst_http_statuses": [
+      202,
+      409,
+      409
+    ],
+    "cpu_limit": 2,
+    "frontend_files_hashed": 19,
+    "memory_limit_bytes": 1073741824,
+    "memory_peak_bytes": 368402432,
+    "oom_killed": false,
+    "real_route_sources": [
+      "ctx",
+      "mola16"
+    ]
+  },
+  "owner_approval_state": "publication_pending",
+  "project_id": "marshab",
+  "public_access_state": "publication_pending",
+  "release_id": "marshab-mh03-loopback-container-2026-11-01",
+  "schema_version": 1,
+  "source_access": "private",
+  "source_manifest_sha256": "a4245ee3d93f3e8f7f14f9d6cb963c8e1e35dda3cdd35b31679c14689519dcb9",
+  "source_revision": "c9908c2e529f9df8c92c3d0c36cbaac22c25a2e0",
+  "source_revision_scope": "Declared ancestry only; exact dirty bytes are fingerprinted",
+  "source_url": null,
+  "tested_revision": null,
+  "tested_source_fingerprint": "d3a76ec64c221ec453709bb4fce72399115f5f4332fcdd90198e89cce1a9a8d1",
+  "versioned_evidence_urls": []
+}

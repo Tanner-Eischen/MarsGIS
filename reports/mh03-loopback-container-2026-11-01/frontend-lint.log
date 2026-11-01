@@ -1,0 +1,46 @@
+
+> marshab-webui@0.1.0 lint
+> eslint src --ext ts,tsx
+
+
+<repository>\webui\src\components\EditableRoiRectangle.tsx
+  200:6  warning  React Hook useEffect has a missing dependency: 'roi'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\components\MLSiteRecommendation.tsx
+  332:6  warning  React Hook useEffect has a missing dependency: 'modelInsights'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\components\MissionLandingWizard.tsx
+  37:6  warning  React Hook useEffect has a missing dependency: 'presetId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\components\RoverTraverseWizard.tsx
+  65:6  warning  React Hook useEffect has a missing dependency: 'presetId'. Either include it or remove the dependency array                       react-hooks/exhaustive-deps
+  88:6  warning  React Hook useEffect has missing dependencies: 'endSiteId' and 'startSiteId'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\components\SolarHeatmap.tsx
+   54:9  warning  The 'bounds' array makes the dependencies of useEffect Hook (at line 182) change on every render. To fix this, wrap the initialization of 'bounds' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  104:6  warning  React Hook useMemo has a missing dependency: 'formatValue'. Either include it or remove the dependency array                                                                  react-hooks/exhaustive-deps
+
+<repository>\webui\src\components\TerrainMap.tsx
+  439:6  warning  React Hook useEffect has a missing dependency: 'onLoadingChange'. Either include it or remove the dependency array. If 'onLoadingChange' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+<repository>\webui\src\hooks\useCameraFollow.ts
+  27:9  warning  The 'cameraConfig' object makes the dependencies of useEffect Hook (at line 72) change on every render. Move it inside the useEffect callback. Alternatively, wrap the initialization of 'cameraConfig' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+<repository>\webui\src\hooks\useMapData.ts
+  119:6  warning  React Hook useEffect has a missing dependency: 'roi'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  321:6  warning  React Hook useEffect has a missing dependency: 'roi'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\hooks\useWebSocket.ts
+  115:6  warning  React Hook useCallback has missing dependencies: 'onConnect', 'onDisconnect', 'onError', and 'onProgress'. Either include them or remove the dependency array. If 'onConnect' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+<repository>\webui\src\pages\AnalysisDashboard.tsx
+  56:6  warning  React Hook useEffect has a missing dependency: 'overlayType'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\pages\SolarAnalysis.tsx
+  51:6  warning  React Hook useEffect has missing dependencies: 'propDataset', 'propRoi', 'setDataset', and 'setRoi'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+<repository>\webui\src\pages\TerrainAnalysis.tsx
+  53:6  warning  React Hook useEffect has missing dependencies: 'propDataset', 'propRoi', 'setDataset', and 'setRoi'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+✖ 15 problems (0 errors, 15 warnings)
+

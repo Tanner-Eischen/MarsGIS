@@ -1,0 +1,342 @@
+[
+  {
+    "current": 124657664,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 124727296,
+    "stat": {
+      "active_file": 0,
+      "anon": 115838976,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6344704
+    },
+    "utc": "2026-11-01T12:25:52.486742+00:00"
+  },
+  {
+    "current": 201502720,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 201502720,
+    "stat": {
+      "active_file": 0,
+      "anon": 192880640,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6701056
+    },
+    "utc": "2026-11-01T12:25:53.488689+00:00"
+  },
+  {
+    "current": 189263872,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 204124160,
+    "stat": {
+      "active_file": 0,
+      "anon": 181149696,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6672384
+    },
+    "utc": "2026-11-01T12:25:54.490675+00:00"
+  },
+  {
+    "current": 190685184,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 204124160,
+    "stat": {
+      "active_file": 0,
+      "anon": 181153792,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6696960
+    },
+    "utc": "2026-11-01T12:25:55.493084+00:00"
+  },
+  {
+    "current": 225804288,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 225804288,
+    "stat": {
+      "active_file": 0,
+      "anon": 216702976,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6770688
+    },
+    "utc": "2026-11-01T12:25:56.494667+00:00"
+  },
+  {
+    "current": 225804288,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 225804288,
+    "stat": {
+      "active_file": 0,
+      "anon": 216702976,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6770688
+    },
+    "utc": "2026-11-01T12:25:57.496839+00:00"
+  },
+  {
+    "current": 238387200,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 238387200,
+    "stat": {
+      "active_file": 0,
+      "anon": 229376000,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6795264
+    },
+    "utc": "2026-11-01T12:25:58.498514+00:00"
+  },
+  {
+    "current": 256999424,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 256999424,
+    "stat": {
+      "active_file": 0,
+      "anon": 248012800,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6828032
+    },
+    "utc": "2026-11-01T12:25:59.500214+00:00"
+  },
+  {
+    "current": 264601600,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 264601600,
+    "stat": {
+      "active_file": 0,
+      "anon": 254717952,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6844416
+    },
+    "utc": "2026-11-01T12:26:00.501747+00:00"
+  },
+  {
+    "current": 264601600,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 264601600,
+    "stat": {
+      "active_file": 0,
+      "anon": 255565824,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6840320
+    },
+    "utc": "2026-11-01T12:26:01.503204+00:00"
+  },
+  {
+    "current": 287145984,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 287145984,
+    "stat": {
+      "active_file": 0,
+      "anon": 278003712,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6889472
+    },
+    "utc": "2026-11-01T12:26:02.504737+00:00"
+  },
+  {
+    "current": 329871360,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 329871360,
+    "stat": {
+      "active_file": 0,
+      "anon": 320692224,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6967296
+    },
+    "utc": "2026-11-01T12:26:03.506262+00:00"
+  },
+  {
+    "current": 296439808,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 331182080,
+    "stat": {
+      "active_file": 0,
+      "anon": 287342592,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6901760
+    },
+    "utc": "2026-11-01T12:26:04.507941+00:00"
+  },
+  {
+    "current": 296439808,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 331182080,
+    "stat": {
+      "active_file": 0,
+      "anon": 287342592,
+      "file": 0,
+      "inactive_file": 0,
+      "kernel": 6905856
+    },
+    "utc": "2026-11-01T12:26:05.509869+00:00"
+  },
+  {
+    "current": 346214400,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 346214400,
+    "stat": {
+      "active_file": 20480,
+      "anon": 323276800,
+      "file": 11452416,
+      "inactive_file": 11427840,
+      "kernel": 7766016
+    },
+    "utc": "2026-11-01T12:26:07.366567+00:00"
+  },
+  {
+    "current": 350670848,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 350941184,
+    "stat": {
+      "active_file": 33464320,
+      "anon": 306569216,
+      "file": 33603584,
+      "inactive_file": 131072,
+      "kernel": 8441856
+    },
+    "utc": "2026-11-01T12:26:08.368620+00:00"
+  },
+  {
+    "current": 359686144,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "peak": 360071168,
+    "stat": {
+      "active_file": 33566720,
+      "anon": 315834368,
+      "file": 33603584,
+      "inactive_file": 32768,
+      "kernel": 8433664
+    },
+    "utc": "2026-11-01T12:26:09.170287+00:00"
+  }
+]

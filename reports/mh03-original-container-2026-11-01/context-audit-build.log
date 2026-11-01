@@ -1,0 +1,12 @@
+Sending build context to Docker daemon  23.56MB
+
+Step 1/2 : FROM scratch
+ ---> 
+Step 2/2 : COPY . /
+ ---> e6627662a82e
+Successfully built e6627662a82e
+Successfully tagged marshab-context-audit:20261101-f9068e930c
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            BuildKit is currently disabled; enable it by removing the DOCKER_BUILDKIT=0
+            environment-variable.
+

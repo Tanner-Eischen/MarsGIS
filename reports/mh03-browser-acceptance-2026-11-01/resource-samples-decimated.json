@@ -1,0 +1,2328 @@
+{
+  "samples": [
+    {
+      "current": 209051648,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209068032,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6811648,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:36:28.276467+00:00"
+    },
+    {
+      "current": 209301504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:36:38.311337+00:00"
+    },
+    {
+      "current": 209301504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:36:48.334697+00:00"
+    },
+    {
+      "current": 209244160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:37:00.207960+00:00"
+    },
+    {
+      "current": 209244160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:37:10.227995+00:00"
+    },
+    {
+      "current": 209244160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:37:20.256377+00:00"
+    },
+    {
+      "current": 209244160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:37:31.789053+00:00"
+    },
+    {
+      "current": 209244160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:37:41.811198+00:00"
+    },
+    {
+      "current": 209244160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209309696,
+      "stat": {
+        "active_file": 0,
+        "anon": 200810496,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6795264,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:37:51.830790+00:00"
+    },
+    {
+      "current": 209420288,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 209698816,
+      "stat": {
+        "active_file": 0,
+        "anon": 200798208,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:38:03.366973+00:00"
+    },
+    {
+      "current": 210374656,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201506816,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:38:13.410302+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:38:23.440449+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:38:34.991354+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:38:45.015601+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:38:55.052982+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:39:06.561236+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:39:16.583913+00:00"
+    },
+    {
+      "current": 209833984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:39:26.613038+00:00"
+    },
+    {
+      "current": 209756160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:39:36.631956+00:00"
+    },
+    {
+      "current": 209756160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:39:48.171267+00:00"
+    },
+    {
+      "current": 209756160,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 210386944,
+      "stat": {
+        "active_file": 0,
+        "anon": 201797632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:39:58.213002+00:00"
+    },
+    {
+      "current": 211808256,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 211808256,
+      "stat": {
+        "active_file": 0,
+        "anon": 203329536,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6799360,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:40:08.235688+00:00"
+    },
+    {
+      "current": 205099008,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197169152,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6774784,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:40:19.775331+00:00"
+    },
+    {
+      "current": 205099008,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197169152,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6774784,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:40:29.805098+00:00"
+    },
+    {
+      "current": 205549568,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197165056,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6778880,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:40:39.834284+00:00"
+    },
+    {
+      "current": 205549568,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197623808,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6750208,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:40:51.358122+00:00"
+    },
+    {
+      "current": 205492224,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197623808,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6750208,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:41:01.379975+00:00"
+    },
+    {
+      "current": 205492224,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197623808,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6750208,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:41:11.402366+00:00"
+    },
+    {
+      "current": 205471744,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197615616,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6701056,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:41:22.932151+00:00"
+    },
+    {
+      "current": 205950976,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197619712,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6725632,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:41:32.952295+00:00"
+    },
+    {
+      "current": 205946880,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197619712,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6721536,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:41:42.968994+00:00"
+    },
+    {
+      "current": 205946880,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 214953984,
+      "stat": {
+        "active_file": 0,
+        "anon": 197619712,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6721536,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:41:52.988865+00:00"
+    },
+    {
+      "current": 272474112,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 272474112,
+      "stat": {
+        "active_file": 0,
+        "anon": 263761920,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6856704,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:42:04.511827+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:42:14.541174+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:42:24.568717+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:42:36.096875+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:42:46.157368+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:42:56.185349+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:43:07.721504+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6791168,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:43:17.751496+00:00"
+    },
+    {
+      "current": 241065984,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 232468480,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6782976,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:43:27.794238+00:00"
+    },
+    {
+      "current": 276717568,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 268083200,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6881280,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:43:39.318783+00:00"
+    },
+    {
+      "current": 275636224,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 268083200,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6881280,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:43:49.359228+00:00"
+    },
+    {
+      "current": 275636224,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 268083200,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6877184,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:43:59.381405+00:00"
+    },
+    {
+      "current": 275894272,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 268083200,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6889472,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:44:10.856384+00:00"
+    },
+    {
+      "current": 289779712,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 281329664,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6909952,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:44:20.881111+00:00"
+    },
+    {
+      "current": 294494208,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 286543872,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6922240,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:44:30.905012+00:00"
+    },
+    {
+      "current": 307077120,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 298496000,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6950912,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:44:40.936193+00:00"
+    },
+    {
+      "current": 315465728,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 307269632,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6959104,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:44:52.523834+00:00"
+    },
+    {
+      "current": 315727872,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 307740672,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6950912,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:45:02.549805+00:00"
+    },
+    {
+      "current": 315727872,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 307744768,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6955008,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:45:12.598896+00:00"
+    },
+    {
+      "current": 315707392,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 307744768,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6950912,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:45:24.190504+00:00"
+    },
+    {
+      "current": 316493824,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 307904512,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6959104,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:45:34.237581+00:00"
+    },
+    {
+      "current": 326979584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 318648320,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6979584,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:45:44.270325+00:00"
+    },
+    {
+      "current": 331907072,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 322908160,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 6983680,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:45:55.850763+00:00"
+    },
+    {
+      "current": 336621568,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 327835648,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7000064,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:46:05.883579+00:00"
+    },
+    {
+      "current": 341864448,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 332431360,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7016448,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:46:15.904873+00:00"
+    },
+    {
+      "current": 355229696,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 346329088,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7032832,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:46:27.491999+00:00"
+    },
+    {
+      "current": 381181952,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 372592640,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7086080,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:46:37.524996+00:00"
+    },
+    {
+      "current": 342376448,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 334311424,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7012352,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:46:47.565452+00:00"
+    },
+    {
+      "current": 342376448,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 334311424,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7016448,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:46:59.129697+00:00"
+    },
+    {
+      "current": 342376448,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 334311424,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7012352,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:47:09.154680+00:00"
+    },
+    {
+      "current": 342376448,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 334311424,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7012352,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:47:19.193516+00:00"
+    },
+    {
+      "current": 342638592,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 0,
+        "anon": 334311424,
+        "file": 0,
+        "file_mapped": 0,
+        "inactive_file": 0,
+        "kernel": 7016448,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:47:29.285421+00:00"
+    },
+    {
+      "current": 353124352,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 20480,
+        "anon": 332419072,
+        "file": 11382784,
+        "file_mapped": 0,
+        "inactive_file": 11337728,
+        "kernel": 7688192,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:47:40.792195+00:00"
+    },
+    {
+      "current": 355061760,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 399351808,
+      "stat": {
+        "active_file": 20480,
+        "anon": 334077952,
+        "file": 11452416,
+        "file_mapped": 0,
+        "inactive_file": 11427840,
+        "kernel": 7847936,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:47:50.825317+00:00"
+    },
+    {
+      "current": 508555264,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 508555264,
+      "stat": {
+        "active_file": 12574720,
+        "anon": 485978112,
+        "file": 12632064,
+        "file_mapped": 0,
+        "inactive_file": 57344,
+        "kernel": 8208384,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:48:00.870197+00:00"
+    },
+    {
+      "current": 426467328,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 508555264,
+      "stat": {
+        "active_file": 33464320,
+        "anon": 382136320,
+        "file": 33603584,
+        "file_mapped": 0,
+        "inactive_file": 131072,
+        "kernel": 8646656,
+        "pgscan": 0,
+        "pgsteal": 0
+      },
+      "utc": "2026-11-01T11:48:12.388114+00:00"
+    },
+    {
+      "current": 433057792,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20967424,
+        "anon": 396574720,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 7090176,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:48:22.413195+00:00"
+    },
+    {
+      "current": 368414720,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:48:32.447650+00:00"
+    },
+    {
+      "current": 368275456,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:48:44.058956+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:48:54.081049+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:49:04.103279+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:49:15.665790+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:49:25.702236+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:49:35.729714+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:49:45.753592+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:49:57.341065+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:50:07.369105+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:50:17.395114+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:50:29.033671+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:50:39.082339+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:50:49.108357+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:51:00.749047+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:51:10.768355+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:51:20.788795+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:51:32.408965+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:51:42.457660+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:51:52.480295+00:00"
+    },
+    {
+      "current": 368021504,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:52:04.084915+00:00"
+    },
+    {
+      "current": 367886336,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:52:14.111498+00:00"
+    },
+    {
+      "current": 367886336,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:52:24.145232+00:00"
+    },
+    {
+      "current": 367886336,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:52:34.192427+00:00"
+    },
+    {
+      "current": 367427584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:52:45.887512+00:00"
+    },
+    {
+      "current": 367427584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:52:55.913393+00:00"
+    },
+    {
+      "current": 367427584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:53:05.931447+00:00"
+    },
+    {
+      "current": 367427584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:53:17.566014+00:00"
+    },
+    {
+      "current": 366915584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:53:27.585723+00:00"
+    },
+    {
+      "current": 366915584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:53:37.604451+00:00"
+    },
+    {
+      "current": 366915584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:53:49.286072+00:00"
+    },
+    {
+      "current": 366915584,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 6,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "peak": 536870912,
+      "stat": {
+        "active_file": 20971520,
+        "anon": 332075008,
+        "file": 27291648,
+        "file_mapped": 0,
+        "inactive_file": 6320128,
+        "kernel": 6967296,
+        "pgscan": 1567,
+        "pgsteal": 1542
+      },
+      "utc": "2026-11-01T11:53:58.326116+00:00"
+    }
+  ],
+  "scope": "Every tenth host-side sample plus terminal; full unmodified stream retained privately"
+}

@@ -17,6 +17,7 @@ def _configure_test_paths(monkeypatch, tmp_path: Path) -> None:
 def test_route_smoke_from_top_site(monkeypatch, tmp_path: Path):
     """Select top site then generate route with multiple waypoints."""
     monkeypatch.setenv("MARSHAB_DEMO_SEED", "42")
+    monkeypatch.setenv("MARSHAB_ALLOW_SYNTHETIC_TILES", "true")
     _configure_test_paths(monkeypatch, tmp_path)
 
     pipeline = AnalysisPipeline()

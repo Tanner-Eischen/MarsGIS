@@ -1,0 +1,49 @@
+{
+  "backend_base_image": "sha256:215303ce321634736b84d5654588fa993b6609a3167800b407a167d8716eb5ff",
+  "browser": {
+    "chromium_revision": 1252,
+    "cli": "0.1.23",
+    "mode": "headed Windows; actual ANGLE/SwiftShader WebGL1.0",
+    "playwright": "1.65.0-alpha-2026-10-30",
+    "version": "157.0.8103.15"
+  },
+  "canonical_git_lf_backend_fingerprint": "9bfed21f6dc9a89ef468332bb45967b7b19699a7dccae569a8d28f7e1b052428",
+  "cpu_limit": 0.1,
+  "limitations": [
+    "One pinned browser/softwareGPU and emulated mobile viewport, not cross-browser/hardware certification.",
+    "Observed512journey completes with cache reclaim pressure; no general headroom/capacity promise.",
+    "Public deployment verification is separate and owned by root."
+  ],
+  "memory_limit_bytes": 536870912,
+  "owned_source_sha256": {
+    "marshab/core/portfolio_service.py": "f8eaf6c3d05023c9af62683ee668f106c9bcb99eba8faf7fba8f13f273cfbceb",
+    "tests/api/test_portfolio_service.py": "97b819a72e7c9c036e4372e300263734a395f2ced30e7d9539d19f56ceb73f32",
+    "webui/src/components/TerrainScene3D.test.tsx": "d297f3df0b14d80e3ae6996f7a00a0b2393d2dd862855eb8cadba8eba74838d2",
+    "webui/src/components/TerrainScene3D.tsx": "051729d9283a8c71e7d990fe6638b47e0bd872e2e101cfe7ddb68acd27b124af"
+  },
+  "remote_mutations": "Root only; none by this QA task",
+  "resource_verdict": "Recorded complete browser journey and full recompute finished at512MiB/0.1CPU withoutOOM; reclaim pressure observed, no general headroom/capacity guarantee",
+  "runtime_source_archive_sha256": "bb79578df7d140f80047dcf538fd902015d48edefde688602cdea1e49ae891f1",
+  "runtime_source_tree": "45cdaa3c8b7b3e53f5ee7a0a01b5a8dfb7888c2f",
+  "schema_version": 1,
+  "science": "All5 serialized scientific outputs identical to baseline on same runtime; provenance/run IDs differ",
+  "source_audit": "189commits/37refs inclalladvertisedPRrefs;13verifiedSHAfalsepositives;0real/unresolvedcredentials",
+  "source_representation": "Runtime archive uses Git for Windows checkout line-ending conversion; raw Git LF digest separately supplied for Linux deployment identity",
+  "status": "passed",
+  "tested_backend_fingerprint": "197047df690db53a94dbe14776919718d03708e362ec25ef41c87d22942ff5e4",
+  "tested_image_id": "sha256:1e603d622b24bd492aba5659cbf721c7795a80e3f7660ee5a97dbd4e34ca3725",
+  "tests": {
+    "backend_lint": "passed",
+    "backend_passed": 461,
+    "backend_seconds": 133.06,
+    "backend_skipped": 1,
+    "frontend_existing_warnings": 15,
+    "frontend_lint_errors": 0,
+    "frontend_passed": 118,
+    "frontend_seconds": 14.59,
+    "renderer_cases": 6,
+    "typescript": "passed"
+  },
+  "timestamp_utc": "2026-11-01T12:04:41.672866+00:00",
+  "transport": "PrivateWSL service\u2192transparentWindows127-only proxy, fixed isolated ports and persistentTTY lifetimes; unmodified real API payloads"
+}

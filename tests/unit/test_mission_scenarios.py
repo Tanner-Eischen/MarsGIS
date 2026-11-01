@@ -1,7 +1,10 @@
 """Unit tests for mission scenario orchestrators."""
 
 
+import numpy as np
 import pytest
+import rasterio
+from rasterio.transform import from_bounds
 
 from marshab.mission.scenarios import (
     LandingScenarioParams,
@@ -32,6 +35,7 @@ class TestLandingSiteScenario:
         assert result.scenario_id.startswith("landing_")
         assert result.metadata["dataset"] == "mola"
         assert result.metadata["preset_id"] == "balanced"
+        assert result.sites  # A local raster must exercise actual candidate extraction.
 
     def test_landing_scenario_with_constraints(self, tmp_path, mock_dem_data):
         """Test landing scenario with mission constraints."""
@@ -112,11 +116,27 @@ class TestRoverTraverseScenario:
 
 
 @pytest.fixture
-def mock_dem_data():
-    """Mock DEM data for testing."""
-    # This would create a mock DEM
-    # For now, tests will use actual DEM loading
-    pass
+def mock_dem_data(tmp_path, monkeypatch):
+    """Exercise real calculations on an explicitly synthetic, local Mars raster."""
+    from marshab.core.data_manager import DataManager
+    from marshab.processing.dem_loader import DEMLoader
+
+    row, col = np.indices((100, 100))
+    elevation = 1000 + 100 * np.exp(-((row - 50)**2 + (col - 50)**2) / 500)
+    path = tmp_path / "mission_analytical_dem.tif"
+    with rasterio.open(
+        path, "w", driver="GTiff", height=100, width=100, count=1,
+        dtype="float32", crs="+proj=longlat +a=3396190 +b=3396190 +no_defs +type=crs",
+        transform=from_bounds(180, 40, 181, 41, 100, 100), nodata=-9999,
+    ) as dst:
+        dst.write(elevation.astype("float32"), 1)
+        dst.update_tags(DATA_MODE="synthetic")
+
+    def local_dem(self, roi, *args, **kwargs):
+        return DEMLoader().load(path, roi=roi)
+
+    monkeypatch.setattr(DataManager, "get_dem_for_roi", local_dem)
+    return path
 
 
 @pytest.fixture

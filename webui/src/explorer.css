@@ -1,0 +1,761 @@
+.mars-explorer {
+  --mars-bg: #101b22;
+  --mars-panel: #17262e;
+  --mars-border: #34464f;
+  --mars-text: #efece4;
+  --mars-muted: #a5b2b9;
+  --mars-accent: #ffb477;
+  color: var(--mars-text);
+  background: var(--mars-bg);
+  min-height: 100dvh;
+  font-family: Inter, system-ui, sans-serif;
+  line-height: 1.45;
+}
+.mars-explorer * {
+  box-sizing: border-box;
+}
+.mars-explorer button,
+.mars-explorer input {
+  font: inherit;
+}
+.mars-explorer button {
+  cursor: pointer;
+}
+.mars-explorer button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.mars-explorer button:focus-visible,
+.mars-explorer a:focus-visible,
+.mars-explorer input:focus-visible,
+.mars-explorer summary:focus-visible {
+  outline: 3px solid #85d9dd;
+  outline-offset: 3px;
+}
+.mars-explorer a {
+  color: inherit;
+}
+.mars-skip {
+  position: fixed;
+  top: -100px;
+  left: 15px;
+  z-index: 2000;
+  background: white;
+  color: black !important;
+  padding: 12px;
+}
+.mars-skip:focus {
+  top: 10px;
+}
+.mars-header {
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 25px;
+  border-bottom: 1px solid var(--mars-border);
+}
+.mars-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  font-size: 21px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.mars-logo > span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #f5c196, #b36647 65%, #53292d);
+}
+.mars-logo small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mars-muted);
+}
+.mars-header nav {
+  display: flex;
+  gap: 25px;
+  font-size: 12px;
+}
+.mars-header nav a {
+  text-decoration: none;
+  color: var(--mars-muted);
+}
+.mars-header nav [aria-current="page"] {
+  color: var(--mars-accent);
+}
+.mars-observed {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #abc8ba;
+}
+.mars-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 365px;
+  height: calc(100dvh - 65px);
+  min-height: 600px;
+}
+.mars-viewport {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+.mars-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--mars-border);
+  background: #14232b;
+  min-height: 53px;
+}
+.mars-toolbar > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.mars-toolbar > div:first-child > span {
+  font-size: 10px;
+  color: var(--mars-muted);
+  margin-left: 7px;
+}
+.mars-view-buttons {
+  display: flex;
+  gap: 4px;
+}
+.mars-view-buttons button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--mars-muted);
+  padding: 6px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.mars-view-buttons button[aria-pressed="true"] {
+  border-color: #687e84;
+  background: #2b4048;
+  color: white;
+}
+.mars-map-pane {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.mars-map,
+.mars-map .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #081419;
+}
+.mars-view-3d .mars-map-pane {
+  display: none;
+}
+.mars-map-actions {
+  display: flex;
+  gap: 6px;
+  position: absolute;
+  top: 12px;
+  left: 52px;
+  z-index: 500;
+  flex-wrap: wrap;
+}
+.mars-map-actions button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: #17262eef;
+  color: var(--mars-text);
+  border: 1px solid #51646c;
+  box-shadow: 0 2px 8px #0004;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.mars-pick-hint {
+  position: absolute;
+  bottom: 39px;
+  left: 12px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #17262ef0;
+  border: 1px solid var(--mars-accent);
+  color: #ffe3c9;
+  border-radius: 5px;
+  font-size: 11px;
+  padding: 8px 11px;
+  pointer-events: none;
+}
+.mars-map-credit {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 5px 12px;
+  background: #102029eb;
+  color: #bdc8cd;
+  font-size: 9px;
+  z-index: 450;
+  pointer-events: none;
+}
+.mars-scene-pane {
+  position: relative;
+  flex: 1;
+  min-height: 250px;
+  border-top: 1px solid #62777e;
+  background: #102028;
+  display: flex;
+  flex-direction: column;
+}
+.mars-view-split .mars-map-pane {
+  flex: 1;
+  min-height: 220px;
+}
+.mars-view-split .mars-scene-pane {
+  flex: 1;
+  min-height: 250px;
+}
+.mars-scene-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 8px 15px;
+  border-bottom: 1px solid var(--mars-border);
+  min-height: 36px;
+}
+.mars-scene-heading > span {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--mars-accent);
+}
+.mars-scene-plot,
+.mars-terrain-scene {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+.mars-route-panel {
+  background: var(--mars-panel);
+  border-left: 1px solid var(--mars-border);
+  padding: 23px;
+  overflow: auto;
+  min-width: 0;
+}
+.mars-panel-title {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.mars-panel-title > svg {
+  color: var(--mars-accent);
+}
+.mars-panel-title p {
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  color: var(--mars-accent);
+  margin: 0 0 6px;
+}
+.mars-panel-title h1 {
+  font-size: 22px;
+  letter-spacing: -0.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0;
+}
+.mars-help {
+  color: var(--mars-muted);
+  font-size: 11px;
+  margin: 0 0 19px;
+}
+.mars-select-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.mars-select-buttons button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: #20353f;
+  color: #b7c7cf;
+  border: 1px solid var(--mars-border);
+  border-radius: 5px;
+  font-size: 10px;
+  padding: 9px 5px;
+}
+.mars-select-buttons button[aria-pressed="true"] {
+  border-color: var(--mars-accent);
+  color: var(--mars-text);
+  background: #36403c;
+}
+.mars-select-buttons b {
+  font-size: 11px;
+  color: var(--mars-accent);
+}
+.mars-route-panel fieldset {
+  border: 1px solid var(--mars-border);
+  border-radius: 6px;
+  padding: 11px 12px 13px;
+  margin: 0 0 13px;
+}
+.mars-route-panel legend {
+  font-size: 11px;
+  padding: 0 5px;
+  color: #d3d9dc;
+}
+.mars-point-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-right: 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.mars-point-start {
+  background: #7ed1c3;
+  color: #0b2527;
+}
+.mars-point-end {
+  background: #ffb477;
+  color: #2b1d18;
+}
+.mars-coordinate-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.mars-coordinate-pair label {
+  font-size: 10px;
+  color: var(--mars-muted);
+}
+.mars-coordinate-pair input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 5px;
+  background: #101f27;
+  border: 1px solid #45616e;
+  border-radius: 4px;
+  color: var(--mars-text);
+  padding: 8px;
+  font:
+    12px ui-monospace,
+    monospace;
+}
+.mars-slope-control,
+.mars-exaggeration-control {
+  display: block;
+  font-size: 11px;
+  color: #d4dcdd;
+  margin: 16px 0;
+}
+.mars-slope-control > span,
+.mars-exaggeration-control > strong {
+  float: right;
+  color: var(--mars-accent);
+  font-weight: 500;
+}
+.mars-slope-control input,
+.mars-exaggeration-control input {
+  display: block;
+  width: 100%;
+  margin: 16px 0 8px;
+  accent-color: var(--mars-accent);
+}
+.mars-explorer .mars-plan-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background: var(--mars-accent);
+  color: #192129;
+  font-size: 12px;
+  font-weight: 650;
+  border-radius: 5px;
+  padding: 12px;
+}
+.mars-secondary-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+.mars-secondary-actions button,
+.mars-exaggeration-footer button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: #c6d1d5;
+  font-size: 10px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.mars-status {
+  padding: 12px;
+  border: 1px solid #48676e;
+  border-radius: 5px;
+  background: #173139;
+  font-size: 11px;
+  color: #b5d9d9;
+}
+.mars-error {
+  border: 1px solid #bd8364;
+  border-radius: 6px;
+  background: #392d2a;
+  padding: 12px;
+  font-size: 11px;
+  color: #fbd7c2;
+}
+.mars-error strong {
+  font-weight: 600;
+}
+.mars-error p {
+  margin: 7px 0 0;
+}
+.mars-error button {
+  padding: 6px 10px;
+  border: 1px solid #bd8364;
+  background: transparent;
+  color: inherit;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 10px;
+}
+.mars-route-results {
+  border-top: 1px solid var(--mars-border);
+  margin-top: 22px;
+  padding-top: 20px;
+}
+.mars-route-results h2 {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0 0 11px;
+}
+.mars-source-badge {
+  font-size: 10px;
+  color: #bee0cf;
+  background: #1d3936;
+  border: 1px solid #45645b;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 0 0 15px;
+}
+.mars-route-results dl {
+  margin: 0;
+}
+.mars-route-results dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--mars-border);
+  padding: 9px 0;
+  font-size: 11px;
+}
+.mars-route-results dt {
+  color: var(--mars-muted);
+}
+.mars-route-results dd {
+  margin: 0;
+  text-align: right;
+  font:
+    11px ui-monospace,
+    monospace;
+}
+.mars-resolution-note {
+  font-size: 10px;
+  color: #b5c3c7;
+  line-height: 1.5;
+  margin: 13px 0 20px;
+}
+.mars-exaggeration-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  font-size: 9px;
+  color: var(--mars-muted);
+}
+.mars-explorer .mars-download-route {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  text-decoration: none;
+  border: 1px solid #607d87;
+  border-radius: 5px;
+  padding: 10px;
+  margin-top: 20px;
+  color: var(--mars-text);
+}
+.mars-methods {
+  border-top: 1px solid var(--mars-border);
+  padding-top: 18px;
+  margin-top: 23px;
+  font-size: 10px;
+  color: var(--mars-muted);
+  line-height: 1.6;
+}
+.mars-methods summary {
+  cursor: pointer;
+  color: #d1dcde;
+  font-size: 11px;
+}
+.mars-methods p {
+  margin: 13px 0;
+}
+.mars-methods a {
+  display: inline-block;
+  margin-right: 15px;
+  color: #d5c2a8;
+}
+.mars-placeholder {
+  height: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px;
+  color: var(--mars-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.mars-spin {
+  animation: mars-spin 1.5s linear infinite;
+}
+@keyframes mars-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 1100px) {
+  .mars-workspace {
+    grid-template-columns: minmax(0, 1fr) 325px;
+  }
+  .mars-route-panel {
+    padding: 18px;
+  }
+  .mars-toolbar > div:first-child > span {
+    display: none;
+  }
+  .mars-header {
+    padding: 0 18px;
+  }
+  .mars-observed {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .mars-header {
+    height: auto;
+    min-height: 65px;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 13px 16px;
+  }
+  .mars-header nav {
+    gap: 18px;
+    font-size: 10px;
+  }
+  .mars-workspace {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+  .mars-viewport {
+    height: 68dvh;
+    min-height: 440px;
+  }
+  .mars-view-split {
+    height: 95dvh;
+    min-height: 650px;
+  }
+  .mars-route-panel {
+    overflow: visible;
+    border-left: 0;
+    border-top: 1px solid var(--mars-border);
+    padding: 22px 20px;
+  }
+  .mars-toolbar {
+    padding: 9px 11px;
+    gap: 8px;
+  }
+  .mars-toolbar > div:first-child {
+    font-size: 11px;
+  }
+  .mars-toolbar > div:first-child > svg {
+    display: none;
+  }
+  .mars-view-buttons button {
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+  .mars-map-actions {
+    left: 48px;
+    right: 8px;
+    gap: 4px;
+  }
+  .mars-map-actions button {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+  .mars-map-credit {
+    font-size: 8px;
+    padding-right: 75px;
+  }
+  .mars-scene-heading > span {
+    font-size: 9px;
+  }
+  .mars-panel-title h1 {
+    font-size: 23px;
+  }
+  .mars-route-panel .mars-help {
+    max-width: 500px;
+  }
+  .mars-coordinate-pair input {
+    padding: 10px;
+  }
+  .mars-plan-button {
+    min-height: 44px;
+  }
+  .mars-methods {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mars-spin {
+    animation: none;
+  }
+}
+.mars-map {
+  position: relative;
+}
+.mars-explorer .map-instructions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.mars-explorer .map-tile-notice {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 55px;
+  z-index: 600;
+  background: #523a2bf5;
+  color: #ffe5d1;
+  border: 1px solid #c28e68;
+  border-radius: 5px;
+  padding: 9px 11px;
+  font-size: 11px;
+}
+.map-tile-notice button {
+  color: inherit;
+  border: 0;
+  background: transparent;
+  text-decoration: underline;
+  margin-left: 8px;
+}
+.terrain-scene-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 12px;
+  font-size: 10px;
+  color: #c0d0d3;
+}
+.terrain-scene-controls button {
+  background: #233d48;
+  border: 1px solid #5b7783;
+  color: #d8e7eb;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+.terrain-scene-3d .small-copy {
+  font-size: 9px;
+  color: #a5b2b9;
+  margin: 3px 12px 6px;
+}
+.terrain-scene-3d > p[role="alert"] {
+  font-size: 11px;
+  color: #ffd0b0;
+  margin: 6px 12px;
+}
+.mars-viewport .leaflet-control-attribution {
+  font-size: 8px;
+  background: #11212acc;
+  color: #afc1c9;
+}
+.mars-viewport .leaflet-control-attribution a {
+  color: #afc1c9;
+}
+.mars-viewport .leaflet-control-zoom a {
+  background: #18313a;
+  color: #e4eceb;
+  border-color: #536a72;
+}
+.mars-viewport .leaflet-tooltip {
+  font-size: 11px;
+  background: #17262ef5;
+  color: #efece4;
+  border: 1px solid #687c83;
+}
+.mars-scene-heading {
+  flex-wrap: wrap;
+}
+.mars-inline-exaggeration {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  margin-left: auto;
+}
+.mars-explorer .mars-inline-exaggeration input {
+  width: 105px;
+  min-width: 70px;
+  margin: 0;
+  accent-color: #ffb477;
+}
+.mars-scene-heading > span {
+  margin-left: 4px;
+}
+@media (max-width: 500px) {
+  .mars-inline-exaggeration {
+    font-size: 9px;
+  }
+  .mars-explorer .mars-inline-exaggeration input {
+    width: 85px;
+  }
+}

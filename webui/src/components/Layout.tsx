@@ -10,10 +10,10 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
 
   const navItems = [
-    { path: '/', label: 'ANALYSIS', icon: <LayoutDashboard size={18} /> },
-    { path: '/mission', label: 'MISSION', icon: <Navigation size={18} /> },
-    { path: '/decision-lab', label: 'DECISION', icon: <FlaskConical size={18} /> },
-    { path: '/settings', label: 'DATA & CONFIG', icon: <Database size={18} /> },
+    { path: '/experimental/analysis', label: 'ANALYSIS', icon: <LayoutDashboard size={18} /> },
+    { path: '/experimental/mission', label: 'MISSION', icon: <Navigation size={18} /> },
+    { path: '/experimental/decision-lab', label: 'DECISION', icon: <FlaskConical size={18} /> },
+    { path: '/experimental/settings', label: 'DATA & CONFIG', icon: <Database size={18} /> },
   ]
 
   return (
@@ -55,8 +55,8 @@ export default function Layout({ children }: LayoutProps) {
         {/* Status / User (Placeholder) */}
         <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
-                <span className="text-xs text-cyan-400 font-mono">SYS.ONLINE</span>
-                <span className="text-[0.6rem] text-gray-500 font-mono">V.2.0.4</span>
+                <span className="text-xs text-amber-400 font-mono">EXPERIMENTAL</span>
+                <span className="text-[0.6rem] text-gray-500 font-mono">Local API required</span>
             </div>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
         </div>

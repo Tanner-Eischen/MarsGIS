@@ -1,0 +1,5 @@
+# Preserve checksum-protected scientific reference bytes across all checkouts.
+webui/public/portfolio/** binary
+
+# Preserve hash-bound handoff/report bytes, including captured diagnostic whitespace.
+reports/** -text -whitespace

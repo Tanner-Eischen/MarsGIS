@@ -1,6 +1,6 @@
 """MarsHab Site Selector - Mars habitat site selection and rover navigation system."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "MarsHab Development Team"
 __description__ = "Geospatial analysis for Mars habitat construction site selection"
 

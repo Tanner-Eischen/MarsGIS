@@ -25,7 +25,9 @@ class ExplorerService:
         self._running: str | None = None
         self._thread: threading.Thread | None = None
 
-    def start(self, start: dict, end: dict, max_slope_deg: float) -> dict:
+    def start(
+        self, start: dict, end: dict, max_slope_deg: float, request_id: str | None = None
+    ) -> dict:
         with self._lock:
             if self._running is not None or not acquire_workload():
                 raise WorkloadBusyError(
@@ -34,6 +36,7 @@ class ExplorerService:
             identifier = uuid4().hex
             job = {
                 "id": identifier,
+                "request_id": request_id or uuid4().hex,
                 "state": "running",
                 "poll_url": f"/api/v1/explorer/routes/{identifier}",
             }
@@ -57,6 +60,13 @@ class ExplorerService:
     def _work(self, identifier: str, start: dict, end: dict, max_slope_deg: float) -> None:
         try:
             result = calculate_route(self.data, start, end, max_slope_deg, identifier)
+            if result.get("id") != identifier:
+                raise ValueError("Calculated route identity differs from its job")
+            with self._lock:
+                request_id = self._jobs[identifier]["request_id"]
+            result["request_id"] = request_id
+            result["geojson"]["run_id"] = identifier
+            result["geojson"]["request_id"] = request_id
             size = len(json.dumps(result, allow_nan=False, separators=(",", ":")).encode())
             if size > self.MAX_RESULT_BYTES:
                 raise ValueError("Route exceeds the bounded result size; select a smaller region")

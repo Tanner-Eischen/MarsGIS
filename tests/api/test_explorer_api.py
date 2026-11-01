@@ -128,6 +128,9 @@ def test_route_result_download_and_unknown_identifiers(client, service):
         {"max_slope_deg": "nan"},
         {"start": {"lat": True, "lon": 0}},
         {"unexpected": True},
+        {"request_id": "../outside"},
+        {"request_id": "x" * 65},
+        {"request_id": 123},
     ],
 )
 def test_invalid_payloads_rejected_before_work(client, changes):
@@ -221,6 +224,22 @@ def test_worker_start_failure_releases_shared_slot(service, monkeypatch):
     assert acquire_workload()
     release_workload()
     assert not service._jobs
+
+
+def test_client_request_identity_matches_job_result_and_export(client, service):
+    job = completed(client, service, {**PAYLOAD, "request_id": "selection-123"}).json()
+    assert job["request_id"] == job["result"]["request_id"] == "selection-123"
+    exported = client.get(f"/api/v1/explorer/routes/{job['id']}/geojson").json()
+    assert exported["request_id"] == job["request_id"]
+    assert exported["run_id"] == job["result"]["id"] == job["id"]
+
+
+def test_wrong_calculated_identity_fails_without_publishing_result(client, service, monkeypatch):
+    monkeypatch.setattr(service_module, "calculate_route", lambda *args: {"id": "another-job"})
+    job = completed(client, service, {**PAYLOAD, "request_id": "selection-failed"}).json()
+    assert job["state"] == "failed" and "identity differs" in job["error"]
+    assert job["request_id"] == "selection-failed" and "result" not in job
+    assert client.get(f"/api/v1/explorer/routes/{job['id']}/geojson").status_code == 409
 
 
 def test_missing_pinned_data_returns_503_not_synthetic(monkeypatch):

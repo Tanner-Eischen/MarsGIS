@@ -350,7 +350,7 @@ const fetchRawTile = async (
   const path = `/visualization/tiles/elevation-raw/${encodeURIComponent(dataset)}/${z}/${x}/${y}.npy?stride=1&allow_download=true`
   const response = await fetch(apiUrl(path), { signal })
   if (!response.ok) {
-    let detail = ''
+    let detail: string
     try {
       const payload = await response.json()
       detail = payload?.detail || payload?.error || ''

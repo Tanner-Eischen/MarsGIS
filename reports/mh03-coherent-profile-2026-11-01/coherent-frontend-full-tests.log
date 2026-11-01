@@ -1,0 +1,16 @@
+
+> marshab-webui@0.1.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v5.0.5 <private-workspace>/coherent-profile-source/webui
+
+
+ Test Files  7 passed (7)
+      Tests  115 passed (115)
+   Start at  01:10:13
+   Duration  14.73s (tests 67%, environment 21%, import 8%, transform 3%)
+
+    Isolate  7 workers spawned · ~526ms startup each (spawn + environment, per file)
+             at least ~3.16s faster with isolate: false — reuses workers across files instead of one per file
+

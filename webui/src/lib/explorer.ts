@@ -33,6 +33,7 @@ export interface RoutePoint extends MarsPoint {
 
 export interface ExplorerRoute {
   id: string;
+  request_id?: string;
   source: ExplorerSource;
   requested: { start: MarsPoint; end: MarsPoint };
   snapped: { start: MarsPoint; end: MarsPoint };
@@ -58,6 +59,7 @@ export interface ExplorerRoute {
 
 export interface ExplorerJob {
   id: string;
+  request_id?: string;
   state: "running" | "ready" | "failed";
   poll_url?: string;
   error?: string;
@@ -99,6 +101,29 @@ async function jsonResponse(response: Response) {
   return value;
 }
 
+function checkedJob(
+  value: ExplorerJob,
+  id?: string,
+  requestId?: string,
+): ExplorerJob {
+  if (
+    !value ||
+    typeof value.id !== "string" ||
+    !/^[A-Za-z0-9_-]+$/.test(value.id) ||
+    !["running", "ready", "failed"].includes(value.state) ||
+    (id && value.id !== id) ||
+    (requestId && value.request_id !== requestId) ||
+    (value.state === "ready" &&
+      (!value.result ||
+        value.result.id !== value.id ||
+        (requestId && value.result.request_id !== requestId)))
+  )
+    throw new Error(
+      "The Mars API returned a different or invalid route request.",
+    );
+  return value;
+}
+
 export async function loadExplorer(
   signal?: AbortSignal,
 ): Promise<ExplorerMetadata> {
@@ -120,23 +145,41 @@ export async function planExplorerRoute(
   start: MarsPoint,
   end: MarsPoint,
   maxSlope: number,
+  options: { signal?: AbortSignal; requestId?: string } = {},
 ): Promise<ExplorerJob> {
   if (!validPoint(start) || !validPoint(end))
     throw new Error("Select valid start and end coordinates.");
-  return jsonResponse(
-    await fetch("/api/v1/explorer/routes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start, end, max_slope_deg: maxSlope }),
-    }),
+  return checkedJob(
+    await jsonResponse(
+      await fetch("/api/v1/explorer/routes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: options.signal,
+        body: JSON.stringify({
+          start,
+          end,
+          max_slope_deg: maxSlope,
+          request_id: options.requestId,
+        }),
+      }),
+    ),
+    undefined,
+    options.requestId,
   );
 }
 
 export async function pollExplorerRoute(
   id: string,
   signal?: AbortSignal,
+  requestId?: string,
 ): Promise<ExplorerJob> {
   if (!/^[A-Za-z0-9_-]+$/.test(id))
     throw new Error("Invalid route job identifier.");
-  return jsonResponse(await fetch(`/api/v1/explorer/routes/${id}`, { signal }));
+  return checkedJob(
+    await jsonResponse(
+      await fetch(`/api/v1/explorer/routes/${id}`, { signal }),
+    ),
+    id,
+    requestId,
+  );
 }

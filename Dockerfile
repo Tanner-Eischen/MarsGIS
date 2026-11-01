@@ -14,12 +14,13 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates libexpat1 libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.lock ./
-RUN pip install --no-cache-dir -r requirements.lock
+COPY requirements-bootstrap.lock requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements-bootstrap.lock \
+    && pip install --no-cache-dir --require-hashes -r requirements.lock
 COPY pyproject.toml README.md marshab_config.yaml ./
 COPY marshab/ ./marshab/
 COPY scripts/ ./scripts/
-RUN pip install --no-cache-dir --no-deps -e .
+RUN pip install --no-cache-dir --no-deps --no-build-isolation -e .
 
 # Bake real global MOLA plus detailed CTX data with their independent pinned
 # checksums and reference systems. Request handlers never download global DEMs.

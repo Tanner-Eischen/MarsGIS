@@ -47,6 +47,12 @@ const empty: Coordinates = {
   endLat: "",
   endLon: "",
 };
+type ActiveRequest = {
+  id: string;
+  signature: string;
+  controller: AbortController;
+  pending: boolean;
+};
 const number = (value: number, digits = 2) =>
   value.toLocaleString("en-US", { maximumFractionDigits: digits });
 const distance = (value: number) =>
@@ -83,7 +89,7 @@ export default function MarsExplorer() {
   const signature = JSON.stringify([coordinates, maxSlope]);
   const currentSignature = useRef(signature);
   currentSignature.current = signature;
-  const submittedSignature = useRef("");
+  const activeRequest = useRef<ActiveRequest | null>(null);
   const start = pointFromInputs(coordinates.startLat, coordinates.startLon);
   const end = pointFromInputs(coordinates.endLat, coordinates.endLon);
   const busy = submitting || job?.state === "running";
@@ -92,12 +98,53 @@ export default function MarsExplorer() {
       setCommand((previous) => ({ id: (previous?.id ?? 0) + 1, kind })),
     [],
   );
+  const isCurrent = useCallback(
+    (active: ActiveRequest) =>
+      activeRequest.current === active &&
+      !active.controller.signal.aborted &&
+      currentSignature.current === active.signature,
+    [],
+  );
+  const publish = useCallback(
+    (next: ExplorerJob, active: ActiveRequest, expectedId?: string) => {
+      if (!isCurrent(active)) return;
+      if (
+        next.request_id !== active.id ||
+        (expectedId && next.id !== expectedId) ||
+        (next.state === "ready" &&
+          (!next.result ||
+            next.result.id !== next.id ||
+            next.result.request_id !== active.id))
+      ) {
+        active.pending = false;
+        setError("The Mars API returned a different route request.");
+        setJob(null);
+        return;
+      }
+      setJob(next);
+      if (next.state === "failed") {
+        active.pending = false;
+        setError(
+          next.error || "No route could be calculated for these points.",
+        );
+      }
+      if (next.state === "ready" && next.result) {
+        active.pending = false;
+        setResult(next.result);
+        setView("split");
+        moveView("route");
+      }
+    },
+    [isCurrent, moveView],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
     setSourceError("");
     void loadExplorer(controller.signal)
-      .then(setMetadata)
+      .then((value) => {
+        if (!controller.signal.aborted) setMetadata(value);
+      })
       .catch((failure) => {
         if (!controller.signal.aborted) setSourceError(message(failure));
       });
@@ -105,37 +152,49 @@ export default function MarsExplorer() {
   }, [retry]);
 
   useEffect(() => {
+    const previous = activeRequest.current;
+    previous?.controller.abort();
+    activeRequest.current = null;
+    setJob(null);
+    setSubmitting(false);
     setResult(null);
     setError("");
-    setNotice("");
+    setNotice(
+      previous?.pending
+        ? "Your points changed during calculation. Plan a route for the new selection."
+        : "",
+    );
     setView("map");
   }, [signature]);
 
+  useEffect(
+    () => () => {
+      activeRequest.current?.controller.abort();
+      activeRequest.current = null;
+    },
+    [],
+  );
+
   useEffect(() => {
     if (job?.state !== "running") return;
+    const active = activeRequest.current;
+    if (!active || !isCurrent(active)) return;
     const controller = new AbortController();
+    const cancelPoll = () => controller.abort();
+    active.controller.signal.addEventListener("abort", cancelPoll, {
+      once: true,
+    });
     const timer = window.setTimeout(async () => {
       try {
-        const next = await pollExplorerRoute(job.id, controller.signal);
-        setJob(next);
-        if (currentSignature.current !== submittedSignature.current) {
-          if (next.state !== "running")
-            setNotice(
-              "Your points changed during calculation. Plan a route for the new selection.",
-            );
-          return;
-        }
-        if (next.state === "failed")
-          setError(
-            next.error || "No route could be calculated for these points.",
-          );
-        if (next.state === "ready" && next.result) {
-          setResult(next.result);
-          setView("split");
-          moveView("route");
-        }
+        const next = await pollExplorerRoute(
+          job.id,
+          controller.signal,
+          active.id,
+        );
+        if (!controller.signal.aborted) publish(next, active, job.id);
       } catch (failure) {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && isCurrent(active)) {
+          active.pending = false;
           setError(message(failure));
           setJob(null);
         }
@@ -143,9 +202,10 @@ export default function MarsExplorer() {
     }, 1200);
     return () => {
       window.clearTimeout(timer);
+      active.controller.signal.removeEventListener("abort", cancelPoll);
       controller.abort();
     };
-  }, [job, moveView]);
+  }, [job, isCurrent, publish]);
 
   const pick = (point: MarsPoint, which: PickMode) => {
     setCoordinates((previous) => ({
@@ -157,6 +217,7 @@ export default function MarsExplorer() {
   };
 
   const plan = async () => {
+    if (activeRequest.current?.pending) return;
     if (
       !start ||
       !end ||
@@ -173,23 +234,28 @@ export default function MarsExplorer() {
     setNotice("");
     setResult(null);
     setSubmitting(true);
-    submittedSignature.current = signature;
+    const active: ActiveRequest = {
+      id: crypto.randomUUID(),
+      signature,
+      controller: new AbortController(),
+      pending: true,
+    };
+    activeRequest.current?.controller.abort();
+    activeRequest.current = active;
     try {
-      const next = await planExplorerRoute(start, end, maxSlope);
-      setJob(next);
-      if (
-        next.state === "ready" &&
-        next.result &&
-        currentSignature.current === submittedSignature.current
-      ) {
-        setResult(next.result);
-        setView("split");
-        moveView("route");
-      }
+      const next = await planExplorerRoute(start, end, maxSlope, {
+        signal: active.controller.signal,
+        requestId: active.id,
+      });
+      publish(next, active);
     } catch (failure) {
-      setError(message(failure));
+      if (isCurrent(active)) {
+        active.pending = false;
+        setJob(null);
+        setError(message(failure));
+      }
     } finally {
-      setSubmitting(false);
+      if (isCurrent(active)) setSubmitting(false);
     }
   };
 

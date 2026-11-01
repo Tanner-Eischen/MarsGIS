@@ -14,7 +14,11 @@ import {
   planExplorerRoute,
   pollExplorerRoute,
 } from "../lib/explorer";
-import type { ExplorerMetadata, ExplorerRoute } from "../lib/explorer";
+import type {
+  ExplorerJob,
+  ExplorerMetadata,
+  ExplorerRoute,
+} from "../lib/explorer";
 
 vi.mock("../lib/explorer", async (original) => ({
   ...(await original<typeof import("../lib/explorer")>()),
@@ -119,17 +123,24 @@ const mount = () =>
       <MarsExplorer />
     </MemoryRouter>,
   );
+const ready = (requestId?: string, id = "route-1"): ExplorerJob => ({
+  id,
+  request_id: requestId,
+  state: "ready",
+  result: { ...result, id, request_id: requestId },
+});
 beforeEach(() => {
   vi.mocked(loadExplorer).mockResolvedValue(metadata);
-  vi.mocked(planExplorerRoute).mockResolvedValue({
-    id: "route-1",
-    state: "running",
-  });
-  vi.mocked(pollExplorerRoute).mockResolvedValue({
-    id: "route-1",
-    state: "ready",
-    result,
-  });
+  vi.mocked(planExplorerRoute).mockImplementation(
+    async (_start, _end, _slope, options) => ({
+      id: "route-1",
+      request_id: options?.requestId,
+      state: "running",
+    }),
+  );
+  vi.mocked(pollExplorerRoute).mockImplementation(
+    async (id, _signal, requestId) => ready(requestId, id),
+  );
 });
 afterEach(() => {
   cleanup();
@@ -161,6 +172,7 @@ describe("map-first two-point workflow", () => {
         { lat: 0, lon: 0 },
         { lat: 1, lon: 1 },
         25,
+        expect.objectContaining({ requestId: expect.any(String) }),
       ),
     );
     expect(
@@ -289,11 +301,14 @@ describe("map-first two-point workflow", () => {
   });
 
   it("reports an unavailable route without substituting a straight line", async () => {
-    vi.mocked(pollExplorerRoute).mockResolvedValue({
-      id: "route-1",
-      state: "failed",
-      error: "No traversable route exists in the sampled window",
-    });
+    vi.mocked(pollExplorerRoute).mockImplementation(
+      async (id, _signal, requestId) => ({
+        id,
+        request_id: requestId,
+        state: "failed",
+        error: "No traversable route exists in the sampled window",
+      }),
+    );
     mount();
     await screen.findByTestId("map");
     fireEvent.click(screen.getByRole("button", { name: "Use Jezero example" }));
@@ -303,6 +318,118 @@ describe("map-first two-point workflow", () => {
     ).toContain("No traversable route");
     expect(screen.queryByText("Route results")).toBeNull();
     expect(screen.queryByTestId("3d-scene")).toBeNull();
+  });
+
+  it("ignores a delayed POST after A→B→A selection changes even if transport ignores abort", async () => {
+    let resolvePost!: (job: ExplorerJob) => void;
+    let oldRequest: string | undefined;
+    let signal: AbortSignal | undefined;
+    vi.mocked(planExplorerRoute).mockImplementationOnce(
+      (_start, _end, _slope, options) => {
+        oldRequest = options?.requestId;
+        signal = options?.signal;
+        return new Promise((resolve) => {
+          resolvePost = resolve;
+        });
+      },
+    );
+    mount();
+    await screen.findByTestId("map");
+    fireEvent.click(screen.getByRole("button", { name: "Use Jezero example" }));
+    fireEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    await waitFor(() => expect(planExplorerRoute).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText("Destination latitude"), {
+      target: { value: "19" },
+    });
+    fireEvent.change(screen.getByLabelText("Destination latitude"), {
+      target: { value: "18.384727" },
+    });
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      resolvePost(ready(oldRequest));
+    });
+    expect(screen.queryByText("Route results")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: "Plan route" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("ignores a delayed poll after A→B→A selection changes", async () => {
+    let resolvePoll!: (job: ExplorerJob) => void;
+    let oldRequest: string | undefined;
+    let signal: AbortSignal | undefined;
+    vi.mocked(pollExplorerRoute).mockImplementationOnce(
+      (_id, pollSignal, requestId) => {
+        oldRequest = requestId;
+        signal = pollSignal;
+        return new Promise((resolve) => {
+          resolvePoll = resolve;
+        });
+      },
+    );
+    mount();
+    await screen.findByTestId("map");
+    fireEvent.click(screen.getByRole("button", { name: "Use Jezero example" }));
+    fireEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    await waitFor(() => expect(pollExplorerRoute).toHaveBeenCalledTimes(1), {
+      timeout: 4000,
+    });
+    fireEvent.change(screen.getByLabelText("Destination latitude"), {
+      target: { value: "19" },
+    });
+    fireEvent.change(screen.getByLabelText("Destination latitude"), {
+      target: { value: "18.384727" },
+    });
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      resolvePoll(ready(oldRequest));
+    });
+    expect(screen.queryByText("Route results")).toBeNull();
+  });
+
+  it("does not let a stale failed POST overwrite a newer completed request", async () => {
+    let rejectOld!: (reason: Error) => void;
+    vi.mocked(planExplorerRoute).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectOld = reject;
+        }),
+    );
+    vi.mocked(planExplorerRoute).mockImplementationOnce(
+      async (_start, _end, _slope, options) =>
+        ready(options?.requestId, "route-2"),
+    );
+    mount();
+    await screen.findByTestId("map");
+    fireEvent.click(screen.getByRole("button", { name: "Use Jezero example" }));
+    fireEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    await waitFor(() => expect(planExplorerRoute).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByLabelText("Destination latitude"), {
+      target: { value: "19" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    await screen.findByText("Route results");
+    await act(async () => {
+      rejectOld(new Error("Old request failed late"));
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByTestId("map-result").textContent).toBe("route-2");
+  });
+
+  it("rejects a polling response for another server job", async () => {
+    vi.mocked(pollExplorerRoute).mockImplementation(
+      async (_id, _signal, requestId) => ready(requestId, "other-job"),
+    );
+    mount();
+    await screen.findByTestId("map");
+    fireEvent.click(screen.getByRole("button", { name: "Use Jezero example" }));
+    fireEvent.click(screen.getByRole("button", { name: "Plan route" }));
+    expect(
+      (await screen.findByRole("alert", {}, { timeout: 4000 })).textContent,
+    ).toContain("different route request");
+    expect(screen.queryByText("Route results")).toBeNull();
   });
 });
 

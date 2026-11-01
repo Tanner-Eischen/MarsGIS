@@ -26,6 +26,7 @@ class RouteRequest(BaseModel):
     start: Point
     end: Point
     max_slope_deg: float = Field(default=25.0, gt=0, lt=90, strict=True)
+    request_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$", strict=True)
 
 
 def get_service(request: Request) -> ExplorerService:
@@ -62,7 +63,7 @@ def route(body: RouteRequest, request: Request):
         raise HTTPException(status_code=400, detail="Select two different points")
     try:
         return get_service(request).start(
-            body.start.model_dump(), body.end.model_dump(), body.max_slope_deg
+            body.start.model_dump(), body.end.model_dump(), body.max_slope_deg, body.request_id
         )
     except WorkloadBusyError as exc:
         raise HTTPException(status_code=409, detail=str(exc))

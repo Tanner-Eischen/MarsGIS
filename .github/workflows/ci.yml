@@ -21,11 +21,14 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: requirements-dev.lock
+          cache-dependency-path: |
+            requirements-bootstrap.lock
+            requirements-dev.lock
       - name: Install pinned environment
         run: |
-          python -m pip install -r requirements-dev.lock
-          python -m pip install --no-deps -e .
+          python -m pip install --require-hashes -r requirements-bootstrap.lock
+          python -m pip install --require-hashes -r requirements-dev.lock
+          python -m pip install --no-deps --no-build-isolation -e .
       - name: Lint
         run: python -m ruff check marshab tests scripts
       - name: Full offline suite
@@ -42,10 +45,13 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: requirements.lock
+          cache-dependency-path: |
+            requirements-bootstrap.lock
+            requirements.lock
       - run: |
-          python -m pip install -r requirements.lock
-          python -m pip install --no-deps -e .
+          python -m pip install --require-hashes -r requirements-bootstrap.lock
+          python -m pip install --require-hashes -r requirements.lock
+          python -m pip install --no-deps --no-build-isolation -e .
       - name: Run strict real-data workflow (9.7 MB public source)
         run: python scripts/run_portfolio_demo.py
       - name: Check exported science and geometry independently
@@ -95,7 +101,7 @@ jobs:
       - name: Build the complete website and API image
         run: docker build -t marshab:ci .
       - name: Start the single-service deployment
-        run: docker run -d --name marshab-ci --memory=512m -p 5000:5000 marshab:ci
+        run: docker run -d --name marshab-ci --memory=1g --memory-swap=1g --cpus=2 -p 127.0.0.1:5000:5000 marshab:ci
       - name: Check container startup before the scientific workflow
         run: |
           for attempt in $(seq 1 60); do

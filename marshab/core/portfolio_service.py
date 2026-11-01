@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import gc
 import json
 import os
 import re
@@ -133,6 +134,9 @@ class PortfolioService:
             analysis, package = folder / "analysis", folder / "package"
             # run_demo performs checksum-pinned acquisition; no synthetic fallback.
             run_demo(self.source_path, analysis)
+            # Closed Matplotlib figures contain cycles. Release the completed analysis
+            # before allocating the independent verification graph in this worker.
+            gc.collect()
             scene = build_package(analysis, package)
             verify_package(package)
             completed = datetime.now(UTC).isoformat()

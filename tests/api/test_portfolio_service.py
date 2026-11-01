@@ -1,7 +1,9 @@
 """Observed-DEM API job orchestration over real verified reference artifacts."""
 
+import gc
 import shutil
 import threading
+import weakref
 from pathlib import Path
 
 import pytest
@@ -47,6 +49,36 @@ def copy_analysis(source, output):
 def complete(service):
     service._thread.join(timeout=15)
     assert not service._thread.is_alive(), "Worker did not complete"
+
+
+def test_completed_analysis_cycles_are_released_before_package_verification(service, monkeypatch):
+    class ClosedFigureCycle:
+        pass
+
+    observed = []
+    original_builder = service_module.build_package
+
+    def analysis_with_closed_cycle(source, output):
+        copy_analysis(source, output)
+        figure = ClosedFigureCycle()
+        figure.self_reference = figure
+        observed.append(weakref.ref(figure))
+
+    def verify_after_analysis(source, output):
+        assert observed[0]() is None, "Completed analysis cycles overlap verification buffers"
+        return original_builder(source, output)
+
+    monkeypatch.setattr(service_module, "run_demo", analysis_with_closed_cycle)
+    monkeypatch.setattr(service_module, "build_package", verify_after_analysis)
+    automatic_collection = gc.isenabled()
+    gc.disable()
+    try:
+        service.start()
+        complete(service)
+        assert service.status()["state"] == "ready"
+    finally:
+        if automatic_collection:
+            gc.enable()
 
 
 def test_verified_initial_reference_and_allowlisted_download(client):

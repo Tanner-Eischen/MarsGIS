@@ -6,13 +6,17 @@ MarsHab is a scientific software portfolio project for exploring Mars terrain, s
 
 The emphasis is reproducible geospatial computation: explicit units and coordinate systems, invalid-data masks, analytical tests, independent shortest-path references, and inspectable outputs. Candidate scores illustrate terrain tradeoffs; they do not establish habitat safety.
 
+## Current local acceptance (November 1, 2026)
+
+[Browser and free-tier acceptance](docs/implementation/MH03_BROWSER_ACCEPTANCE_2026-11-01.md) now covers actual map/keyboard routing, WebGL interaction, cancellation/fallback and the full comparison workflow at a bounded 512 MiB / 0.1 CPU profile. Scientific exports remain unchanged by the UI/lifetime fixes. The measured journey completed without OOM, with reclaim pressure; this is not a general headroom guarantee. Full recomputation can take several minutes on that CPU tier. Public deployment must separately match the tested source/build identity.
+
 ## Website and API together
 
 The website and API run as **one service**. The default workspace provides a pannable, scroll/zoom Mars map, start/destination selection, calculated routes and a rotatable 3D terrain/path viewer with **1–100× vertical exaggeration**. Use **Jezero example** for a short detailed traverse, or choose locations elsewhere on Mars. The results identify the source and effective analysis spacing; exaggeration changes the display, not measured elevations.
 
 The separate **Site comparison** page preserves the validated DEM-to-suitability example, candidate comparison and original exports. See [map, routing and 3D methods](docs/map-routing.md).
 
-After installing the Python environment below, use Node **22.12+** to build the website:
+After installing the Python environment below, use Node **22.13+** to build the website:
 
 ```powershell
 .venv/Scripts/python.exe scripts/prepare_planetary_data.py
@@ -25,7 +29,7 @@ cd ..
 
 The preparation command provisions the checksum-pinned global MOLA source (33 MB) and CTX source (9.7 MB) in the configured cache. No request triggers an unbounded global download. Open `http://localhost:5000`. Alternatively, `docker compose up --build` packages the website, API and both DEMs together. See [deployment and API instructions](docs/unified-deployment.md).
 
-The unified service is live at **https://marshab.onrender.com**. Public HTTP verification on 2026-10-28 completed a fresh real-DEM calculation and checked every exported artifact's checksum. See the [deployment verification record](docs/live-verification.md). Browser visual/interaction checks remain unperformed under the repository's browser-access restriction.
+The unified service is live at **https://marshab.onrender.com**. Public HTTP verification on 2026-10-28 completed a fresh real-DEM calculation and checked every exported artifact's checksum. See the [deployment verification record](docs/live-verification.md). Those historical HTTP records predate the now-authorized local browser acceptance linked above; they do not independently identify a newer public deployment.
 
 This uses Render's free compute plan, which sleeps after inactivity and can take about a minute to wake. Open it before a live interview; the verified reference analysis is available after startup. See [Render's free-service behavior](https://render.com/docs/free).
 
@@ -39,8 +43,8 @@ From the repository root, on Windows PowerShell:
 
 ```powershell
 uv venv --python 3.11 .venv
-uv pip sync --python .venv/Scripts/python.exe requirements-dev.lock
-uv pip install --python .venv/Scripts/python.exe --no-deps -e .
+uv pip install --python .venv/Scripts/python.exe --require-hashes -r requirements-bootstrap.lock -r requirements-dev.lock
+uv pip install --python .venv/Scripts/python.exe --no-deps --no-build-isolation -e .
 .venv/Scripts/python.exe scripts/run_portfolio_demo.py
 .venv/Scripts/python.exe scripts/verify_portfolio_demo.py
 ```

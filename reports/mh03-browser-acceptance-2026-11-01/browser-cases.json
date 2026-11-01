@@ -1,0 +1,286 @@
+{
+  "cancellation-result.json": {
+    "abandoned_job": "152a1a4e07cd40ec94a6ba13f6ce68f4",
+    "browser_network_failure": "net::ERR_ABORTED",
+    "case": "B08-real-cancellation",
+    "server_worker_drained_to_ready": true,
+    "stale_result_visible": false,
+    "status": "passed"
+  },
+  "ctx-result.json": {
+    "case": "B03-B06",
+    "distance_m": 1619.6810116652966,
+    "errors": [],
+    "id": "4cb5feac51094dca808d50b78711eba8",
+    "request_id": "9fdd8611-3374-4283-8587-be3cf7acd9dc",
+    "scene": {
+      "aspect": {
+        "x": 1,
+        "y": 0.2895119492513968,
+        "z": 0.1669588157186559
+      },
+      "camera": {
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "eye": {
+          "x": 1.45,
+          "y": -1.45,
+          "z": 1.1
+        },
+        "projection": {
+          "type": "perspective"
+        },
+        "up": {
+          "x": 0,
+          "y": 0,
+          "z": 1
+        }
+      },
+      "canvasCount": 1,
+      "dataTraceTypes": [
+        "surface",
+        "scatter3d"
+      ],
+      "glplotKeys": [
+        "gl",
+        "contextLost",
+        "pixelRatio",
+        "canvas",
+        "selection",
+        "camera",
+        "axes",
+        "axesPixels",
+        "spikes",
+        "bounds",
+        "objects",
+        "shape",
+        "aspect",
+        "pickRadius",
+        "zNear",
+        "zFar",
+        "fovy",
+        "clearColor",
+        "autoResize",
+        "autoBounds",
+        "autoScale",
+        "autoCenter",
+        "clipToBounds",
+        "snapToData",
+        "onselect",
+        "onrender",
+        "onclick",
+        "cameraParams",
+        "oncontextloss",
+        "mouseListener",
+        "_stopped",
+        "getAspectratio",
+        "setAspectratio",
+        "setBounds",
+        "setClearColor",
+        "clearRGBA",
+        "update",
+        "add",
+        "remove",
+        "dispose",
+        "_mouseRotating",
+        "_prevButtons",
+        "enableMouseListeners",
+        "redraw"
+      ],
+      "sceneKeys": [
+        "graphDiv",
+        "svgContainer",
+        "fullLayout",
+        "id",
+        "fullSceneLayout",
+        "plotArgs",
+        "axesOptions",
+        "spikeOptions",
+        "container",
+        "staticMode",
+        "pixelRatio",
+        "dataScale",
+        "contourLevels",
+        "convertAnnotations",
+        "drawAnnotations",
+        "camera",
+        "glplot",
+        "traces",
+        "_mockAxis",
+        "viewInitial",
+        "oldEventData"
+      ]
+    },
+    "source": "ctx",
+    "spacing_m": 20,
+    "status": "passed"
+  },
+  "map-clicks-result.json": {
+    "a": {
+      "lat": "18.466644",
+      "lon": "77.412415"
+    },
+    "b": {
+      "lat": "18.459778",
+      "lon": "77.445374"
+    },
+    "box": {
+      "height": 882,
+      "width": 1075,
+      "x": 0,
+      "y": 118
+    },
+    "case": "B02",
+    "status": "passed"
+  },
+  "mola-result.json": {
+    "case": "B04-B10",
+    "distance_m": 166099.1563126481,
+    "id": "499aeac3bd1240e8a5810b125bcfda45",
+    "keyboard_focus_order": [
+      "Start latitude",
+      "Start longitude",
+      "Destination latitude",
+      "Destination longitude"
+    ],
+    "label": "MOLA global topography \u00b7 16 pixels/degree",
+    "request_id": "1f35b10c-45fe-4e6f-9899-19ce9b7b1ee7",
+    "source": "mola16",
+    "spacing_m": 3704.4613373579646,
+    "status": "passed",
+    "submitted_by_enter": true,
+    "warning": "Coarse MOLA global topography (about 3.7 km native cells at the equator), decimated for this bounded analysis; sub-cell rover hazards are unresolved. Selected points are snapped to sampled DEM cell centers."
+  },
+  "no-webgl-result.json": {
+    "alert_text": "The 3D view is unavailable in this browser. Use the Map view or download the calculated route; its measurements remain available.",
+    "case": "B09",
+    "download_available": true,
+    "fallback_alert": true,
+    "map_available": true,
+    "status": "passed",
+    "unavailable_webgl_control": true,
+    "unhandled_errors": []
+  },
+  "responsive-result.json": {
+    "case": "B10",
+    "layout_settling_observed": true,
+    "rows": [
+      {
+        "bodyWidth": 745,
+        "download_visible": true,
+        "scrollWidth": 745,
+        "viewport": 760
+      },
+      {
+        "bodyWidth": 375,
+        "download_visible": true,
+        "scrollWidth": 375,
+        "viewport": 390
+      }
+    ],
+    "status": "passed"
+  },
+  "stale-result.json": {
+    "case": "B08",
+    "controls": [
+      {
+        "case": "out-of-order-real-POST",
+        "current_job": "a85275545d92477cb44b89d57c3eba9c",
+        "old_job": "6bbb64aac0704bbdae4023fdb3405aa8",
+        "response_values_unmodified": true,
+        "status": "passed",
+        "transport_abort_deliberately_ignored": true
+      },
+      {
+        "abandoned_job": "42af000b6a8347bd953d223a636da9c8",
+        "case": "ABA-real-terminal-poll",
+        "response_values_unmodified": true,
+        "status": "passed",
+        "transport_abort_deliberately_ignored": true
+      }
+    ],
+    "observation": "Real backend payloads held/reordered; only transport timing and abort delivery changed",
+    "status": "passed"
+  },
+  "webgl-result.json": {
+    "aspect1": 0.03339176314373118,
+    "aspect100": 3.339176314373118,
+    "cameraBefore": {
+      "center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "eye": {
+        "x": 1.45,
+        "y": -1.45,
+        "z": 1.1
+      },
+      "projection": {
+        "type": "perspective"
+      },
+      "up": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      }
+    },
+    "cameraOrbit": {
+      "center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "eye": {
+        "x": -0.7964511931511783,
+        "y": -0.9238697118326097,
+        "z": 1.9816988299149787
+      },
+      "projection": {
+        "type": "perspective"
+      },
+      "up": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      }
+    },
+    "cameraZoom": {
+      "center": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "eye": {
+        "x": -0.4898826464815665,
+        "y": -0.5682554603830108,
+        "z": 1.2189069156732384
+      },
+      "projection": {
+        "type": "perspective"
+      },
+      "up": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      }
+    },
+    "case": "B05-B07",
+    "download_bytes": 5071,
+    "download_name": "marshab-route-4cb5feac51094dca808d50b78711eba8.geojson",
+    "export_unchanged": true,
+    "extra_scientific_posts": 0,
+    "job_id": "4cb5feac51094dca808d50b78711eba8",
+    "renderer": {
+      "lost": false,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)"
+    },
+    "scientific_arrays_unchanged": true,
+    "status": "passed",
+    "unhandled_errors": []
+  }
+}

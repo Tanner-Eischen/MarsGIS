@@ -1,0 +1,8 @@
+Using Python 3.11.15 environment at: <isolated-workspace>\environment
+Resolved 5 packages in 204ms
+Installed 5 packages in 539ms
+ + packaging==26.3
+ + pip==26.2.2
+ + poetry-core==2.2.1
+ + setuptools==84.2.1
+ + wheel==0.48.0

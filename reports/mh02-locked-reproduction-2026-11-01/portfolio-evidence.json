@@ -1,0 +1,96 @@
+{
+  "asset_attributions": [
+    {
+      "attribution": "NASA MRO CTX stereo, MOLA-controlled elevation distributed by USGS",
+      "publication_rights_review": "pending",
+      "raw_source_redistributed": false,
+      "source": "https://www.usgs.gov/media/images/m20jezerocraterctxdemmosaic20m100jpg"
+    }
+  ],
+  "checks": {
+    "browser": "not_run",
+    "container": "not_run",
+    "directed_graph_optimality": "passed",
+    "fresh_locked_workflow": "passed",
+    "live_deployment": "not_run",
+    "numerical_agreement": "passed"
+  },
+  "contribution": "Built observed-DEM terrain analysis, constrained routing, independent directed-graph verification and reproducible scientific evidence.",
+  "evidence_references": [
+    "provenance.json",
+    "fresh-manifest.json",
+    "independent-verification.json",
+    "numerical-comparison-final.json"
+  ],
+  "files_sha256": {
+    "archived-package-install.log": "1969e516aac551914ee721e12d612ccc3e5947e7781942ff5c9b1af665c08700",
+    "bootstrap-install.log": "ea06abcf9cab33a7b4128d009bbb54e87781dc9e29e100a0b06621ad4f7cb6d5",
+    "comparison-tests.log": "5848cc6a52b5487cd8f502e789d8e826c50a5d84a71ddfdacb42e249e3422e28",
+    "environment-create.log": "76af97dedc18275ca6cd1d7599a9a635f755539f1420706272f2e8512a8f0ab1",
+    "fixed-workflow.log": "114aacfdb6037c80abf482ce246690b2d18f1bdba5b71efa0e75e237387862d6",
+    "fresh-manifest.json": "30d0255fd7f237f39fe8e560f1514de5428fdc8abfe405395685e2b6be392b68",
+    "independent-verification.json": "33f44fa2f679e19a7ad365b826525a5f5356d66c4c17e3acedc76e04e86e3c0f",
+    "independent-verification.log": "593857cf677636035674ec20c2f1541c13be21b5f916208bc1f63113d7ca3ddf",
+    "input-and-install-audit.json": "4486c3ad23b579b3b5a43891be886a3d03d235df132093e98eebc171c44dbcbc",
+    "inputs/pyproject-overlay.toml": "2fd4972761edbeb3b42af00aa895d73475c1ed3e4595956e8cb3adc46ca2521b",
+    "inputs/requirements-bootstrap.lock": "197a511e817f3eecc07c845895d7d0f49f48c3b270f3c08494f2d1355a62d916",
+    "inputs/requirements-dev.lock": "68ad7a5b8c4244fad5f2b53b373e9fed50f956236292cf090247617a5a5a52f7",
+    "inputs/requirements.lock": "9a77bf9af51a3762ee2c9998af9fc1982f1e8eb57a878cbaf27a4cfbf66ca7b4",
+    "numerical-comparison-final.json": "24dc1562aada12c5897e0d30a80b44d919a351db234587c1c2edfe9e23cb7455",
+    "numerical-comparison-final.log": "06a9bbeb5b6ff174b0377d9768d2e3818ba30ae03b87a7f97b76064837be9742",
+    "numerical-comparison.json": "1b60eac3cd8812a3ead420ff6bb78f928513b13ea911588754fbab94ab6393d6",
+    "numerical-comparison.log": "06a9bbeb5b6ff174b0377d9768d2e3818ba30ae03b87a7f97b76064837be9742",
+    "pip-check.log": "672aec65a45bed50e70229c70934a7eebf0462595c459b83023027645d57cccf",
+    "provenance.json": "1293f4253b8732edce28d96e79dbc1e6d1b1f35807265337f8caa5693c16f07a",
+    "requirements-dev.lock-install.log": "d2be88398a6638c44cace97da30ee9d42e295d91d058e9cacd720cef0b5aaf57",
+    "requirements.lock-install.log": "8375cd5e6c5dc6cd938e5a70db4babce4e546c6267533b06ff4a26360db02104",
+    "tool-format.log": "c8021aa11a96eedc8600067a0acfaba944a8fda218e40c97785bfacce37b745e",
+    "tool-lint.log": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "workflow-command.json": "8c60abb60198086c99c01fc5efca61d16e355e90ab1e4d587ee808cf19ea6a9b"
+  },
+  "headline_results": [
+    {
+      "denominator": "One rank-1 route among three reproduced candidate routes",
+      "evidence": [
+        "fresh-manifest.json",
+        "independent-verification.json",
+        "numerical-comparison-final.json"
+      ],
+      "limitation": "Sampled discrete terrain model; no physical mobility or habitat-safety inference",
+      "metric": "rank_1_route_length",
+      "scope": "Historical Jezero CTX scenario; 20 m analysis grid; explicit reconstructed-source profile",
+      "selection_protocol": "Highest eligible relative terrain-score cell, largest traversable component, original 1.5 km greedy separation",
+      "unit": "m",
+      "value": 11510.924958366748
+    }
+  ],
+  "last_verified_utc": "2026-11-01T06:11:24.053532+00:00",
+  "limitations": [
+    "One fixed scenario and one fresh Windows/Python profile only.",
+    "This is not an unmodified baseline installation; the packaging overlay and external locks are explicit inputs.",
+    "No repeated-run, container resource, browser, WebGL, deployment or public-access checks were run.",
+    "No cross-platform PNG/TIFF byte-identity guarantee is made.",
+    "Suitability scores are ROI-relative comparisons, not safety probabilities.",
+    "Source, environment, raw DEM and large rasters are not included in this compact handoff."
+  ],
+  "lock_sha256": {
+    "requirements-bootstrap.lock": "197a511e817f3eecc07c845895d7d0f49f48c3b270f3c08494f2d1355a62d916",
+    "requirements-dev.lock": "68ad7a5b8c4244fad5f2b53b373e9fed50f956236292cf090247617a5a5a52f7",
+    "requirements.lock": "9a77bf9af51a3762ee2c9998af9fc1982f1e8eb57a878cbaf27a4cfbf66ca7b4"
+  },
+  "owner_approval_state": "publication_pending",
+  "packaging_overlay_sha256": "2fd4972761edbeb3b42af00aa895d73475c1ed3e4595956e8cb3adc46ca2521b",
+  "profile": "committed_source_reconstruction_with_explicit_packaging_metadata_overlay",
+  "project_id": "marshab",
+  "public_access_state": "publication_pending",
+  "release_id": "marshab-locked-reproduction-2026-11-01",
+  "runtime_scope": "Fresh fixed observed-DEM CLI workflow; no HTTP/container/browser claim",
+  "schema_version": 1,
+  "source_access": "private",
+  "source_archive_sha256": "791662cf6c50be11358677309851a6ba080189304b78d8de2d861f14b05c4fe8",
+  "source_revision": "82e24bac7de34f1cb80d648f71fd8c794a16b012",
+  "source_url": null,
+  "tested_revision": "82e24bac7de34f1cb80d648f71fd8c794a16b012",
+  "tested_revision_scope": "102 archived scientific/script Python files match committed source; isolated fresh environment uses explicitly hashed packaging metadata overlay and external locks",
+  "versioned_evidence_urls": []
+}

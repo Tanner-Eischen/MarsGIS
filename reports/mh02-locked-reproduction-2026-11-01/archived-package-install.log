@@ -1,0 +1,11 @@
+Processing <isolated-workspace>\source
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: marshab
+  Building wheel for marshab (pyproject.toml): started
+  Building wheel for marshab (pyproject.toml): finished with status 'done'
+  Created wheel for marshab: filename=marshab-0.1.1-py3-none-any.whl size=229710 sha256=8ea7c66cbe49e6d64a69c5fd89d9a10180c22c248fdd377943ae108658be125e
+  Stored in directory: <user-profile>\AppData\Local\Temp\pip-ephem-wheel-cache-x8nz4vfd\wheels\b9\e8\00\69cbb9ee848a2b4ec3322d45af689a17d524fea297cc2585bb
+Successfully built marshab
+Installing collected packages: marshab
+Successfully installed marshab-0.1.1

@@ -1,0 +1,80 @@
+{
+  "asset_attributions": [
+    {
+      "assets": [
+        "comparison.png",
+        "report.md",
+        "routes.geojson"
+      ],
+      "attribution": "Derived from NASA MRO CTX stereo, MOLA-controlled elevation distributed by USGS; generated project visualization and reports",
+      "publication_rights_review": "pending; no raw source DEM redistributed",
+      "source": "https://www.usgs.gov/media/images/m20jezerocraterctxdemmosaic20m100jpg"
+    }
+  ],
+  "checks": {
+    "artifact_integrity": "passed",
+    "browser": "not_run",
+    "directed_graph_optimality": "passed",
+    "independent_static_reference": "passed",
+    "live_deployment": "not_run",
+    "runtime": "previously_recorded"
+  },
+  "contribution": "Built observed-DEM terrain processing, relative site scoring, constrained routing, independent export checks and a unified explorer.",
+  "dirty_worktree": true,
+  "evidence_references": [
+    "validation.json",
+    "reference-metadata.json",
+    "report.md"
+  ],
+  "files_sha256": {
+    "comparison.png": "60927accfd9903e2b069a9da3b14f3636755c3bf29178c1c1fdfa02c5524532d",
+    "export_lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "independent_static_reference.log": "593857cf677636035674ec20c2f1541c13be21b5f916208bc1f63113d7ca3ddf",
+    "reference-metadata.json": "b1bcf2d1c8323f65665a39362aa013cf4f3bb6508a235ade1b3f0b7636eb8461",
+    "report.md": "fb493cb8fe04a1bb8774c7dff25645b36e0a757fd8c5152adc1a954c6ccafe0a",
+    "routes.geojson": "96f8e4ad5991db021f33a05ea1577804e74230f19c0ad06fc8f5b9175b60fe87",
+    "validation.json": "df4c9c2dd7c49313148e7803dac96cc259016a1aaf60ec22b4f9aec768699fec"
+  },
+  "headline_results": [
+    {
+      "denominator": "one historical selected-cell route; three candidate routes total",
+      "evidence": [
+        "report.md",
+        "routes.geojson",
+        "reference-metadata.json"
+      ],
+      "limitation": "Planar sampled-grid distance; illustrative constraints, not physical mobility validation",
+      "metric": "rank_1_route_length",
+      "scope": "Jezero CTX reference; 20 m projected analysis grid",
+      "selection_protocol": "Highest-scoring eligible cell in largest traversable component; 1.5 km greedy separation",
+      "unit": "m",
+      "value": 11510.924958366748
+    }
+  ],
+  "last_verified_utc": "2026-11-01T05:55:18.263883+00:00",
+  "limitations": [
+    "Historical reference retains its original dirty revision; it was not regenerated for this handoff.",
+    "The compact handoff omits raster outputs; rerunning the full static check requires the private repository's complete reference.",
+    "Fresh checker verifies geometry, masks, scores, accumulated costs and full directed-graph optimality within relative tolerance 1e-6; this is discrete-model validation.",
+    "Terrain scores are ROI-relative and do not establish habitat safety, rover energy or travel time.",
+    "Global MOLA is coarse and cannot resolve rover-scale hazards.",
+    "Recorded local Docker evidence uses 1 GiB and two CPUs, not validated 512 MiB deployment headroom.",
+    "Browser/WebGL interactions, public access and patched live deployment remain unverified."
+  ],
+  "owner_approval_state": "publication_pending",
+  "project_id": "marshab",
+  "public_access_state": "showcase_and_publication_pending",
+  "release_id": "marshab-portfolio-evidence-2026-11-01-graph-verified",
+  "schema_version": 1,
+  "source_access": "private",
+  "source_revision": "459973dba92dc5b82f9d24519fd333577646ae3a",
+  "source_sha256": {
+    "marshab/analysis/verification.py": "5aaa8405eb208ad911d58c2866bbd98f6449fc290746634f8f9a49322388e5d8",
+    "scripts/export_portfolio_handoff.py": "fac29b9459d6609d7fcf371be4873381bb85bc9cc7c103ff74a4cf96cbacd896",
+    "scripts/verify_portfolio_demo.py": "ef6bdebee95198708fff8fe5ccf764e8bcf784c4097710a947fc2768094ea8cc"
+  },
+  "source_url": null,
+  "tested_revision": "459973dba92dc5b82f9d24519fd333577646ae3a",
+  "tested_revision_scope": "Fresh static artifact checker only; dirty source identified by hashes",
+  "versioned_evidence_urls": []
+}

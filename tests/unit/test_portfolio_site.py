@@ -93,7 +93,10 @@ def analysis(tmp_path):
     Image.new("RGB", (5, 3)).save(folder / "comparison.png")
     manifest = {
         "data_mode": "observed_dem",
-        "source": {"citation": "Generated unit-test surface, not observational evidence"},
+        "source": {
+            "citation": "Generated unit-test surface, not observational evidence",
+            "crs_wkt": LOCAL_CRS.to_wkt(),
+        },
         "grid": {
             "shape": [3, 5],
             "transform": tuple(transform)[:6],
@@ -104,7 +107,11 @@ def analysis(tmp_path):
         "configuration": {
             "weights": {"slope": 0.7, "roughness": 0.3},
             "constraints": {"max_slope_deg": 15, "max_roughness": 20},
+            "connectivity": 8,
+            "corner_cutting": False,
+            "smoothing": False,
         },
+        "software": {"git_revision": "generated-unit-test-fixture", "dirty": False},
         "candidates": candidates,
         "start_pixel": [0, 0],
         "outputs_sha256": {

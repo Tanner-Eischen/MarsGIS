@@ -1,0 +1,63 @@
+{
+  "checker_sha256": "62255c6418ece82e3866858b05429b28555ec80bb63f57afaec13422c1aae4d3",
+  "graph": {
+    "corner_cutting": false,
+    "directed_edges": 2359894,
+    "edge_definition": "destination-cell serialized cost times metric step length",
+    "nodes_including_blocked": 333859,
+    "passable_nodes": 300500,
+    "solver": "scipy.sparse.csgraph.dijkstra; directed=True"
+  },
+  "limitations": [
+    "Optimality applies only to the serialized discrete graph and declared tolerance.",
+    "No physical mobility, habitat safety, browser or deployment validation is implied.",
+    "Historical artifacts were checked in place, not regenerated in a fresh locked environment."
+  ],
+  "manifest_sha256": "59e9dea7d0d4e272d9df1916a1d7380c6c317743bc96820bef26c9bbade1a761",
+  "reference_dirty_worktree": true,
+  "reference_revision": "4eb93e615c985edca10643b3c0752587d9dc7a21",
+  "routes": [
+    {
+      "archived_cost_m_equivalent": 27898.49477515784,
+      "dijkstra_cost_m_equivalent": 27898.49477515784,
+      "endpoint_pixel": [
+        193,
+        455
+      ],
+      "length_m": 11510.924958366748,
+      "optimality_relative_tolerance": 1e-06,
+      "rank": 1,
+      "serialized_route_cost_m_equivalent": 27898.49477515784,
+      "status": "passed"
+    },
+    {
+      "archived_cost_m_equivalent": 35873.34682222687,
+      "dijkstra_cost_m_equivalent": 35873.34682222688,
+      "endpoint_pixel": [
+        545,
+        548
+      ],
+      "length_m": 18000.67242667258,
+      "optimality_relative_tolerance": 1e-06,
+      "rank": 2,
+      "serialized_route_cost_m_equivalent": 35873.34682222687,
+      "status": "passed"
+    },
+    {
+      "archived_cost_m_equivalent": 25936.577287194923,
+      "dijkstra_cost_m_equivalent": 25936.577287194938,
+      "endpoint_pixel": [
+        207,
+        380
+      ],
+      "length_m": 10036.366517139591,
+      "optimality_relative_tolerance": 1e-06,
+      "rank": 3,
+      "serialized_route_cost_m_equivalent": 25936.577287194923,
+      "status": "passed"
+    }
+  ],
+  "schema_version": 1,
+  "status": "passed",
+  "timestamp_utc": "2026-11-01T05:35:37.901577+00:00"
+}

@@ -1,0 +1,79 @@
+{
+  "asset_attributions": [
+    {
+      "assets": [
+        "comparison.png",
+        "report.md",
+        "routes.geojson"
+      ],
+      "attribution": "Derived from NASA MRO CTX stereo, MOLA-controlled elevation distributed by USGS; generated project visualization and reports",
+      "publication_rights_review": "pending; no raw source DEM redistributed",
+      "source": "https://www.usgs.gov/media/images/m20jezerocraterctxdemmosaic20m100jpg"
+    }
+  ],
+  "checks": {
+    "artifact_integrity": "passed",
+    "browser": "not_run",
+    "independent_static_reference": "passed",
+    "live_deployment": "not_run",
+    "runtime": "previously_recorded"
+  },
+  "contribution": "Built observed-DEM terrain processing, relative site scoring, constrained routing, independent export checks and a unified explorer.",
+  "dirty_worktree": true,
+  "evidence_references": [
+    "validation.json",
+    "reference-metadata.json",
+    "report.md"
+  ],
+  "files_sha256": {
+    "comparison.png": "60927accfd9903e2b069a9da3b14f3636755c3bf29178c1c1fdfa02c5524532d",
+    "export_lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "independent_static_reference.log": "e185d682e9052c9e7d56866f15648e1cbd29f23423792bdce2a606b78b10de8e",
+    "reference-metadata.json": "b1bcf2d1c8323f65665a39362aa013cf4f3bb6508a235ade1b3f0b7636eb8461",
+    "report.md": "fb493cb8fe04a1bb8774c7dff25645b36e0a757fd8c5152adc1a954c6ccafe0a",
+    "routes.geojson": "96f8e4ad5991db021f33a05ea1577804e74230f19c0ad06fc8f5b9175b60fe87",
+    "validation.json": "bb29df07c0869c1e93fa08b4a1a4e42a02d764b0bec7a0a976e677e3cf393d52"
+  },
+  "headline_results": [
+    {
+      "denominator": "one historical selected-cell route; three candidate routes total",
+      "evidence": [
+        "report.md",
+        "routes.geojson",
+        "reference-metadata.json"
+      ],
+      "limitation": "Planar sampled-grid distance; illustrative constraints, not physical mobility validation",
+      "metric": "rank_1_route_length",
+      "scope": "Jezero CTX reference; 20 m projected analysis grid",
+      "selection_protocol": "Highest-scoring eligible cell in largest traversable component; 1.5 km greedy separation",
+      "unit": "m",
+      "value": 11510.924958366748
+    }
+  ],
+  "last_verified_utc": "2026-11-01T05:16:50.189514+00:00",
+  "limitations": [
+    "Historical reference retains its original dirty revision; it was not regenerated for this handoff.",
+    "The compact handoff omits raster outputs; rerunning the full static check requires the private repository's complete reference.",
+    "Fresh checker verifies geometry, masks, scores and accumulated costs; independent full-graph shortest-path optimality remains pending.",
+    "Terrain scores are ROI-relative and do not establish habitat safety, rover energy or travel time.",
+    "Global MOLA is coarse and cannot resolve rover-scale hazards.",
+    "Recorded local Docker evidence uses 1 GiB and two CPUs, not validated 512 MiB deployment headroom.",
+    "Browser/WebGL interactions, public access and patched live deployment remain unverified."
+  ],
+  "owner_approval_state": "publication_pending",
+  "project_id": "marshab",
+  "public_access_state": "showcase_and_publication_pending",
+  "release_id": "marshab-portfolio-evidence-2026-11-01",
+  "schema_version": 1,
+  "source_access": "private",
+  "source_revision": "459973dba92dc5b82f9d24519fd333577646ae3a",
+  "source_sha256": {
+    "marshab/analysis/verification.py": "1d94a755f568d2b220188413d7b16e10c81f056e887f4cd56e382cd9cf96639d",
+    "scripts/export_portfolio_handoff.py": "0cb65fe76a619adc123b45ceb96e621adf7930d5d888a4af7ff8a01f0b58f5bf",
+    "scripts/verify_portfolio_demo.py": "ef6bdebee95198708fff8fe5ccf764e8bcf784c4097710a947fc2768094ea8cc"
+  },
+  "source_url": null,
+  "tested_revision": "459973dba92dc5b82f9d24519fd333577646ae3a",
+  "tested_revision_scope": "Fresh static artifact checker only; dirty source identified by hashes",
+  "versioned_evidence_urls": []
+}
